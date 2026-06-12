@@ -1,0 +1,32 @@
+# Dépendances
+node_modules/
+vendor/
+
+# Environnement
+.env
+.env.local
+.env.*.local
+
+# Build & cache
+.next/
+out/
+bootstrap/cache/*.php
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+
+# IDE & OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+Thumbs.db
+
+# Base de données locale
+*.sqlite
+*.sqlite-journal
+
+# Tests & coverage
+coverage/
+.phpunit.result.cache
