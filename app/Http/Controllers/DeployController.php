@@ -39,6 +39,7 @@ class DeployController extends Controller
         'seed' => '/?secret=VOTRE_SECRET&action=seed',
         'setup' => '/?secret=VOTRE_SECRET&action=setup',
         'shield' => '/?secret=VOTRE_SECRET&action=shield',
+        'storage' => '/?secret=VOTRE_SECRET&action=storage',
       ],
     ]);
   }
@@ -65,9 +66,10 @@ class DeployController extends Controller
         'seed' => $this->runSeeders(),
         'setup' => $this->runSetup(),
         'shield' => $this->runShield(),
+        'storage' => $this->runStorageLink(),
         default => response()->json([
           'status' => 'error',
-          'message' => 'Action inconnue. Utilisez migrate, seed, setup ou shield.',
+          'message' => 'Action inconnue. Utilisez migrate, seed, setup, shield ou storage.',
         ], 400),
       };
     } catch (\Throwable $exception) {
@@ -197,6 +199,23 @@ class DeployController extends Controller
   }
 
   /**
+   * Crée le lien symbolique public/storage vers storage/app/public.
+   *
+   * @return JsonResponse Résultat storage:link
+   */
+  private function runStorageLink(): JsonResponse
+  {
+    Artisan::call('storage:link', ['--force' => true]);
+
+    return response()->json([
+      'status' => 'ok',
+      'action' => 'storage',
+      'message' => 'Lien symbolique storage créé avec succès.',
+      'output' => trim(Artisan::output()),
+    ]);
+  }
+
+  /**
    * Exécute migrations puis seeders (équivalent setup local initial).
    *
    * @return JsonResponse Résultat combiné
@@ -209,13 +228,17 @@ class DeployController extends Controller
     Artisan::call('db:seed', ['--force' => true]);
     $seedOutput = trim(Artisan::output());
 
+    Artisan::call('storage:link', ['--force' => true]);
+    $storageOutput = trim(Artisan::output());
+
     return response()->json([
       'status' => 'ok',
       'action' => 'setup',
-      'message' => 'Migrations et seeders exécutés avec succès.',
+      'message' => 'Migrations, seeders et lien storage exécutés avec succès.',
       'output' => [
         'migrate' => $migrateOutput,
         'seed' => $seedOutput,
+        'storage' => $storageOutput,
       ],
     ]);
   }

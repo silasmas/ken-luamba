@@ -29,6 +29,8 @@ composer install
 cp .env.example .env
 php artisan key:generate
 php artisan migrate
+php artisan db:seed
+php artisan storage:link
 php artisan serve --port=8001
 ```
 
@@ -42,7 +44,8 @@ php artisan make:filament-user
 
 | Variable | Description |
 |----------|-------------|
-| `APP_URL` | URL publique du backend |
+| `APP_URL` | URL publique du backend (ex. `https://admin.kenluamba.com`) |
+| `FILESYSTEM_DISK` | Doit être `public` pour les images catalogue et avatars |
 | `DEPLOY_SECRET` | Secret pour les actions de déploiement HTTP (`migrate`, `seed`, `setup`, `shield`) |
 | `FRONTEND_URL` | URL du frontend Next.js (CORS) |
 | `SANCTUM_STATEFUL_DOMAINS` | Domaines autorisés pour Sanctum |
@@ -83,13 +86,15 @@ php artisan make:filament-user
    https://admin.kenluamba.com/?secret=VOTRE_DEPLOY_SECRET&action=seed
    https://admin.kenluamba.com/?secret=VOTRE_DEPLOY_SECRET&action=setup
    https://admin.kenluamba.com/?secret=VOTRE_DEPLOY_SECRET&action=shield
+   https://admin.kenluamba.com/?secret=VOTRE_DEPLOY_SECRET&action=storage
    ```
    | Action | URL | Effet |
    |--------|-----|-------|
    | `migrate` | `?secret=...` | Migrations uniquement |
    | `seed` | `?secret=...&action=seed` | Données initiales (auteur, livres, admin, livreur…) |
-   | `setup` | `?secret=...&action=setup` | Migrations + seeders |
+   | `setup` | `?secret=...&action=setup` | Migrations + seeders + lien `storage` |
    | `shield` | `?secret=...&action=shield` | Permissions Filament Shield + droits livraison |
+   | `storage` | `?secret=...&action=storage` | Crée le lien `public/storage` (obligatoire pour afficher les images) |
 
    Ordre recommandé au premier déploiement : `setup` puis `shield`.
    ```bash

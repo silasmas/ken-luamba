@@ -35,6 +35,16 @@ class SeederMediaService
   }
 
   /**
+   * Retourne le dossier images embarqué avec les seeders du backend.
+   *
+   * @return string Chemin absolu
+   */
+  public function bundledImagesDirectory(): string
+  {
+    return database_path('seeders'.DIRECTORY_SEPARATOR.'assets'.DIRECTORY_SEPARATOR.'images');
+  }
+
+  /**
    * Retourne le dossier images du projet book-site (frère du monorepo).
    *
    * @return string Chemin absolu
@@ -42,6 +52,7 @@ class SeederMediaService
   public function bookSiteImagesDirectory(): string
   {
     $candidates = [
+      $this->bundledImagesDirectory(),
       dirname(dirname(base_path())).DIRECTORY_SEPARATOR.'ken-luamba-book-site'
         .DIRECTORY_SEPARATOR.'public'.DIRECTORY_SEPARATOR.'images',
       dirname(base_path()).DIRECTORY_SEPARATOR.'frontend'
@@ -54,7 +65,7 @@ class SeederMediaService
       }
     }
 
-    return $candidates[0];
+    return $this->bundledImagesDirectory();
   }
 
   /**

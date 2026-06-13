@@ -42,6 +42,6 @@ class MediaUrl
       return null;
     }
 
-    return $publicDisk->url($path);
+    return asset('storage/'.$path);
   }
 }
