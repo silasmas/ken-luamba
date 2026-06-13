@@ -3,6 +3,7 @@
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -14,7 +15,13 @@ return Application::configure(basePath: dirname(__DIR__))
         apiPrefix: 'api',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->statefulApi();
+      $middleware->alias([
+        'sanctum.optional' => \App\Http\Middleware\OptionalSanctumAuth::class,
+      ]);
+    })
+    ->withSchedule(function (Schedule $schedule): void {
+      $schedule->command('orders:send-payment-reminders')->hourly();
+      $schedule->command('deliveries:send-stale-alerts')->hourly();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

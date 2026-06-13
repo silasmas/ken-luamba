@@ -6,8 +6,9 @@ const API_BASE_URL =
 /**
  * Options de requête pour le client API.
  */
-interface RequestOptions extends RequestInit {
+export interface RequestOptions extends RequestInit {
   token?: string;
+  cartSession?: string;
 }
 
 /**
@@ -19,7 +20,7 @@ class ApiClient {
   /**
    * Initialise le client avec l'URL de base de l'API.
    *
-   * @param baseUrl URL racine de l'API (ex. /api/v1)
+   * @param baseUrl URL racine de l'API
    */
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
@@ -28,12 +29,12 @@ class ApiClient {
   /**
    * Exécute une requête HTTP vers l'API.
    *
-   * @param endpoint Chemin relatif (ex. /health)
-   * @param options Options fetch et token d'authentification optionnel
+   * @param endpoint Chemin relatif
+   * @param options Options fetch, token et session panier
    * @returns Données JSON typées
    */
   async request<T>(endpoint: string, options: RequestOptions = {}): Promise<T> {
-    const { token, headers, ...rest } = options;
+    const { token, cartSession, headers, ...rest } = options;
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       ...rest,
@@ -41,16 +42,21 @@ class ApiClient {
         Accept: "application/json",
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(cartSession ? { "X-Cart-Session": cartSession } : {}),
         ...headers,
       },
     });
 
     if (!response.ok) {
-      const error = (await response.json().catch(() => ({
+      const errorBody = (await response.json().catch(() => ({
         message: "Une erreur est survenue.",
       }))) as ApiError;
 
-      throw new Error(error.message);
+      const firstFieldError = errorBody.errors
+        ? Object.values(errorBody.errors).flat()[0]
+        : undefined;
+
+      throw new Error(firstFieldError ?? errorBody.message);
     }
 
     return response.json() as Promise<T>;
@@ -59,28 +65,63 @@ class ApiClient {
   /**
    * Effectue une requête GET.
    *
-   * @param endpoint Chemin relatif de l'endpoint
-   * @param token Token Sanctum optionnel
+   * @param endpoint Chemin relatif
+   * @param options Options optionnelles
    * @returns Données JSON typées
    */
-  get<T>(endpoint: string, token?: string): Promise<T> {
-    return this.request<T>(endpoint, { method: "GET", token });
+  get<T>(endpoint: string, options: Omit<RequestOptions, "method" | "body"> = {}): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: "GET" });
   }
 
   /**
    * Effectue une requête POST.
    *
-   * @param endpoint Chemin relatif de l'endpoint
-   * @param body Corps de la requête
-   * @param token Token Sanctum optionnel
+   * @param endpoint Chemin relatif
+   * @param body Corps JSON
+   * @param options Options optionnelles
    * @returns Données JSON typées
    */
-  post<T>(endpoint: string, body: unknown, token?: string): Promise<T> {
+  post<T>(
+    endpoint: string,
+    body: unknown = {},
+    options: Omit<RequestOptions, "method" | "body"> = {},
+  ): Promise<T> {
     return this.request<T>(endpoint, {
+      ...options,
       method: "POST",
       body: JSON.stringify(body),
-      token,
     });
+  }
+
+  /**
+   * Effectue une requête PATCH.
+   *
+   * @param endpoint Chemin relatif
+   * @param body Corps JSON
+   * @param options Options optionnelles
+   * @returns Données JSON typées
+   */
+  patch<T>(
+    endpoint: string,
+    body: unknown,
+    options: Omit<RequestOptions, "method" | "body"> = {},
+  ): Promise<T> {
+    return this.request<T>(endpoint, {
+      ...options,
+      method: "PATCH",
+      body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * Effectue une requête DELETE.
+   *
+   * @param endpoint Chemin relatif
+   * @param options Options optionnelles
+   * @returns Données JSON typées
+   */
+  delete<T>(endpoint: string, options: Omit<RequestOptions, "method" | "body"> = {}): Promise<T> {
+    return this.request<T>(endpoint, { ...options, method: "DELETE" });
   }
 }
 
