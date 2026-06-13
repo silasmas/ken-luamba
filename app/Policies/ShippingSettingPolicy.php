@@ -4,72 +4,72 @@ declare(strict_types=1);
 
 namespace App\Policies;
 
+use Illuminate\Foundation\Auth\User as AuthUser;
 use App\Models\ShippingSetting;
 use Illuminate\Auth\Access\HandlesAuthorization;
-use Illuminate\Foundation\Auth\User as AuthUser;
 
-/**
- * Politique d'accès aux paramètres de livraison.
- */
 class ShippingSettingPolicy
 {
-  use HandlesAuthorization;
+    use HandlesAuthorization;
+    
+    public function viewAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('ViewAny:ShippingSetting');
+    }
 
-  /**
-   * Autorise l'accès au menu des paramètres livraison.
-   *
-   * @param AuthUser $authUser Utilisateur connecté
-   * @return bool Accès autorisé ou non
-   */
-  public function viewAny(AuthUser $authUser): bool
-  {
-    return $authUser->can('ViewAny:ShippingSetting');
-  }
+    public function view(AuthUser $authUser, ShippingSetting $shippingSetting): bool
+    {
+        return $authUser->can('View:ShippingSetting');
+    }
 
-  /**
-   * Autorise la consultation des paramètres.
-   *
-   * @param AuthUser $authUser Utilisateur connecté
-   * @param ShippingSetting $shippingSetting Enregistrement cible
-   * @return bool Accès autorisé ou non
-   */
-  public function view(AuthUser $authUser, ShippingSetting $shippingSetting): bool
-  {
-    return $authUser->can('View:ShippingSetting');
-  }
+    public function create(AuthUser $authUser): bool
+    {
+        return $authUser->can('Create:ShippingSetting');
+    }
 
-  /**
-   * Interdit la création (enregistrement singleton).
-   *
-   * @param AuthUser $authUser Utilisateur connecté
-   * @return bool Toujours false
-   */
-  public function create(AuthUser $authUser): bool
-  {
-    return false;
-  }
+    public function update(AuthUser $authUser, ShippingSetting $shippingSetting): bool
+    {
+        return $authUser->can('Update:ShippingSetting');
+    }
 
-  /**
-   * Autorise la modification des paramètres.
-   *
-   * @param AuthUser $authUser Utilisateur connecté
-   * @param ShippingSetting $shippingSetting Enregistrement cible
-   * @return bool Accès autorisé ou non
-   */
-  public function update(AuthUser $authUser, ShippingSetting $shippingSetting): bool
-  {
-    return $authUser->can('Update:ShippingSetting');
-  }
+    public function delete(AuthUser $authUser, ShippingSetting $shippingSetting): bool
+    {
+        return $authUser->can('Delete:ShippingSetting');
+    }
 
-  /**
-   * Interdit la suppression des paramètres globaux.
-   *
-   * @param AuthUser $authUser Utilisateur connecté
-   * @param ShippingSetting $shippingSetting Enregistrement cible
-   * @return bool Toujours false
-   */
-  public function delete(AuthUser $authUser, ShippingSetting $shippingSetting): bool
-  {
-    return false;
-  }
+    public function deleteAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('DeleteAny:ShippingSetting');
+    }
+
+    public function restore(AuthUser $authUser, ShippingSetting $shippingSetting): bool
+    {
+        return $authUser->can('Restore:ShippingSetting');
+    }
+
+    public function forceDelete(AuthUser $authUser, ShippingSetting $shippingSetting): bool
+    {
+        return $authUser->can('ForceDelete:ShippingSetting');
+    }
+
+    public function forceDeleteAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('ForceDeleteAny:ShippingSetting');
+    }
+
+    public function restoreAny(AuthUser $authUser): bool
+    {
+        return $authUser->can('RestoreAny:ShippingSetting');
+    }
+
+    public function replicate(AuthUser $authUser, ShippingSetting $shippingSetting): bool
+    {
+        return $authUser->can('Replicate:ShippingSetting');
+    }
+
+    public function reorder(AuthUser $authUser): bool
+    {
+        return $authUser->can('Reorder:ShippingSetting');
+    }
+
 }

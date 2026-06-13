@@ -43,7 +43,7 @@ php artisan make:filament-user
 | Variable | Description |
 |----------|-------------|
 | `APP_URL` | URL publique du backend |
-| `DEPLOY_SECRET` | Secret pour les actions de déploiement HTTP (`migrate`, `seed`, `setup`) |
+| `DEPLOY_SECRET` | Secret pour les actions de déploiement HTTP (`migrate`, `seed`, `setup`, `shield`) |
 | `FRONTEND_URL` | URL du frontend Next.js (CORS) |
 | `SANCTUM_STATEFUL_DOMAINS` | Domaines autorisés pour Sanctum |
 | `DB_*` | Configuration base de données |
@@ -82,12 +82,16 @@ php artisan make:filament-user
    https://admin.kenluamba.com/?secret=VOTRE_DEPLOY_SECRET
    https://admin.kenluamba.com/?secret=VOTRE_DEPLOY_SECRET&action=seed
    https://admin.kenluamba.com/?secret=VOTRE_DEPLOY_SECRET&action=setup
+   https://admin.kenluamba.com/?secret=VOTRE_DEPLOY_SECRET&action=shield
    ```
    | Action | URL | Effet |
    |--------|-----|-------|
    | `migrate` | `?secret=...` | Migrations uniquement |
    | `seed` | `?secret=...&action=seed` | Données initiales (auteur, livres, admin, livreur…) |
    | `setup` | `?secret=...&action=setup` | Migrations + seeders |
+   | `shield` | `?secret=...&action=shield` | Permissions Filament Shield + droits livraison |
+
+   Ordre recommandé au premier déploiement : `setup` puis `shield`.
    ```bash
    php artisan storage:link
    php artisan config:cache

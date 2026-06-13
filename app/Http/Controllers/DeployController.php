@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Database\Seeders\ShippingPermissionSeeder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -36,6 +37,7 @@ class DeployController extends Controller
         'migrate' => '/?secret=VOTRE_SECRET',
         'seed' => '/?secret=VOTRE_SECRET&action=seed',
         'setup' => '/?secret=VOTRE_SECRET&action=setup',
+        'shield' => '/?secret=VOTRE_SECRET&action=shield',
       ],
     ]);
   }
@@ -61,9 +63,10 @@ class DeployController extends Controller
         'migrate' => $this->runMigrations(),
         'seed' => $this->runSeeders(),
         'setup' => $this->runSetup(),
+        'shield' => $this->runShield(),
         default => response()->json([
           'status' => 'error',
-          'message' => 'Action inconnue. Utilisez migrate, seed ou setup.',
+          'message' => 'Action inconnue. Utilisez migrate, seed, setup ou shield.',
         ], 400),
       };
     } catch (\Throwable $exception) {
@@ -145,6 +148,37 @@ class DeployController extends Controller
       'action' => 'seed',
       'message' => 'Seeders exécutés avec succès.',
       'output' => trim(Artisan::output()),
+    ]);
+  }
+
+  /**
+   * Génère les permissions Filament Shield et alimente les droits livraison.
+   *
+   * @return JsonResponse Résultat shield:generate et ShippingPermissionSeeder
+   */
+  private function runShield(): JsonResponse
+  {
+    Artisan::call('shield:generate', [
+      '--all' => true,
+      '--panel' => 'admin',
+      '--no-interaction' => true,
+    ]);
+    $shieldOutput = trim(Artisan::output());
+
+    Artisan::call('db:seed', [
+      '--class' => ShippingPermissionSeeder::class,
+      '--force' => true,
+    ]);
+    $shippingOutput = trim(Artisan::output());
+
+    return response()->json([
+      'status' => 'ok',
+      'action' => 'shield',
+      'message' => 'Permissions Shield générées avec succès.',
+      'output' => [
+        'shield_generate' => $shieldOutput,
+        'shipping_permissions' => $shippingOutput,
+      ],
     ]);
   }
 
