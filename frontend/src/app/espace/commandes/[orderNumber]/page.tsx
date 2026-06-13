@@ -8,6 +8,7 @@ import { fetchOrder, initiatePayment } from "@/lib/api/orders";
 import { fetchMobileMoneyOperators } from "@/lib/api/payments";
 import { OrderQrCode } from "@/components/orders/OrderQrCode";
 import { CourierInfoCard } from "@/components/orders/CourierInfoCard";
+import { PaymentSteps } from "@/components/checkout/PaymentSteps";
 import { OrderStatusBadge, isOrderDisputed } from "@/components/orders/OrderStatusBadge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { shouldShowOrderQr } from "@/lib/orders";

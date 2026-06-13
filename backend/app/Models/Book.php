@@ -22,6 +22,20 @@ class Book extends Model
   protected $fillable = [
     'author_id',
     'title',
+    'subtitle',
+    'tagline',
+    'category',
+    'page_count',
+    'reading_time_minutes',
+    'language',
+    'release_date',
+    'themes',
+    'about_paragraphs',
+    'excerpt',
+    'accent_color',
+    'preorder_campaign_goal',
+    'preorder_reserved_count',
+    'preorder_campaign_bonuses',
     'slug',
     'description',
     'author_note',
@@ -43,6 +57,15 @@ class Book extends Model
       'is_published' => 'boolean',
       'is_featured' => 'boolean',
       'published_at' => 'datetime',
+      'release_date' => 'date',
+      'themes' => 'array',
+      'about_paragraphs' => 'array',
+      'excerpt' => 'array',
+      'page_count' => 'integer',
+      'reading_time_minutes' => 'integer',
+      'preorder_campaign_goal' => 'integer',
+      'preorder_reserved_count' => 'integer',
+      'preorder_campaign_bonuses' => 'array',
     ];
   }
 
@@ -74,6 +97,26 @@ class Book extends Model
   public function quantityDiscounts(): HasMany
   {
     return $this->hasMany(QuantityDiscount::class);
+  }
+
+  /**
+   * Témoignages lecteurs associés au livre.
+   *
+   * @return HasMany<BookReview, $this>
+   */
+  public function reviews(): HasMany
+  {
+    return $this->hasMany(BookReview::class);
+  }
+
+  /**
+   * Témoignages lecteurs approuvés.
+   *
+   * @return HasMany<BookReview, $this>
+   */
+  public function approvedReviews(): HasMany
+  {
+    return $this->reviews()->approved();
   }
 
   /**

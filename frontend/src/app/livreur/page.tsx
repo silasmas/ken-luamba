@@ -2,8 +2,12 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Truck } from "lucide-react";
 import { PhotoProofInput } from "@/components/courier/PhotoProofInput";
 import { QrScannerModal } from "@/components/courier/QrScannerModal";
+import { PageShell } from "@/components/layout/PageShell";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   acceptCourierDelivery,
   confirmCourierDelivery,
@@ -114,6 +118,7 @@ export default function LivreurPage() {
    * @param decodedText Contenu du QR code
    */
   const handleQrScanned = (decodedText: string) => {
+    setScannerOpen(false);
     void handleScan(decodedText);
   };
 
@@ -154,25 +159,35 @@ export default function LivreurPage() {
   };
 
   if (!isReady) {
-    return <p className="py-20 text-center text-stone-600">Chargement...</p>;
+    return (
+      <PageShell>
+        <p className="py-20 text-center text-ink/60">Chargement...</p>
+      </PageShell>
+    );
   }
 
   if (!token || user?.role !== "courier") {
     return (
-      <div className="py-20 text-center">
-        <p className="text-stone-600">Connexion livreur requise.</p>
-        <Link href="/connexion?redirect=/livreur" className="mt-4 inline-block text-amber-700 hover:underline">
-          Se connecter (compte livreur)
-        </Link>
-      </div>
+      <PageShell>
+        <div className="py-20 text-center">
+          <p className="text-ink/60">Connexion livreur requise.</p>
+          <Button asChild variant="primary" size="lg" className="mt-6">
+            <Link href="/connexion?redirect=/livreur">Se connecter (compte livreur)</Link>
+          </Button>
+        </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-stone-900">Espace livreur</h1>
-        <p className="mt-1 text-sm text-stone-600">
+    <PageShell>
+    <div className="mx-auto max-w-3xl space-y-8">
+      <div className="rounded-3xl border border-ink/[0.08] bg-midnight p-8 text-white">
+        <div className="flex items-center gap-3">
+          <Truck className="h-6 w-6 text-accent" />
+          <h1 className="font-display text-3xl tracking-tight">Espace livreur</h1>
+        </div>
+        <p className="mt-3 text-white/70">
           Bonjour {user.fullName}. Prenez une course, scannez le QR client, confirmez avec photo.
         </p>
       </div>
@@ -187,22 +202,23 @@ export default function LivreurPage() {
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
-              activeTab === tab.id ? "bg-stone-900 text-white" : "bg-stone-100 text-stone-700"
-            }`}
+            className={cn(
+              "rounded-full px-4 py-2 text-sm font-medium transition-colors",
+              activeTab === tab.id ? "bg-ink text-paper" : "bg-ink/[0.04] text-ink/70 hover:text-ink",
+            )}
           >
             {tab.label}
           </button>
         ))}
       </div>
 
-      {message && <p className="rounded-lg bg-green-50 p-3 text-sm text-green-800">{message}</p>}
-      {error && <p className="rounded-lg bg-red-50 p-3 text-sm text-red-700">{error}</p>}
+      {message && <p className="rounded-2xl bg-green-50 p-4 text-sm text-green-800">{message}</p>}
+      {error && <p className="rounded-2xl bg-red-50 p-4 text-sm text-red-700">{error}</p>}
 
       {activeTab === "mine" && (
         <div className="space-y-4">
           {mine.length === 0 ? (
-            <p className="text-stone-600">Aucune course en cours. Consultez l&apos;onglet Disponibles.</p>
+            <p className="text-ink/60">Aucune course en cours. Consultez l&apos;onglet Disponibles.</p>
           ) : (
             mine.map((delivery) => (
               <DeliveryCard
@@ -221,7 +237,7 @@ export default function LivreurPage() {
       {activeTab === "available" && (
         <div className="space-y-4">
           {available.length === 0 ? (
-            <p className="text-stone-600">Aucune course disponible pour le moment.</p>
+            <p className="text-ink/60">Aucune course disponible pour le moment.</p>
           ) : (
             available.map((delivery) => (
               <DeliveryCard
@@ -236,40 +252,42 @@ export default function LivreurPage() {
       )}
 
       {activeTab === "scan" && (
-        <section className="space-y-4 rounded-xl border border-stone-200 bg-white p-5">
-          <h2 className="font-semibold text-stone-900">Scanner / confirmer</h2>
-          <p className="text-sm text-stone-600">
+        <section className="space-y-4 rounded-3xl border border-ink/[0.08] bg-white/60 p-6">
+          <h2 className="font-display text-xl text-ink">Scanner / confirmer</h2>
+          <p className="text-sm text-ink/60">
             Scannez le QR client avec la caméra ou saisissez le token manuellement.
           </p>
           <input
             value={tokenQr}
             onChange={(event) => setTokenQr(event.target.value)}
             placeholder="Token QR du client"
-            className="w-full rounded-lg border border-stone-300 px-4 py-2 font-mono text-xs"
+            className="w-full rounded-2xl border border-ink/15 bg-white/60 px-4 py-3 font-mono text-xs outline-none"
           />
           <div className="flex flex-wrap gap-3">
-            <button
+            <Button
               type="button"
+              variant="accent"
+              size="md"
               disabled={isLoading}
               onClick={() => setScannerOpen(true)}
-              className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
             >
               Ouvrir le scanner
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
+              variant="primary"
+              size="md"
               disabled={isLoading}
               onClick={() => void handleScan()}
-              className="rounded-lg bg-stone-800 px-4 py-2 text-sm text-white disabled:opacity-60"
             >
               Vérifier le QR
-            </button>
+            </Button>
           </div>
 
           {scanResult && (
-            <div className="rounded-lg bg-stone-50 p-4 text-sm">
+            <div className="rounded-2xl bg-ink/[0.03] p-4 text-sm text-ink">
               <p className="font-semibold">{scanResult.orderNumber}</p>
-              <p className="text-stone-600">{scanResult.statusLabel} — {scanResult.fulfillmentLabel}</p>
+              <p className="text-ink/60">{scanResult.statusLabel} — {scanResult.fulfillmentLabel}</p>
               <p className="mt-2">Client : {scanResult.customerName ?? "—"}</p>
               {scanResult.shippingAddress && (
                 <p className="mt-1">
@@ -293,7 +311,7 @@ export default function LivreurPage() {
           )}
 
           {scanResult && !scanResult.qrUsed && (
-            <div className="space-y-3 border-t border-stone-200 pt-4">
+            <div className="space-y-3 border-t border-ink/[0.08] pt-4">
               <PhotoProofInput
                 photo={photo}
                 onPhotoChange={setPhoto}
@@ -304,21 +322,22 @@ export default function LivreurPage() {
                 onChange={(event) => setComment(event.target.value)}
                 placeholder="Commentaire (optionnel)"
                 rows={2}
-                className="w-full rounded-lg border border-stone-300 px-4 py-2 text-sm"
+                className="w-full rounded-2xl border border-ink/15 bg-white/60 px-4 py-3 text-sm outline-none"
               />
-              <button
+              <Button
                 type="button"
+                variant="primary"
+                size="md"
                 disabled={isLoading}
                 onClick={() => void handleConfirm()}
-                className="rounded-lg bg-green-600 px-5 py-2 text-sm font-semibold text-white disabled:opacity-60"
               >
                 Confirmer la livraison
-              </button>
+              </Button>
             </div>
           )}
 
           {scanResult?.qrUsed && (
-            <p className="text-sm text-amber-700">Ce QR code a déjà été utilisé.</p>
+            <p className="text-sm text-accent">Ce QR code a déjà été utilisé.</p>
           )}
         </section>
       )}
@@ -329,6 +348,7 @@ export default function LivreurPage() {
         onScan={handleQrScanned}
       />
     </div>
+    </PageShell>
   );
 }
 
@@ -345,28 +365,24 @@ function DeliveryCard({
   onAction: () => void;
 }) {
   return (
-    <article className="rounded-xl border border-stone-200 bg-white p-5">
+    <article className="rounded-3xl border border-ink/[0.08] bg-white/60 p-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <p className="font-semibold text-stone-900">{delivery.orderNumber}</p>
-          <p className="text-sm text-stone-500">{delivery.statusLabel} — {delivery.fulfillmentLabel}</p>
-          <p className="mt-1 text-sm">Client : {delivery.customerName ?? "—"}</p>
+          <p className="font-display text-lg text-ink">{delivery.orderNumber}</p>
+          <p className="text-sm text-ink/55">{delivery.statusLabel} — {delivery.fulfillmentLabel}</p>
+          <p className="mt-1 text-sm text-ink/70">Client : {delivery.customerName ?? "—"}</p>
         </div>
-        <button
-          type="button"
-          onClick={onAction}
-          className="rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white"
-        >
+        <Button type="button" variant="accent" size="sm" onClick={onAction}>
           {actionLabel}
-        </button>
+        </Button>
       </div>
       {delivery.shippingAddress && (
-        <p className="mt-3 text-sm text-stone-600">
+        <p className="mt-3 text-sm text-ink/60">
           {delivery.shippingAddress.street}, {delivery.shippingAddress.commune}, {delivery.shippingAddress.city}
         </p>
       )}
       {delivery.pickupPoint && (
-        <p className="mt-3 text-sm text-stone-600">
+        <p className="mt-3 text-sm text-ink/60">
           Point de retrait : {delivery.pickupPoint.name} — {delivery.pickupPoint.address}
         </p>
       )}

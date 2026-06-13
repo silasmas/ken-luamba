@@ -49,9 +49,9 @@ npm run dev
 
 | Service | URL locale |
 |---------|------------|
-| API | http://localhost:8000/api/v1/health |
-| Back-office Filament | http://localhost:8000/admin |
-| Boutique Next.js | http://localhost:3000 |
+| API | http://localhost:8001/api/v1/health |
+| Back-office Filament | http://localhost:8001/admin |
+| Boutique Next.js | http://localhost:3001 |
 
 ### Recréer les branches de déploiement
 

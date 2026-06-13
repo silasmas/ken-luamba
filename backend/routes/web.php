@@ -1,11 +1,10 @@
 <?php
 
+use App\Http\Controllers\DeployController;
 use App\Services\DigitalAccessService;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+Route::get('/', [DeployController::class, 'root']);
 
 /**
  * Route signée pour le streaming de contenus numériques.

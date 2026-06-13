@@ -24,6 +24,9 @@ class AuthorsTable
       ->columns([
         ImageColumn::make('profile_image')
           ->label('Photo')
+          ->disk('public')
+          ->visibility('public')
+          ->checkFileExistence(false)
           ->circular(),
         TextColumn::make('full_name')
           ->label('Nom')

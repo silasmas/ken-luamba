@@ -8,7 +8,7 @@ import ConnexionContent from "./ConnexionContent";
  */
 export default function ConnexionPage() {
   return (
-    <Suspense fallback={<p className="py-20 text-center text-stone-600">Chargement...</p>}>
+    <Suspense fallback={<p className="py-20 text-center text-ink/60">Chargement...</p>}>
       <ConnexionContent />
     </Suspense>
   );

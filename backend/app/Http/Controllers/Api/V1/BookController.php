@@ -57,6 +57,11 @@ class BookController extends Controller
       ->with([
         'author',
         'formats' => fn ($formatsQuery) => $formatsQuery->active()->with('pricingPeriods'),
+        'approvedReviews' => fn ($reviewsQuery) => $reviewsQuery
+          ->approved()
+          ->with('user')
+          ->latest()
+          ->limit(12),
       ])
       ->first();
 
@@ -65,6 +70,20 @@ class BookController extends Controller
         'message' => 'Livre introuvable.',
       ], 404);
     }
+
+    $book->setRelation(
+      'relatedBooks',
+      Book::query()
+        ->published()
+        ->where('id', '!=', $book->id)
+        ->with([
+          'author',
+          'formats' => fn ($formatsQuery) => $formatsQuery->active()->with('pricingPeriods'),
+        ])
+        ->orderBy('sort_order')
+        ->limit(3)
+        ->get(),
+    );
 
     return new BookResource($book);
   }

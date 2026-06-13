@@ -22,14 +22,14 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Le site est accessible sur [http://localhost:3000](http://localhost:3000).
+Le site est accessible sur [http://localhost:3001](http://localhost:3001).
 
 ## Variables d'environnement
 
 | Variable | Description | Exemple |
 |----------|-------------|---------|
-| `NEXT_PUBLIC_API_URL` | URL de l'API Laravel | `http://localhost:8000/api/v1` |
-| `NEXT_PUBLIC_APP_URL` | URL publique du frontend | `http://localhost:3000` |
+| `NEXT_PUBLIC_API_URL` | URL de l'API Laravel | `http://localhost:8001/api/v1` |
+| `NEXT_PUBLIC_APP_URL` | URL publique du frontend | `http://localhost:3001` |
 
 ## Déploiement Hostinger
 
@@ -57,7 +57,7 @@ Hostinger propose l'hébergement Node.js sur certains plans.
    ```bash
    npm run start
    ```
-   Port par défaut : `3000` (configurer dans Hostinger).
+   Port par défaut : `3001` en local (`npm run dev`), `3000` en production (configurer dans Hostinger).
 
 ### Option B — Export statique (pages limitées)
 

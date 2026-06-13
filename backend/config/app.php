@@ -123,4 +123,16 @@ return [
         'store' => env('APP_MAINTENANCE_STORE', 'database'),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Deploy Secret
+    |--------------------------------------------------------------------------
+    |
+    | Secret requis pour déclencher les migrations via la route racine en
+    | production (?secret=...). Laissez vide pour désactiver l'endpoint.
+    |
+    */
+
+    'deploy_secret' => env('DEPLOY_SECRET'),
+
 ];

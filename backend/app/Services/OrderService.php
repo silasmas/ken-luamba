@@ -46,6 +46,9 @@ class OrderService
     $cart = $this->cartService->resolveCart($request);
     $cart->load(['items.bookFormat.book', 'items.pricingPeriod']);
 
+    $this->cartService->refreshCartPrices($cart);
+    $cart->refresh()->load(['items.bookFormat.book', 'items.pricingPeriod']);
+
     if ($cart->items->isEmpty()) {
       throw ValidationException::withMessages([
         'cart' => ['Le panier est vide.'],
@@ -53,6 +56,13 @@ class OrderService
     }
 
     $summary = $this->cartService->buildSummary($cart);
+
+    if (count($summary['priceAlerts']) > 0) {
+      throw ValidationException::withMessages([
+        'cart' => ['Certains articles ne sont plus disponibles à la vente. Retirez-les du panier.'],
+      ]);
+    }
+
     $hasPhysical = $cart->items->contains(
       fn ($item) => ! $item->bookFormat->type->isDigital()
     );

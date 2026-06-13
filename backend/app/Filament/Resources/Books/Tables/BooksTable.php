@@ -24,7 +24,10 @@ class BooksTable
     return $table
       ->columns([
         ImageColumn::make('cover_image')
-          ->label('Couverture'),
+          ->label('Couverture')
+          ->disk('public')
+          ->visibility('public')
+          ->checkFileExistence(false),
         TextColumn::make('title')
           ->label('Titre')
           ->searchable()

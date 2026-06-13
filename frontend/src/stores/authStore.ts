@@ -43,10 +43,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
     set({ isLoading: true, error: null });
 
+    const timeout = window.setTimeout(() => {
+      set((state) => (state.isReady ? state : { ...state, isReady: true, isLoading: false }));
+    }, 4000);
+
     try {
       const user = await fetchMe(token);
+      window.clearTimeout(timeout);
       set({ user, token, isLoading: false, isReady: true });
     } catch {
+      window.clearTimeout(timeout);
       clearAuthToken();
       set({ user: null, token: null, isLoading: false, isReady: true });
     }

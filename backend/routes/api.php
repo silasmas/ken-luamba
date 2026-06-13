@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AuthorController;
 use App\Http\Controllers\Api\V1\BookController;
+use App\Http\Controllers\Api\V1\BookReviewController;
 use App\Http\Controllers\Api\V1\CartController;
 use App\Http\Controllers\Api\V1\CourierController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -18,6 +19,7 @@ Route::prefix('v1')->group(function (): void {
 
   Route::get('/authors/{slug}', [AuthorController::class, 'show']);
   Route::get('/books', [BookController::class, 'index']);
+  Route::get('/books/{slug}/reviews', [BookReviewController::class, 'index']);
   Route::get('/books/{slug}', [BookController::class, 'show']);
   Route::get('/pickup-points', [PickupPointController::class, 'index']);
   Route::get('/shipping/config', [ShippingController::class, 'config']);
@@ -61,6 +63,8 @@ Route::prefix('v1')->group(function (): void {
 
     Route::get('/library', [LibraryController::class, 'index']);
     Route::get('/library/{accessId}/stream', [LibraryController::class, 'stream']);
+
+    Route::post('/books/{slug}/reviews', [BookReviewController::class, 'store']);
 
     Route::prefix('courier')->group(function (): void {
       Route::get('/deliveries', [CourierController::class, 'deliveries']);

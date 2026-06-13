@@ -185,6 +185,35 @@ class CartService
   }
 
   /**
+   * Met à jour les prix enregistrés selon les tarifs actifs.
+   *
+   * @param Cart $cart Panier à synchroniser
+   * @return void
+   */
+  public function refreshCartPrices(Cart $cart): void
+  {
+    $cart->loadMissing(['items.bookFormat.pricingPeriods']);
+
+    foreach ($cart->items as $item) {
+      $currentPeriod = $this->pricingService->getCurrentPeriod($item->bookFormat);
+
+      if ($currentPeriod === null) {
+        continue;
+      }
+
+      $priceChanged = (float) $currentPeriod->price !== (float) $item->unit_price;
+      $periodChanged = $item->pricing_period_id !== $currentPeriod->id;
+
+      if ($priceChanged || $periodChanged) {
+        $item->update([
+          'unit_price' => $currentPeriod->price,
+          'pricing_period_id' => $currentPeriod->id,
+        ]);
+      }
+    }
+  }
+
+  /**
    * Calcule les totaux et alertes du panier.
    *
    * @param Cart $cart Panier à calculer

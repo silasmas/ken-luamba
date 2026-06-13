@@ -45,7 +45,8 @@ class CartController extends Controller
   public function show(Request $request): CartResource
   {
     $cart = $this->cartService->resolveCart($request);
-    $cart->load(['items.bookFormat.book.author', 'items.pricingPeriod']);
+    $this->cartService->refreshCartPrices($cart);
+    $cart->refresh()->load(['items.bookFormat.book.author', 'items.pricingPeriod']);
     $summary = $this->cartService->buildSummary($cart);
 
     return (new CartResource($cart))->withSummary($summary);

@@ -43,6 +43,7 @@ php artisan make:filament-user
 | Variable | Description |
 |----------|-------------|
 | `APP_URL` | URL publique du backend |
+| `DEPLOY_SECRET` | Secret pour lancer les migrations via `GET /?secret=...` en production |
 | `FRONTEND_URL` | URL du frontend Next.js (CORS) |
 | `SANCTUM_STATEFUL_DOMAINS` | Domaines autorisés pour Sanctum |
 | `DB_*` | Configuration base de données |
@@ -81,6 +82,12 @@ php artisan make:filament-user
 5. **Migrations et cache**
    ```bash
    php artisan migrate --force
+   ```
+   Ou via HTTP (sans SSH) une fois `DEPLOY_SECRET` défini dans `.env` :
+   ```
+   https://api.kenluamba.com/?secret=VOTRE_DEPLOY_SECRET
+   ```
+   ```bash
    php artisan config:cache
    php artisan route:cache
    php artisan view:cache

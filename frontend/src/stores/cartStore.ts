@@ -16,7 +16,8 @@ import type { Cart } from "@/types/cart";
  */
 interface CartState {
   cart: Cart | null;
-  isLoading: boolean;
+  isInitializing: boolean;
+  isMutating: boolean;
   error: string | null;
   initCart: () => Promise<void>;
   addItem: (bookFormatId: string, quantity?: number) => Promise<void>;
@@ -38,23 +39,24 @@ function resolveAuthToken(): string | undefined {
  */
 export const useCartStore = create<CartState>((set) => ({
   cart: null,
-  isLoading: false,
+  isInitializing: false,
+  isMutating: false,
   error: null,
 
   /**
    * Charge le panier depuis l'API (invité ou connecté).
    */
   initCart: async () => {
-    set({ isLoading: true, error: null });
+    set({ isInitializing: true, error: null });
 
     try {
       const sessionId = await ensureCartSession();
       const response = await fetchCart(sessionId, resolveAuthToken());
-      set({ cart: response.data, isLoading: false });
+      set({ cart: response.data, isInitializing: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "Erreur panier",
-        isLoading: false,
+        isInitializing: false,
       });
     }
   },
@@ -66,7 +68,7 @@ export const useCartStore = create<CartState>((set) => ({
    * @param quantity Quantité
    */
   addItem: async (bookFormatId: string, quantity = 1) => {
-    set({ isLoading: true, error: null });
+    set({ isMutating: true, error: null });
 
     try {
       const sessionId = await ensureCartSession();
@@ -76,11 +78,11 @@ export const useCartStore = create<CartState>((set) => ({
         quantity,
         resolveAuthToken(),
       );
-      set({ cart: response.data, isLoading: false });
+      set({ cart: response.data, isMutating: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "Erreur ajout panier",
-        isLoading: false,
+        isMutating: false,
       });
       throw error;
     }
@@ -93,7 +95,7 @@ export const useCartStore = create<CartState>((set) => ({
    * @param quantity Nouvelle quantité
    */
   updateQuantity: async (itemId: string, quantity: number) => {
-    set({ isLoading: true, error: null });
+    set({ isMutating: true, error: null });
 
     try {
       const sessionId = await ensureCartSession();
@@ -103,11 +105,11 @@ export const useCartStore = create<CartState>((set) => ({
         sessionId,
         resolveAuthToken(),
       );
-      set({ cart: response.data, isLoading: false });
+      set({ cart: response.data, isMutating: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "Erreur mise à jour",
-        isLoading: false,
+        isMutating: false,
       });
     }
   },
@@ -118,16 +120,16 @@ export const useCartStore = create<CartState>((set) => ({
    * @param itemId Identifiant de ligne
    */
   removeItem: async (itemId: string) => {
-    set({ isLoading: true, error: null });
+    set({ isMutating: true, error: null });
 
     try {
       const sessionId = await ensureCartSession();
       const response = await removeCartItem(itemId, sessionId, resolveAuthToken());
-      set({ cart: response.data, isLoading: false });
+      set({ cart: response.data, isMutating: false });
     } catch (error) {
       set({
         error: error instanceof Error ? error.message : "Erreur suppression",
-        isLoading: false,
+        isMutating: false,
       });
     }
   },

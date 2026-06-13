@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { PageShell } from "@/components/layout/PageShell";
 import { useCartStore } from "@/stores/cartStore";
 import { formatPrice } from "@/lib/formatPrice";
 
@@ -9,44 +12,60 @@ import { formatPrice } from "@/lib/formatPrice";
  */
 export default function PanierPage() {
   const cart = useCartStore((state) => state.cart);
-  const isLoading = useCartStore((state) => state.isLoading);
+  const isInitializing = useCartStore((state) => state.isInitializing);
+  const isMutating = useCartStore((state) => state.isMutating);
   const error = useCartStore((state) => state.error);
+  const initCart = useCartStore((state) => state.initCart);
   const updateQuantity = useCartStore((state) => state.updateQuantity);
   const removeItem = useCartStore((state) => state.removeItem);
 
-  if (isLoading && !cart) {
-    return <p className="py-20 text-center text-stone-600">Chargement du panier...</p>;
+  useEffect(() => {
+    void initCart();
+  }, [initCart]);
+
+  if (isInitializing && !cart) {
+    return (
+      <PageShell>
+        <p className="py-20 text-center text-ink/60">Chargement du panier...</p>
+      </PageShell>
+    );
   }
 
   if (!cart || cart.items.length === 0) {
     return (
-      <div className="py-20 text-center">
-        <h1 className="text-2xl font-bold text-stone-900">Votre panier est vide</h1>
-        <p className="mt-3 text-stone-600">Découvrez les ouvrages du pasteur Ken Luamba.</p>
-        <Link
-          href="/livres"
-          className="mt-6 inline-block rounded-lg bg-amber-600 px-6 py-3 text-sm font-semibold text-white"
-        >
-          Voir les livres
-        </Link>
-      </div>
+      <PageShell>
+        <div className="py-20 text-center">
+          <h1 className="font-display text-2xl text-ink">Votre panier est vide</h1>
+          <p className="mt-3 text-ink/60">Découvrez les ouvrages du pasteur Ken Luamba.</p>
+          <Button asChild variant="primary" size="lg" className="mt-6">
+            <Link href="/livres">Voir les livres</Link>
+          </Button>
+        </div>
+      </PageShell>
     );
   }
 
   return (
+    <PageShell>
     <div className="grid gap-8 lg:grid-cols-[2fr_1fr]">
       <section className="space-y-4">
-        <h1 className="text-2xl font-bold text-stone-900">Panier</h1>
+        <h1 className="font-display text-2xl text-ink">Panier</h1>
         {error && <p className="text-sm text-red-600">{error}</p>}
         {cart.summary.priceAlerts.map((alert) => (
           <p key={alert.itemId} className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
             {alert.message}
+            {alert.oldPrice && alert.newPrice && (
+              <span className="mt-1 block font-medium">
+                {formatPrice(Number(alert.oldPrice), cart.summary.currency)} →{" "}
+                {formatPrice(Number(alert.newPrice), cart.summary.currency)}
+              </span>
+            )}
           </p>
         ))}
         {cart.items.map((item) => (
           <article
             key={item.id}
-            className="flex flex-col gap-4 rounded-xl border border-stone-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between"
+            className="flex flex-col gap-4 rounded-2xl border border-ink/[0.08] bg-white/60 p-5 sm:flex-row sm:items-center sm:justify-between"
           >
             <div>
               <p className="text-sm text-amber-700">{item.book.authorName}</p>
@@ -78,8 +97,8 @@ export default function PanierPage() {
           </article>
         ))}
       </section>
-      <aside className="h-fit rounded-xl border border-stone-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-stone-900">Récapitulatif</h2>
+      <aside className="h-fit rounded-2xl border border-ink/[0.08] bg-white/60 p-6">
+        <h2 className="font-display text-lg text-ink">Récapitulatif</h2>
         <dl className="mt-4 space-y-3 text-sm">
           <div className="flex justify-between">
             <dt className="text-stone-600">Sous-total</dt>
@@ -96,13 +115,11 @@ export default function PanierPage() {
             <dd>{formatPrice(cart.summary.total, cart.summary.currency)}</dd>
           </div>
         </dl>
-        <Link
-          href="/checkout"
-          className="mt-6 block w-full rounded-lg bg-amber-600 px-6 py-3 text-center text-sm font-semibold text-white hover:bg-amber-700"
-        >
-          Commander
-        </Link>
+        <Button asChild variant="primary" size="lg" className="mt-6 w-full">
+          <Link href="/checkout">Commander</Link>
+        </Button>
       </aside>
     </div>
+    </PageShell>
   );
 }

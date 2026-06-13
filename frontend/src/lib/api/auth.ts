@@ -90,7 +90,7 @@ export async function updateAvatar(
   formData.append("avatar", file);
 
   const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1"}/auth/me/avatar`,
+    `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8001/api/v1"}/auth/me/avatar`,
     {
       method: "POST",
       headers: {
