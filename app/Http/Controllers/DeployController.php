@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use Database\Seeders\ShippingPermissionSeeder;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -171,6 +172,18 @@ class DeployController extends Controller
     ]);
     $shippingOutput = trim(Artisan::output());
 
+    $superAdminOutput = 'Compte admin@kenluamba.com introuvable.';
+    $adminUser = User::query()->where('email', 'admin@kenluamba.com')->first();
+
+    if ($adminUser !== null) {
+      Artisan::call('shield:super-admin', [
+        '--user' => $adminUser->id,
+        '--panel' => 'admin',
+        '--no-interaction' => true,
+      ]);
+      $superAdminOutput = trim(Artisan::output());
+    }
+
     return response()->json([
       'status' => 'ok',
       'action' => 'shield',
@@ -178,6 +191,7 @@ class DeployController extends Controller
       'output' => [
         'shield_generate' => $shieldOutput,
         'shipping_permissions' => $shippingOutput,
+        'super_admin' => $superAdminOutput,
       ],
     ]);
   }
