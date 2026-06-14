@@ -14,9 +14,9 @@ return [
     }
 
     return [
-      ['type' => 'mpesa', 'code' => 'mpesa', 'label' => 'M-Pesa', 'msisdn_regex' => '^2438[123][0-9]{7}$', 'phone_hint' => '24381/82/83XXXXXXX'],
+      ['type' => 'mpesa', 'code' => 'mpesa', 'label' => 'M-Pesa', 'msisdn_regex' => '^2438[123][0-9]{7}$', 'phone_hint' => '243818283XXXXXXX'],
       ['type' => 'airtel', 'code' => 'airtel', 'label' => 'Airtel Money', 'msisdn_regex' => '^24399[0-9]{7}$', 'phone_hint' => '24399XXXXXXX'],
-      ['type' => 'orange', 'code' => 'orange', 'label' => 'Orange Money', 'msisdn_regex' => '^2438[459][0-9]{7}$', 'phone_hint' => '24384/85/89XXXXXXX'],
+      ['type' => 'orange', 'code' => 'orange', 'label' => 'Orange Money', 'msisdn_regex' => '^2438[459][0-9]{7}$', 'phone_hint' => '243848589XXXXXXX'],
       ['type' => 'afri', 'code' => 'afri', 'label' => 'Afri Money', 'msisdn_regex' => '^24390[0-9]{7}$', 'phone_hint' => '24390XXXXXXX'],
     ];
   })(),

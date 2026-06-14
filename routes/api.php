@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\V1\AppearanceController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AuthorController;
 use App\Http\Controllers\Api\V1\BookController;
@@ -17,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
   Route::get('/health', HealthController::class);
+  Route::get('/appearance', AppearanceController::class);
 
   Route::get('/authors/{slug}', [AuthorController::class, 'show']);
   Route::get('/books', [BookController::class, 'index']);
