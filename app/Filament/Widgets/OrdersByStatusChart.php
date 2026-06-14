@@ -2,22 +2,27 @@
 
 namespace App\Filament\Widgets;
 
-use App\Enums\OrderStatus;
-use App\Models\Order;
+use App\Services\Dashboard\DashboardAnalyticsService;
 use Filament\Widgets\ChartWidget;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 
 /**
  * Widget graphique — répartition des commandes par statut.
  */
 class OrdersByStatusChart extends ChartWidget
 {
-  protected static ?int $sort = 2;
+  use InteractsWithPageFilters;
 
-  protected int | string | array $columnSpan = 'full';
+  protected static ?int $sort = 8;
+
+  protected int|string|array $columnSpan = [
+    'default' => 'full',
+    'md' => 1,
+  ];
 
   protected ?string $heading = 'Commandes par statut';
 
-  protected ?string $description = 'Vue d\'ensemble du pipeline commandes.';
+  protected ?string $description = 'Pipeline commandes sur la période sélectionnée.';
 
   /**
    * Type de graphique Chart.js.
@@ -36,29 +41,22 @@ class OrdersByStatusChart extends ChartWidget
    */
   protected function getData(): array
   {
-    $labels = [];
-    $data = [];
-
-    foreach (OrderStatus::cases() as $status) {
-      $count = Order::query()->where('status', $status)->count();
-      if ($count > 0) {
-        $labels[] = $status->label();
-        $data[] = $count;
-      }
-    }
+    $analytics = app(DashboardAnalyticsService::class);
+    $period = $analytics->resolvePeriod($this->pageFilters);
+    $counts = $analytics->ordersByStatus($period['start'], $period['end']);
 
     return [
       'datasets' => [
         [
           'label' => 'Commandes',
-          'data' => $data,
+          'data' => array_values($counts),
           'backgroundColor' => [
             '#f59e0b', '#22c55e', '#3b82f6', '#8b5cf6',
             '#06b6d4', '#10b981', '#ef4444', '#6b7280', '#9ca3af',
           ],
         ],
       ],
-      'labels' => $labels,
+      'labels' => array_keys($counts),
     ];
   }
 }

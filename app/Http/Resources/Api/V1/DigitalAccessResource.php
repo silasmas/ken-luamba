@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Support\MediaUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,12 +23,15 @@ class DigitalAccessResource extends JsonResource
       'id' => $this->id,
       'bookTitle' => $this->orderItem?->book_title ?? $this->bookFormat?->book?->title,
       'bookSlug' => $this->bookFormat?->book?->slug,
+      'bookSubtitle' => $this->bookFormat?->book?->subtitle,
+      'coverImage' => MediaUrl::fromPath($this->bookFormat?->book?->cover_image),
       'formatType' => $this->bookFormat?->type->value,
       'formatLabel' => $this->bookFormat?->type->label(),
       'digitalFileType' => $this->bookFormat?->digital_file_type?->value,
       'digitalFileTypeLabel' => $this->bookFormat?->digital_file_type?->label(),
       'orderNumber' => $this->order?->order_number,
       'grantedAt' => $this->granted_at?->toIso8601String(),
+      'lastAccessedAt' => $this->logs->first()?->accessed_at?->toIso8601String(),
       'hasFile' => ! empty($this->bookFormat?->digital_file_path),
       'downloadCount' => $this->download_count,
       'maxDownloads' => (int) config('digital.max_downloads', 5),

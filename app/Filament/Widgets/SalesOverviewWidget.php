@@ -2,10 +2,8 @@
 
 namespace App\Filament\Widgets;
 
-use App\Enums\OrderStatus;
-use App\Enums\PaymentStatus;
-use App\Models\Order;
-use App\Models\Payment;
+use App\Services\Dashboard\DashboardAnalyticsService;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
@@ -14,9 +12,11 @@ use Filament\Widgets\StatsOverviewWidget\Stat;
  */
 class SalesOverviewWidget extends StatsOverviewWidget
 {
-  protected static ?int $sort = 1;
+  use InteractsWithPageFilters;
 
-  protected int | string | array $columnSpan = 'full';
+  protected static ?int $sort = 2;
+
+  protected int|string|array $columnSpan = 'full';
 
   /**
    * Retourne les statistiques affichées sur le dashboard.
@@ -25,29 +25,30 @@ class SalesOverviewWidget extends StatsOverviewWidget
    */
   protected function getStats(): array
   {
-    $paidStatuses = [
-      OrderStatus::Paid,
-      OrderStatus::Processing,
-      OrderStatus::OutForDelivery,
-      OrderStatus::DeliveredByCourier,
-      OrderStatus::Completed,
-    ];
+    $analytics = app(DashboardAnalyticsService::class);
+    $period = $analytics->resolvePeriod($this->pageFilters);
 
-    $revenue = (float) Order::query()
-      ->whereIn('status', array_map(fn (OrderStatus $s) => $s->value, $paidStatuses))
-      ->sum('total');
+    $revenue = $analytics->revenueInPeriod($period['start'], $period['end']);
+    $ordersCount = $analytics->ordersInPeriod($period['start'], $period['end']);
+    $purchases = $analytics->purchasesInPeriod($period['start'], $period['end']);
 
-    $ordersToday = Order::query()->whereDate('created_at', today())->count();
-    $pendingPayment = Order::query()->where('status', OrderStatus::PendingPayment)->count();
-    $completedPayments = Payment::query()->where('status', PaymentStatus::Completed)->count();
+    $pendingPayment = \App\Models\Order::query()
+      ->where('status', \App\Enums\OrderStatus::PendingPayment)
+      ->whereBetween('created_at', [$period['start'], $period['end']])
+      ->count();
+
+    $completedPayments = \App\Models\Payment::query()
+      ->where('status', \App\Enums\PaymentStatus::Completed)
+      ->whereBetween('created_at', [$period['start'], $period['end']])
+      ->count();
 
     return [
       Stat::make('Chiffre d\'affaires', number_format($revenue, 0, ',', ' ').' CDF')
-        ->description('Commandes payées et en cours')
+        ->description('Sur la période sélectionnée')
         ->descriptionIcon('heroicon-m-banknotes')
         ->color('success'),
-      Stat::make('Commandes aujourd\'hui', (string) $ordersToday)
-        ->description('Nouvelles commandes du jour')
+      Stat::make('Commandes', (string) $ordersCount)
+        ->description($purchases.' articles achetés')
         ->descriptionIcon('heroicon-m-shopping-bag')
         ->color('primary'),
       Stat::make('En attente de paiement', (string) $pendingPayment)

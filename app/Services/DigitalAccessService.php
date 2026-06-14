@@ -58,7 +58,11 @@ class DigitalAccessService
     return DigitalAccess::query()
       ->where('user_id', $user->id)
       ->where('is_active', true)
-      ->with(['bookFormat.book', 'orderItem'])
+      ->with([
+        'bookFormat.book',
+        'orderItem',
+        'logs' => fn ($query) => $query->latest('accessed_at')->limit(1),
+      ])
       ->latest('granted_at')
       ->get();
   }

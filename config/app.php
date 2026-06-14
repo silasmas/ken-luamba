@@ -135,4 +135,6 @@ return [
 
     'deploy_secret' => env('DEPLOY_SECRET'),
 
+    'frontend_url' => env('FRONTEND_URL', 'http://localhost:3001'),
+
 ];

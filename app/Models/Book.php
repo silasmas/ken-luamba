@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
@@ -97,6 +98,16 @@ class Book extends Model
   public function quantityDiscounts(): HasMany
   {
     return $this->hasMany(QuantityDiscount::class);
+  }
+
+  /**
+   * Événements liés à ce livre.
+   *
+   * @return BelongsToMany<Event, $this>
+   */
+  public function events(): BelongsToMany
+  {
+    return $this->belongsToMany(Event::class);
   }
 
   /**

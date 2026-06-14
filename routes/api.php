@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\BookController;
 use App\Http\Controllers\Api\V1\BookReviewController;
 use App\Http\Controllers\Api\V1\CartController;
 use App\Http\Controllers\Api\V1\CourierController;
+use App\Http\Controllers\Api\V1\InvitationController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\LibraryController;
 use App\Http\Controllers\Api\V1\OrderController;
@@ -25,6 +26,8 @@ Route::prefix('v1')->group(function (): void {
   Route::get('/shipping/config', [ShippingController::class, 'config']);
   Route::post('/shipping/quote', [ShippingController::class, 'quote']);
   Route::get('/payments/mobile-providers', [PaymentController::class, 'mobileProviders']);
+  Route::get('/invitations/{token}', [InvitationController::class, 'show']);
+  Route::post('/invitations/{token}/rsvp', [InvitationController::class, 'respond']);
 
   Route::post('/payments/flexpay-callback', [PaymentController::class, 'flexpayCallback']);
   Route::get('/payments/status', [PaymentController::class, 'checkStatus']);

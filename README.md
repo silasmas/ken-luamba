@@ -97,18 +97,78 @@ php artisan make:filament-user
    | `storage` | `?secret=...&action=storage` | Crée le lien `public/storage` (obligatoire pour afficher les images) |
 
    Ordre recommandé au premier déploiement : `setup` puis `shield`.
-   ```bash
-   php artisan storage:link
-   php artisan config:cache
-   php artisan route:cache
-   php artisan view:cache
-   php artisan filament:assets
-   ```
+
+   **Alternative admin (avec connexion super_admin)** : menu **Système → Déploiement** dans Filament — boutons pour migrations, Shield, lien storage, seeders et setup complet.
 
 6. **Permissions**
    ```bash
    chmod -R 775 storage bootstrap/cache
    ```
+
+## Module Déploiement (admin)
+
+Menu **Système → Déploiement** (`/admin/system-deployment`) — réservé au rôle `super_admin`.
+
+| Bouton | Commande équivalente | Usage |
+|--------|---------------------|-------|
+| Migrations | `php artisan migrate --force` | Met à jour la base |
+| Permissions Shield | `shield:generate` + super admin | Droits Filament |
+| Lien storage | `php artisan storage:link --force` | Images `/storage` |
+| Seeders | `php artisan db:seed --force` | Données initiales |
+| Setup complet | migrate + seed + storage | Premier déploiement |
+
+## Module Invitations (événements)
+
+Gestion des invités pour cérémonies de publication, lancements de livres et autres événements.
+
+### Admin Filament
+
+| Menu | Rôle |
+|------|------|
+| **Événements → Événements** | Créer l'événement (date, lieu, livre associé, message d'accueil) |
+| **Événements → Invitations** | Gérer les invités et envoyer les invitations |
+| Onglet **Invités** (sur un événement) | Ajouter des invités directement à l'événement |
+
+### Envoi aux invités
+
+Par invité, actions disponibles :
+
+- **Email** — envoi automatique avec lien de réponse
+- **WhatsApp** — ouvre wa.me avec message prérempli
+- **SMS** — ouvre l'app SMS avec message prérempli
+- **Lien** — affiche l'URL d'invitation à copier
+
+Envoi **email en masse** via sélection multiple.
+
+### Page publique invité
+
+URL envoyée dans le message :
+
+```
+{FRONTEND_URL}/invitation/{token}
+```
+
+L'invité peut :
+
+1. Voir les détails de l'événement
+2. Confirmer **Présent** ou **Absent**
+3. Laisser un **mot optionnel**
+
+### API publique
+
+```
+GET  /api/v1/invitations/{token}
+POST /api/v1/invitations/{token}/rsvp
+```
+
+### Étapes — premier événement
+
+1. Admin → **Système → Déploiement** → **Setup complet** puis **Permissions Shield** (si première install)
+2. Admin → **Événements** → créer un événement (ex. cérémonie de lancement)
+3. Onglet **Invités** → ajouter nom, email et/ou téléphone
+4. Envoyer via **Email**, **WhatsApp** ou **SMS**
+5. L'invité ouvre le lien → répond sur la page publique
+6. Suivre les réponses dans **Invitations** (colonne RSVP)
 
 ## Lien avec le frontend
 

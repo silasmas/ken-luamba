@@ -54,6 +54,22 @@
       </p>
     </section>
     <section class="rounded-xl border border-gray-200 p-5 dark:border-gray-700">
+      <h2 class="text-lg font-semibold">Invitations événements (public)</h2>
+      <ul class="mt-3 list-inside list-disc space-y-1 text-gray-700 dark:text-gray-300">
+        <li><code>GET /invitations/{token}</code> — Détail invitation + événement</li>
+        <li><code>POST /invitations/{token}/rsvp</code> — Réponse invité (<code>status</code>, <code>message</code>)</li>
+      </ul>
+      <p class="mt-3 text-gray-600 dark:text-gray-400">
+        Page frontend : <code>{{ rtrim((string) config('app.frontend_url'), '/') }}/invitation/{token}</code>
+      </p>
+    </section>
+    <section class="rounded-xl border border-gray-200 p-5 dark:border-gray-700">
+      <h2 class="text-lg font-semibold">Déploiement (admin)</h2>
+      <p class="mt-2 text-gray-600 dark:text-gray-400">
+        Menu <strong>Système → Déploiement</strong> : migrations, Shield, lien storage, seeders (super_admin).
+      </p>
+    </section>
+    <section class="rounded-xl border border-gray-200 p-5 dark:border-gray-700">
       <h2 class="text-lg font-semibold">Rôles &amp; permissions (Filament Shield)</h2>
       <p class="mt-2 text-gray-600 dark:text-gray-400">
         Menu <strong>Rôles</strong> : créez des rôles et cochez les permissions par ressource.
