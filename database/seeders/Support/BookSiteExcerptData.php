@@ -107,12 +107,49 @@ class BookSiteExcerptData
         ],
       ],
       [
+        'kind' => 'section',
+        'eyebrow' => 'Présentation et contexte',
+        'title' => 'L\'autel précède toujours la gloire',
+        'paragraphs' => [
+          'Le Pasteur Ken Luamba engage dans ce livre un plaidoyer scripturaire rigoureux pour restaurer l\'intelligence du sacrifice dans la vie chrétienne contemporaine.',
+          'Il part d\'une observation fondamentale : dans les Écritures, chaque fois que Dieu veut conduire un homme vers sa destinée, un autel apparaît.',
+          'Avant la terre promise à Abraham, il y a le départ. Avant le palais de Joseph, il y a la fosse. Avant le trône de David, il y a le désert. Avant la gloire de la résurrection, il y a la croix.',
+        ],
+      ],
+      [
         'kind' => 'part',
         'eyebrow' => 'Première partie',
         'title' => 'L\'appel au sacrifice — Porter sa croix chaque jour',
         'paragraphs' => [
           'L\'auteur commence par établir que Jésus présente le sacrifice non comme une option spirituelle avancée réservée à une élite, mais comme la condition normale du discipolat.',
           'Trois réalités inséparables composent la réponse du disciple — le renoncement à soi-même, le port de la croix, et la marche à la suite de Christ.',
+        ],
+      ],
+      [
+        'kind' => 'part',
+        'eyebrow' => 'Deuxième partie',
+        'title' => 'La croix — Une réalité à comprendre et à vivre',
+        'paragraphs' => [
+          'La croix n\'est pas un événement historique passé à célébrer une fois l\'an ; elle est une réalité à embrasser chaque jour.',
+          'L\'auteur distingue soigneusement le sacrifice comme punition, conception erronée, du sacrifice comme loi spirituelle, conception scripturaire.',
+        ],
+      ],
+      [
+        'kind' => 'part',
+        'eyebrow' => 'Troisième partie',
+        'title' => 'Ce que produit le sacrifice',
+        'paragraphs' => [
+          'L\'auteur y montre que le sacrifice n\'est jamais stérile dans l\'économie de Dieu.',
+          'Il produit : une transformation profonde du caractère, une fécondité spirituelle durable, une autorité que le confort seul ne peut conférer, et une communion avec Dieu qui dépasse toute connaissance doctrinale.',
+        ],
+      ],
+      [
+        'kind' => 'part',
+        'eyebrow' => 'Quatrième partie',
+        'title' => 'La disparition de la croix',
+        'paragraphs' => [
+          'Le dernier chapitre analyse avec une lucidité prophétique la dérive contemporaine : un évangile qui a progressivement gardé les promesses mais perdu les autels.',
+          'L\'auteur décrit comment le message de la croix a été édulcoré, comment le discipolat a été réduit à l\'adhésion à un programme, et comment une génération entière grandit dans une foi déclarative mais dépourvue de profondeur sacrificielle.',
         ],
       ],
       ['kind' => 'backCover'],
@@ -138,12 +175,68 @@ class BookSiteExcerptData
         ],
       ],
       [
+        'kind' => 'section',
+        'eyebrow' => 'Présentation et contexte',
+        'title' => 'Un diagnostic des profondeurs invisibles',
+        'paragraphs' => [
+          'Le Pasteur Ken Luamba part d\'un constat douloureux mais lucide : il existe dans le cœur humain des régions silencieuses que peu de personnes osent réellement explorer.',
+          'Des profondeurs invisibles où se cachent des blessures anciennes, des peurs enfouies, des frustrations accumulées, des mécanismes de défense que l\'homme a appris à dissimuler même à lui-même.',
+          'Ce livre se présente avant tout comme un diagnostic — honnête, respectueux, sans condamnation — sur ces régions intérieures que beaucoup portent sans les comprendre.',
+        ],
+      ],
+      [
         'kind' => 'part',
         'eyebrow' => 'Première partie',
         'title' => 'Le cœur, territoire caché de l\'homme',
         'paragraphs' => [
           'L\'auteur établit dès le départ la thèse centrale : Dieu regarde au cœur, pas à l\'apparence.',
           'Le cœur humain n\'est pas qu\'un centre émotionnel ; il est le véritable poste de commandement de toute la vie intérieure.',
+          'L\'homme peut aimer Dieu sincèrement tout en portant des régions encore fermées à Sa lumière.',
+        ],
+      ],
+      [
+        'kind' => 'part',
+        'eyebrow' => 'Deuxième partie',
+        'title' => 'La naissance des ténèbres intérieures',
+        'paragraphs' => [
+          'Les blessures invisibles de l\'âme constituent le cœur de cette partie. L\'auteur montre que le cœur humain possède une mémoire profonde.',
+          'Une humiliation vécue dans l\'enfance peut continuer à gouverner un adulte extérieurement mature. Un rejet ancien produit une peur permanente de ne jamais être aimé.',
+        ],
+      ],
+      [
+        'kind' => 'part',
+        'eyebrow' => 'Troisième partie',
+        'title' => 'Les manifestations des zones sombres',
+        'paragraphs' => [
+          'Les zones sombres ne restent jamais passives. Elles se manifestent à travers des troubles intérieurs : colères disproportionnées, angoisses persistantes, méfiance chronique, besoin excessif de contrôle, incapacité à recevoir l\'amour.',
+          'Ces réactions ne sont souvent pas des défauts de caractère, mais les symptômes visibles de blessures invisibles jamais traitées.',
+        ],
+      ],
+      [
+        'kind' => 'part',
+        'eyebrow' => 'Quatrième partie',
+        'title' => 'Les ravages des zones sombres',
+        'paragraphs' => [
+          'Cette partie mesure l\'impact des zones sombres sur la vie intérieure, les relations et la vie spirituelle.',
+          'Dans les relations, les blessures cachées blessent ceux qu\'on voulait aimer. Dans la vie spirituelle, certaines personnes aiment sincèrement Dieu mais restent incapables de croire profondément qu\'elles sont aimées par Lui.',
+        ],
+      ],
+      [
+        'kind' => 'part',
+        'eyebrow' => 'Cinquième partie',
+        'title' => 'La lumière qui expose les ténèbres',
+        'paragraphs' => [
+          'Dieu commence à sonder le cœur. La confrontation avec soi-même devient inévitable.',
+          'L\'auteur décrit le brisement intérieur non comme une destruction mais comme le début de la restauration : lorsque l\'homme cesse enfin de fuir certaines vérités sur lui-même.',
+        ],
+      ],
+      [
+        'kind' => 'part',
+        'eyebrow' => 'Sixième partie',
+        'title' => 'Le chemin de la restauration',
+        'paragraphs' => [
+          'La guérison commence dans la lumière. L\'auteur conclut sur une promesse scripturaire : « Il guérit ceux qui ont le cœur brisé, et il panse leurs blessures » (Psaume 147:3).',
+          'Dieu ne travaille jamais superficiellement. Il descend dans les profondeurs blessées — non pour condamner, mais pour restaurer.',
         ],
       ],
       ['kind' => 'backCover'],

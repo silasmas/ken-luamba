@@ -3,6 +3,7 @@
 namespace App\Services\Deploy;
 
 use App\Models\User;
+use App\Support\DeploySeederRegistry;
 use Database\Seeders\ShippingPermissionSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
@@ -42,6 +43,47 @@ class DeployService
       'message' => 'Seeders exécutés avec succès.',
       'output' => trim(Artisan::output()),
     ];
+  }
+
+  /**
+   * Lance un ou plusieurs seeders ciblés (--class).
+   *
+   * @param list<string> $seederKeys Clés DeploySeederRegistry (ex. CatalogBookSeeder)
+   * @return array{action: string, message: string, output: array<string, string>}
+   */
+  public function seedSelected(array $seederKeys): array
+  {
+    $classes = DeploySeederRegistry::resolveClasses($seederKeys);
+
+    if ($classes === []) {
+      throw new \InvalidArgumentException('Aucun seeder valide sélectionné.');
+    }
+
+    $output = [];
+
+    foreach ($classes as $class) {
+      Artisan::call('db:seed', [
+        '--class' => $class,
+        '--force' => true,
+      ]);
+      $output[class_basename($class)] = trim(Artisan::output());
+    }
+
+    return [
+      'action' => 'seed',
+      'message' => count($classes).' seeder(s) exécuté(s) avec succès.',
+      'output' => $output,
+    ];
+  }
+
+  /**
+   * Retourne le catalogue des seeders pour l'interface admin.
+   *
+   * @return list<array{class: class-string, key: string, label: string, group: string, description: string}>
+   */
+  public function availableSeeders(): array
+  {
+    return DeploySeederRegistry::all();
   }
 
   /**

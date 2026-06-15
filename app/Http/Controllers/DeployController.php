@@ -62,7 +62,7 @@ class DeployController extends Controller
     try {
       $result = match ($action) {
         'migrate' => $this->deployService->migrate(),
-        'seed' => $this->deployService->seed(),
+        'seed' => $this->resolveSeedAction($request),
         'setup' => $this->deployService->setup(),
         'shield' => $this->deployService->shield(),
         'storage' => $this->deployService->storageLink(),
@@ -126,5 +126,39 @@ class DeployController extends Controller
     }
 
     return null;
+  }
+
+  /**
+   * Résout l'action seed : tous les seeders ou une sélection via query string.
+   *
+   * @param Request $request Requête avec class ou classes
+   * @return array{action: string, message: string, output: string|array<string, string>}
+   */
+  private function resolveSeedAction(Request $request): array
+  {
+    $classParam = (string) $request->query('class', '');
+    $classesParam = (string) $request->query('classes', '');
+
+    if ($classParam === '' && $classesParam === '') {
+      return $this->deployService->seed();
+    }
+
+    $keys = [];
+
+    if ($classParam !== '') {
+      $keys[] = $classParam;
+    }
+
+    if ($classesParam !== '') {
+      foreach (explode(',', $classesParam) as $key) {
+        $trimmed = trim($key);
+
+        if ($trimmed !== '') {
+          $keys[] = $trimmed;
+        }
+      }
+    }
+
+    return $this->deployService->seedSelected($keys);
   }
 }

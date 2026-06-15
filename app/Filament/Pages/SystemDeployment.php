@@ -3,8 +3,10 @@
 namespace App\Filament\Pages;
 
 use App\Services\Deploy\DeployService;
+use App\Support\DeploySeederRegistry;
 use BackedEnum;
 use Filament\Actions\Action;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -33,6 +35,9 @@ class SystemDeployment extends Page
 
   public bool $storageLinked = false;
 
+  /** @var list<array{class: class-string, key: string, label: string, group: string, description: string}> */
+  public array $availableSeeders = [];
+
   /**
    * Restreint l'accès aux super administrateurs.
    *
@@ -51,6 +56,7 @@ class SystemDeployment extends Page
   public function mount(DeployService $deployService): void
   {
     $this->storageLinked = $deployService->storageLinkExists();
+    $this->availableSeeders = $deployService->availableSeeders();
   }
 
   /**
@@ -89,9 +95,27 @@ class SystemDeployment extends Page
         ->label('Seeders')
         ->icon(Heroicon::OutlinedCircleStack)
         ->color('gray')
+        ->form([
+          CheckboxList::make('seeders')
+            ->label('Seeders à exécuter')
+            ->options(DeploySeederRegistry::options())
+            ->columns(2)
+            ->bulkToggleable()
+            ->required()
+            ->helperText('Sélectionnez un ou plusieurs seeders. « Tous » exécute DatabaseSeeder.'),
+        ])
+        ->modalHeading('Exécuter des seeders ciblés')
+        ->modalDescription('Chaque seeder sélectionné sera lancé individuellement avec --force.')
+        ->action(function (array $data): void {
+          $this->runSeedSelected($data['seeders'] ?? []);
+        }),
+      Action::make('seedAll')
+        ->label('Tous les seeders')
+        ->icon(Heroicon::OutlinedCircleStack)
+        ->color('gray')
         ->requiresConfirmation()
-        ->modalHeading('Exécuter les seeders ?')
-        ->modalDescription('Alimente la base avec les données initiales (admin, livres, livreur…).')
+        ->modalHeading('Exécuter tous les seeders ?')
+        ->modalDescription('Lance php artisan db:seed --force (DatabaseSeeder complet).')
         ->action(fn () => $this->runDeployAction('seed')),
       Action::make('setup')
         ->label('Setup complet')
@@ -102,6 +126,40 @@ class SystemDeployment extends Page
         ->modalDescription('Migrations + seeders + lien storage en une seule opération.')
         ->action(fn () => $this->runDeployAction('setup')),
     ];
+  }
+
+  /**
+   * Exécute des seeders sélectionnés depuis le formulaire modal.
+   *
+   * @param list<string> $seederKeys Clés DeploySeederRegistry
+   * @return void
+   */
+  private function runSeedSelected(array $seederKeys): void
+  {
+    $deployService = app(DeployService::class);
+
+    try {
+      $result = $deployService->seedSelected($seederKeys);
+
+      $this->lastAction = $result['action'];
+      $this->lastOutput = $deployService->formatOutput($result);
+
+      Notification::make()
+        ->title($result['message'])
+        ->success()
+        ->send();
+    } catch (\Throwable $exception) {
+      report($exception);
+
+      $this->lastAction = 'seed';
+      $this->lastOutput = $exception->getMessage();
+
+      Notification::make()
+        ->title('Échec des seeders')
+        ->body($exception->getMessage())
+        ->danger()
+        ->send();
+    }
   }
 
   /**
