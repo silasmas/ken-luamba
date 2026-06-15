@@ -24,6 +24,17 @@ class OrderResource extends JsonResource
       'orderNumber' => $this->order_number,
       'status' => $this->status->value,
       'statusLabel' => $this->status->label(),
+      'displayStatusLabel' => $this->displayStatusLabel(),
+      'hasPhysicalItems' => $this->whenLoaded(
+        'items',
+        fn (): bool => $this->hasPhysicalItems(),
+        false,
+      ),
+      'isDigitalOnly' => $this->whenLoaded(
+        'items',
+        fn (): bool => $this->isDigitalOnly(),
+        false,
+      ),
       'fulfillmentType' => $this->fulfillment_type?->value,
       'fulfillmentLabel' => $this->fulfillment_type?->label(),
       'pickupPoint' => $this->whenLoaded('pickupPoint', fn () => [
@@ -49,7 +60,10 @@ class OrderResource extends JsonResource
         'channelLabel' => $this->payment->channel?->label(),
         'providerReference' => $this->payment->provider_reference,
       ]),
-      'qrToken' => $this->whenLoaded('qrCode', fn () => $this->qrCode?->token),
+      'qrToken' => $this->whenLoaded(
+        'qrCode',
+        fn () => $this->hasPhysicalItems() ? $this->qrCode?->token : null,
+      ),
       'courier' => $this->when(
         $this->relationLoaded('delivery') && $this->delivery?->courier_id !== null,
         function () {

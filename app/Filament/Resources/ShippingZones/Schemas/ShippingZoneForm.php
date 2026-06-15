@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\ShippingZones\Schemas;
 
 use App\Filament\Support\AdminFormLayout;
+use App\Models\ShopSetting;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -43,11 +45,10 @@ class ShippingZoneForm
         ->numeric()
         ->required()
         ->minValue(0)
-        ->helperText('Montant appliqué aux communes de cette zone.'),
-      TextInput::make('currency')
-        ->label('Devise')
-        ->maxLength(3)
-        ->default('CDF'),
+        ->helperText('Montant appliqué aux communes de cette zone (devise boutique).'),
+      Hidden::make('currency')
+        ->default(fn (): string => ShopSetting::currencyCode())
+        ->dehydrated(),
       TextInput::make('sort_order')
         ->label('Ordre')
         ->numeric()

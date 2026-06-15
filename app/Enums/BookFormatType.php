@@ -39,4 +39,19 @@ enum BookFormatType: string
       default => false,
     };
   }
+
+  /**
+   * Suffixe court utilisé dans la référence SKU (ex. HC, EB).
+   *
+   * @return string Code format sur 2 lettres
+   */
+  public function skuSuffix(): string
+  {
+    return match ($this) {
+      self::Hardcover => 'HC',
+      self::Paperback => 'PB',
+      self::Ebook => 'EB',
+      self::Audiobook => 'AU',
+    };
+  }
 }

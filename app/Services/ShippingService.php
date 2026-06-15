@@ -9,6 +9,7 @@ use App\Models\ShippingCity;
 use App\Models\ShippingSetting;
 use App\Models\ShippingZone;
 use App\Models\ShippingZoneCommune;
+use App\Models\ShopSetting;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -36,6 +37,8 @@ class ShippingService
       ])
       ->all();
 
+    $shopCurrency = ShopSetting::currencyCode();
+
     $zones = ShippingZone::query()
       ->where('is_active', true)
       ->with(['communes' => fn ($query) => $query->orderBy('name'), 'city'])
@@ -46,7 +49,7 @@ class ShippingService
         'id' => $zone->id,
         'name' => $zone->name,
         'amount' => (float) $zone->amount,
-        'currency' => $zone->currency,
+        'currency' => $shopCurrency,
         'cityId' => $zone->shipping_city_id,
         'cityName' => $zone->city?->name,
         'communes' => $zone->communes->map(fn (ShippingZoneCommune $commune): array => [
@@ -62,7 +65,7 @@ class ShippingService
       'pricingMode' => $settings->pricing_mode->value,
       'pricingModeLabel' => $settings->pricing_mode->label(),
       'fixedAmount' => (float) $settings->fixed_amount,
-      'currency' => $settings->currency,
+      'currency' => $shopCurrency,
       'domesticCountryCode' => strtoupper($settings->domestic_country_code),
       'domesticCountryName' => $settings->domestic_country_name,
       'internationalPolicy' => $settings->international_policy->value,
@@ -86,7 +89,7 @@ class ShippingService
   public function quote(?FulfillmentType $fulfillmentType, ?array $address): array
   {
     if ($fulfillmentType === null || $fulfillmentType === FulfillmentType::Pickup) {
-      return $this->buildQuote(0, 'CDF', 'Retrait sur place', false, false, null, null);
+      return $this->buildQuote(0, ShopSetting::currencyCode(), 'Retrait sur place', false, false, null, null);
     }
 
     if ($address === null || $address === []) {
@@ -135,7 +138,7 @@ class ShippingService
     if ($settings->pricing_mode === ShippingPricingMode::Fixed) {
       return $this->buildQuote(
         (float) $settings->fixed_amount,
-        $settings->currency,
+        ShopSetting::currencyCode(),
         'Livraison nationale — tarif fixe ('.$shippingCity->name.')',
         false,
         false,
@@ -183,7 +186,7 @@ class ShippingService
 
     return $this->buildQuote(
       (float) $zone->amount,
-      $zone->currency,
+      ShopSetting::currencyCode(),
       'Zone : '.$zone->name.' ('.$shippingCity->name.')',
       false,
       false,
@@ -231,7 +234,7 @@ class ShippingService
     return match ($settings->international_policy) {
       InternationalShippingPolicy::Fixed => $this->buildQuote(
         (float) ($settings->international_amount ?? 0),
-        $settings->currency,
+        ShopSetting::currencyCode(),
         'Livraison internationale — tarif fixe',
         true,
         false,
@@ -240,7 +243,7 @@ class ShippingService
       ),
       InternationalShippingPolicy::Quote => $this->buildQuote(
         0,
-        $settings->currency,
+        ShopSetting::currencyCode(),
         'Livraison internationale — sur devis',
         true,
         true,

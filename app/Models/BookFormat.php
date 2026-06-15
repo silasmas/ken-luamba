@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Enums\BookFormatType;
 use App\Enums\DigitalFileType;
+use App\Services\Catalog\BookFormatSkuService;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -74,5 +75,19 @@ class BookFormat extends Model
   public function scopeActive($query)
   {
     return $query->where('is_active', true);
+  }
+
+  /**
+   * Génère automatiquement le SKU à la création si absent.
+   */
+  protected static function booted(): void
+  {
+    static::creating(function (BookFormat $format): void {
+      if (filled($format->sku)) {
+        return;
+      }
+
+      $format->sku = app(BookFormatSkuService::class)->generate($format);
+    });
   }
 }

@@ -51,7 +51,7 @@ class QuantityDiscountForm
               ->required()
               ->numeric()
               ->minValue(0)
-              ->helperText('Ex. 10 pour 10 % ou 5000 pour 5000 CDF.'),
+              ->helperText('Ex. 10 pour 10 % ou 5000 pour une remise fixe (même devise que le panier).'),
           ],
         ),
         AdminFormLayout::section(

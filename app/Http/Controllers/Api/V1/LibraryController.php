@@ -45,10 +45,17 @@ class LibraryController extends Controller
    */
   public function stream(Request $request, string $accessId): JsonResponse
   {
+    $mode = $request->string('mode', 'read')->toString();
+
+    if (! in_array($mode, ['read', 'download'], true)) {
+      $mode = 'read';
+    }
+
     $result = $this->digitalAccessService->getStreamUrl(
       $request->user(),
       $accessId,
       $request,
+      $mode,
     );
 
     return response()->json(['data' => $result]);

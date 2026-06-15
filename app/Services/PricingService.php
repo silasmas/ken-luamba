@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BookFormat;
 use App\Models\PricingPeriod;
+use App\Models\ShopSetting;
 
 /**
  * Service de calcul des prix actifs par format de livre.
@@ -19,6 +20,7 @@ class PricingService
   public function getCurrentPeriod(BookFormat $format): ?PricingPeriod
   {
     return $format->pricingPeriods()
+      ->where('currency', ShopSetting::currencyCode())
       ->where('is_active', true)
       ->where('start_at', '<=', now())
       ->where('end_at', '>=', now())

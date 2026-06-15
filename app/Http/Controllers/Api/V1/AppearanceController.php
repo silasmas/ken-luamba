@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\AdminAppearanceSetting;
+use App\Models\ShopSetting;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -25,6 +26,7 @@ class AppearanceController extends Controller
         'colorPrimary' => $settings->color_primary,
         'colorInputFocus' => $settings->color_input_focus,
         'colorButtonText' => $settings->color_button_text,
+        'currency' => ShopSetting::currencyCode(),
       ],
     ]);
   }

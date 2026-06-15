@@ -73,9 +73,10 @@ class DigitalAccessService
    * @param User $user Client connecté
    * @param string $accessId Identifiant de l'accès
    * @param Request $request Requête HTTP pour audit
+   * @param string $mode Mode d'accès : read (lecture) ou download (téléchargement)
    * @return array<string, mixed> URL de lecture et métadonnées
    */
-  public function getStreamUrl(User $user, string $accessId, Request $request): array
+  public function getStreamUrl(User $user, string $accessId, Request $request, string $mode = 'read'): array
   {
     $access = DigitalAccess::query()
       ->where('id', $accessId)
@@ -99,15 +100,19 @@ class DigitalAccessService
     }
 
     $maxDownloads = (int) config('digital.max_downloads', 5);
+    $isDownload = $mode === 'download';
 
-    if ($access->download_count >= $maxDownloads) {
+    if ($isDownload && $access->download_count >= $maxDownloads) {
       throw ValidationException::withMessages([
         'access' => ['Limite de téléchargements atteinte ('.$maxDownloads.' max). Contactez le support.'],
       ]);
     }
 
-    $access->increment('download_count');
-    $this->logAccess($access, $user, 'stream', $request);
+    if ($isDownload) {
+      $access->increment('download_count');
+    }
+
+    $this->logAccess($access, $user, $isDownload ? 'download' : 'read', $request);
 
     $signedUrl = URL::temporarySignedRoute(
       'digital.stream',

@@ -108,6 +108,17 @@ class OrderService
           (($payload['notes'] ?? '').' Livraison internationale — frais de fret sur devis.')
         );
       }
+
+      if (
+        $shippingAmount > 0
+        && ($quote['currency'] ?? 'CDF') !== $summary['currency']
+      ) {
+        throw ValidationException::withMessages([
+          'shippingAddress' => [
+            'Les frais de livraison ne sont pas configurés en '.$summary['currency'].'. Contactez le support ou choisissez le retrait sur place.',
+          ],
+        ]);
+      }
     }
 
     $shippingAddress = $payload['shippingAddress'] ?? null;

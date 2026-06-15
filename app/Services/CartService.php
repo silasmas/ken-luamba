@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\BookFormat;
 use App\Models\Cart;
 use App\Models\CartItem;
+use App\Models\ShopSetting;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -74,8 +75,17 @@ class CartService
     }
 
     $userCart = $this->resolveUserCart($user, null);
+    $userCart->loadMissing('items.pricingPeriod');
+    $userCurrency = $userCart->items->first()?->pricingPeriod?->currency;
 
     foreach ($guestCart->items as $guestItem) {
+      $guestItem->loadMissing('pricingPeriod');
+      $guestCurrency = $guestItem->pricingPeriod?->currency;
+
+      if ($userCurrency !== null && $guestCurrency !== null && $userCurrency !== $guestCurrency) {
+        continue;
+      }
+
       $existing = $userCart->items()
         ->where('book_format_id', $guestItem->book_format_id)
         ->first();
@@ -118,6 +128,17 @@ class CartService
     if ($period === null) {
       throw ValidationException::withMessages([
         'bookFormatId' => ['Aucun tarif actif pour ce format.'],
+      ]);
+    }
+
+    $cart->loadMissing('items.pricingPeriod');
+    $cartCurrency = $cart->items->first()?->pricingPeriod?->currency;
+
+    if ($cartCurrency !== null && $cartCurrency !== $period->currency) {
+      throw ValidationException::withMessages([
+        'bookFormatId' => [
+          'Impossible de mélanger '.$cartCurrency.' et '.$period->currency.' dans le même panier. Videz le panier ou achetez en une seule devise.',
+        ],
       ]);
     }
 
@@ -261,7 +282,7 @@ class CartService
       'subtotal' => round($subtotal, 2),
       'discount' => $discount,
       'total' => round($total, 2),
-      'currency' => $cart->items->first()?->pricingPeriod?->currency ?? 'CDF',
+      'currency' => ShopSetting::currencyCode(),
       'priceAlerts' => $priceAlerts,
     ];
   }

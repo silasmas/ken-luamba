@@ -14,11 +14,13 @@ use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PickupPointController;
 use App\Http\Controllers\Api\V1\ShippingController;
+use App\Http\Controllers\Api\V1\ShopConfigController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
   Route::get('/health', HealthController::class);
   Route::get('/appearance', AppearanceController::class);
+  Route::get('/shop/config', ShopConfigController::class);
 
   Route::get('/authors/{slug}', [AuthorController::class, 'show']);
   Route::get('/books', [BookController::class, 'index']);

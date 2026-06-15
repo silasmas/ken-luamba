@@ -4,7 +4,9 @@ namespace App\Filament\Resources\PricingPeriods\Schemas;
 
 use App\Enums\PricingPeriodType;
 use App\Filament\Support\AdminFormLayout;
+use App\Models\ShopSetting;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -55,17 +57,17 @@ class PricingPeriodForm
           'Tarif & calendrier',
           'Prix et fenêtre de validité.',
           [
+            Hidden::make('currency')
+              ->default(fn (): string => ShopSetting::currencyCode())
+              ->dehydrated(),
             TextInput::make('price')
               ->label('Prix')
               ->required()
               ->numeric()
-              ->prefix('CDF')
-              ->helperText('Montant en francs congolais.'),
-            TextInput::make('currency')
-              ->label('Devise')
-              ->default('CDF')
-              ->maxLength(3)
-              ->helperText('Code devise ISO (CDF, USD).'),
+              ->prefix(fn (): string => ShopSetting::currencyCode())
+              ->helperText(fn (): string => ShopSetting::currencyCode() === 'USD'
+                ? 'Montant en dollars américains (devise boutique).'
+                : 'Montant en francs congolais (devise boutique).'),
             DateTimePicker::make('start_at')
               ->label('Début')
               ->required()

@@ -44,12 +44,7 @@ class ShippingSettingForm
               ->numeric()
               ->minValue(0)
               ->visible(fn (callable $get): bool => $get('pricing_mode') === ShippingPricingMode::Fixed->value)
-              ->helperText('Appliqué à toutes les livraisons dans le pays.'),
-            TextInput::make('currency')
-              ->label('Devise')
-              ->maxLength(3)
-              ->default('CDF')
-              ->helperText('Devise des frais de livraison (CDF, USD…).'),
+              ->helperText('Appliqué à toutes les livraisons dans le pays (devise définie dans Paramètres boutique).'),
             TextInput::make('domestic_country_code')
               ->label('Code pays national (ISO)')
               ->maxLength(2)

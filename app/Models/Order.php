@@ -122,4 +122,48 @@ class Order extends Model
   {
     return $this->hasOne(Delivery::class);
   }
+
+  /**
+   * Indique si la commande contient au moins un format physique.
+   *
+   * @return bool True si relié ou broché présent
+   */
+  public function hasPhysicalItems(): bool
+  {
+    $this->loadMissing('items');
+
+    return $this->items->contains(
+      fn (OrderItem $item): bool => ! $item->format_type->isDigital(),
+    );
+  }
+
+  /**
+   * Indique si la commande ne contient que des formats numériques.
+   *
+   * @return bool True si ebook/audio uniquement
+   */
+  public function isDigitalOnly(): bool
+  {
+    $this->loadMissing('items');
+
+    if ($this->items->isEmpty()) {
+      return false;
+    }
+
+    return ! $this->hasPhysicalItems();
+  }
+
+  /**
+   * Libellé client adapté au type de commande.
+   *
+   * @return string Statut affiché dans l'espace membre
+   */
+  public function displayStatusLabel(): string
+  {
+    if ($this->isDigitalOnly() && $this->status === OrderStatus::Completed) {
+      return 'Terminée — Disponible en bibliothèque';
+    }
+
+    return $this->status->label();
+  }
 }

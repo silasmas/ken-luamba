@@ -84,6 +84,12 @@ class PaymentService
     }
 
     if ($channel === PaymentChannel::MobileMoney) {
+      if ($order->currency !== 'CDF') {
+        throw ValidationException::withMessages([
+          'payment' => ['Le Mobile Money est disponible uniquement pour les commandes en CDF. Utilisez la carte bancaire pour les commandes en USD.'],
+        ]);
+      }
+
       if ($phone === null || $providerCode === null) {
         throw ValidationException::withMessages([
           'phone' => ['Sélectionnez un opérateur et saisissez votre numéro Mobile Money.'],
@@ -326,17 +332,27 @@ class PaymentService
       ]);
 
       $order = $payment->order;
+      $order?->loadMissing('items');
+
       $order?->update([
         'status' => OrderStatus::Paid,
         'paid_at' => now(),
       ]);
 
       if ($order !== null) {
-        $this->qrCodeService->generateForOrder($order);
-        $this->deliveryService->createForOrder($order);
+        if ($order->hasPhysicalItems()) {
+          $this->qrCodeService->generateForOrder($order);
+          $this->deliveryService->createForOrder($order);
+        } else {
+          $order->update([
+            'status' => OrderStatus::Completed,
+            'completed_at' => now(),
+          ]);
+        }
+
         $this->digitalAccessService->grantForOrder($order);
         $this->cartService->clearUserCart($order->user_id);
-        $order->refresh()->load(['qrCode', 'delivery', 'user']);
+        $order->refresh()->load(['qrCode', 'delivery', 'user', 'items']);
 
         $this->notificationService->afterCommit(function () use ($order): void {
           $this->notificationService->notifyPaymentSuccess($order);
@@ -349,7 +365,9 @@ class PaymentService
         'message' => $message,
         'orderId' => $order?->id,
         'orderNumber' => $order?->order_number,
-        'qrToken' => $order?->qrCode?->token,
+        'hasPhysicalItems' => $order?->hasPhysicalItems() ?? false,
+        'isDigitalOnly' => $order?->isDigitalOnly() ?? false,
+        'qrToken' => $order?->hasPhysicalItems() ? $order?->qrCode?->token : null,
         'steps' => [
           ['id' => 'order', 'label' => 'Commande enregistrée', 'status' => 'done'],
           ['id' => 'request', 'label' => 'Demande envoyée à votre opérateur', 'status' => 'done'],

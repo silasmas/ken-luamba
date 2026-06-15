@@ -5,12 +5,14 @@ namespace App\Filament\Resources\Books\RelationManagers;
 use App\Enums\BookFormatType;
 use App\Enums\DigitalFileType;
 use App\Filament\Support\AdminFormLayout;
+use App\Models\BookFormat;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -39,7 +41,7 @@ class FormatsRelationManager extends RelationManager
     return AdminFormLayout::fullWidth($schema)
       ->components([
         Section::make('Format & stock')
-          ->description('Type de produit et référence interne.')
+          ->description('Type de produit. La référence SKU est générée automatiquement à l\'enregistrement.')
           ->schema([
             Grid::make(['default' => 1, 'md' => 2])->schema([
               Select::make('type')
@@ -51,12 +53,9 @@ class FormatsRelationManager extends RelationManager
                 ->native(false)
                 ->live()
                 ->helperText('Livre relié, broché, ebook ou audio.'),
-              TextInput::make('sku')
+              Placeholder::make('sku_display')
                 ->label('SKU')
-                ->required()
-                ->unique(ignoreRecord: true)
-                ->maxLength(255)
-                ->helperText('Référence unique (ex. KL-MPO-HC).'),
+                ->content(fn (?BookFormat $record): string => $record?->sku ?? 'Généré automatiquement (ex. KL-EG-HC)'),
               TextInput::make('stock_quantity')
                 ->label('Stock')
                 ->numeric()

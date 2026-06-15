@@ -35,9 +35,12 @@ class PricingPeriodsTable
         TextColumn::make('type')
           ->label('Type')
           ->formatStateUsing(fn (PricingPeriodType $state): string => $state->label()),
+        TextColumn::make('currency')
+          ->label('Devise')
+          ->badge(),
         TextColumn::make('price')
           ->label('Prix')
-          ->money('CDF'),
+          ->money(fn ($record) => $record->currency),
         TextColumn::make('start_at')
           ->label('Début')
           ->dateTime('d/m/Y H:i'),
