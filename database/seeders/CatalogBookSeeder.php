@@ -9,6 +9,7 @@ use App\Models\Author;
 use App\Models\Book;
 use App\Models\BookFormat;
 use App\Models\PricingPeriod;
+use Database\Seeders\Support\SeederDigitalFileService;
 use Database\Seeders\Support\SeederMediaService;
 use Illuminate\Database\Seeder;
 
@@ -120,6 +121,19 @@ class CatalogBookSeeder extends Seeder
     $hardcover = $this->upsertFormat($book, 'KL-EG-HC', BookFormatType::Hardcover, 120, true);
     $ebook = $this->upsertFormat($book, 'KL-EG-EB', BookFormatType::Ebook, null, true, DigitalFileType::Epub);
     $audio = $this->upsertFormat($book, 'KL-EG-AU', BookFormatType::Audiobook, null, true, DigitalFileType::Mp3);
+
+    $digitalFiles = new SeederDigitalFileService();
+    $ebook->update([
+      'digital_file_path' => $digitalFiles->generateDemoEpub(
+        'books/digital/eglise-face-aux-defis-de-lheure.epub',
+        $book->title,
+      ),
+    ]);
+    $audio->update([
+      'digital_file_path' => $digitalFiles->generateDemoMp3(
+        'books/digital/eglise-face-aux-defis-de-lheure.mp3',
+      ),
+    ]);
 
     $this->upsertPricing($hardcover->id, 'Pré-commande lancement', PricingPeriodType::Preorder, 30000);
     $this->upsertPricing($ebook->id, 'Ebook lancement', PricingPeriodType::Regular, 14000);

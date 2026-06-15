@@ -37,9 +37,10 @@ class BookSummaryResource extends JsonResource
       'readingTime' => $catalogService->formatReadingTime($this->reading_time_minutes),
       'language' => $this->language,
       'releaseDate' => $this->release_date?->toDateString(),
+      'preorderEndsAt' => $catalogService->preorderEndsAt($this->resource)?->toIso8601String(),
       'availabilityStatus' => $availabilityStatus,
       'availabilityLabel' => $catalogService->availabilityLabel($availabilityStatus),
-      'preorderCampaign' => $availabilityStatus === 'preorder' ? [
+      'preorderCampaign' => $this->preorder_campaign_goal ? [
         'goal' => $this->preorder_campaign_goal,
         'reserved' => $this->preorder_reserved_count,
         'bonuses' => $this->preorder_campaign_bonuses ?? [],

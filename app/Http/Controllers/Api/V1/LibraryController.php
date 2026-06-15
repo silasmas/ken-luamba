@@ -62,6 +62,34 @@ class LibraryController extends Controller
   }
 
   /**
+   * Sert le fichier numérique authentifié (lecture ou téléchargement).
+   *
+   * @param Request $request Requête authentifiée
+   * @param string $accessId Identifiant d'accès
+   * @return \Symfony\Component\HttpFoundation\StreamedResponse Fichier streamé
+   */
+  public function file(Request $request, string $accessId)
+  {
+    $mode = $request->string('mode', 'read')->toString();
+
+    if (! in_array($mode, ['read', 'download'], true)) {
+      $mode = 'read';
+    }
+
+    $this->digitalAccessService->getStreamUrl(
+      $request->user(),
+      $accessId,
+      $request,
+      $mode,
+    );
+
+    return $this->digitalAccessService->serveAuthenticatedFile(
+      $request->user(),
+      $accessId,
+    );
+  }
+
+  /**
    * Enregistre la progression de lecture ou d'écoute.
    *
    * @param Request $request Requête authentifiée

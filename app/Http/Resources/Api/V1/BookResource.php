@@ -55,7 +55,7 @@ class BookResource extends JsonResource
       'accentColor' => $this->accent_color,
       'availabilityStatus' => $availabilityStatus,
       'availabilityLabel' => $catalogService->availabilityLabel($availabilityStatus),
-      'preorderCampaign' => $this->when($availabilityStatus === 'preorder', [
+      'preorderCampaign' => $this->when((bool) $this->preorder_campaign_goal, [
         'goal' => $this->preorder_campaign_goal,
         'reserved' => $this->preorder_reserved_count,
         'bonuses' => $this->preorder_campaign_bonuses ?? [],

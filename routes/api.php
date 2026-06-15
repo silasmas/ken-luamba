@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PickupPointController;
 use App\Http\Controllers\Api\V1\WishlistController;
+use App\Http\Controllers\Api\V1\ShippingController;
 use App\Http\Controllers\Api\V1\ShopConfigController;
 use Illuminate\Support\Facades\Route;
 
@@ -74,6 +75,7 @@ Route::prefix('v1')->group(function (): void {
 
     Route::get('/library', [LibraryController::class, 'index']);
     Route::get('/library/{accessId}/stream', [LibraryController::class, 'stream']);
+    Route::get('/library/{accessId}/file', [LibraryController::class, 'file']);
     Route::put('/library/{accessId}/progress', [LibraryController::class, 'saveProgress']);
 
     Route::get('/wishlist', [WishlistController::class, 'index']);

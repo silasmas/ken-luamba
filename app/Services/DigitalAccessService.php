@@ -9,7 +9,6 @@ use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -116,11 +115,8 @@ class DigitalAccessService
 
     $this->logAccess($access, $user, $isDownload ? 'download' : 'read', $request);
 
-    $signedUrl = URL::temporarySignedRoute(
-      'digital.stream',
-      now()->addHours((int) config('digital.stream_expiry_hours', 2)),
-      ['accessId' => $access->id, 'userId' => $user->id],
-    );
+    $streamUrl = rtrim((string) config('app.url'), '/')
+      .'/api/v1/library/'.$access->id.'/file?mode='.$mode;
 
     return [
       'accessId' => $access->id,
@@ -129,7 +125,7 @@ class DigitalAccessService
       'formatLabel' => $access->bookFormat?->type->label(),
       'digitalFileType' => $access->bookFormat?->digital_file_type?->value,
       'digitalFileTypeLabel' => $access->bookFormat?->digital_file_type?->label(),
-      'streamUrl' => $signedUrl,
+      'streamUrl' => $streamUrl,
       'watermark' => $user->email.' — '.$access->order_id,
       'expiresInMinutes' => (int) config('digital.stream_expiry_hours', 2) * 60,
       'downloadCount' => $access->download_count,
@@ -139,7 +135,7 @@ class DigitalAccessService
   }
 
   /**
-   * Sert le fichier numérique via URL signée.
+   * Sert le fichier numérique via URL signée (route web legacy).
    *
    * @param string $accessId Identifiant accès
    * @param int $userId Identifiant utilisateur
@@ -154,13 +150,50 @@ class DigitalAccessService
       ->with('bookFormat')
       ->firstOrFail();
 
+    return $this->buildFileResponse($access);
+  }
+
+  /**
+   * Sert le fichier numérique pour un utilisateur authentifié (API).
+   *
+   * @param User $user Client connecté
+   * @param string $accessId Identifiant accès
+   * @return \Symfony\Component\HttpFoundation\StreamedResponse Fichier streamé
+   */
+  public function serveAuthenticatedFile(User $user, string $accessId)
+  {
+    $access = DigitalAccess::query()
+      ->where('id', $accessId)
+      ->where('user_id', $user->id)
+      ->where('is_active', true)
+      ->with('bookFormat')
+      ->firstOrFail();
+
+    return $this->buildFileResponse($access);
+  }
+
+  /**
+   * Construit la réponse HTTP pour un fichier numérique.
+   *
+   * @param DigitalAccess $access Accès validé
+   * @return \Symfony\Component\HttpFoundation\StreamedResponse Fichier streamé
+   */
+  private function buildFileResponse(DigitalAccess $access)
+  {
     $filePath = $access->bookFormat?->digital_file_path;
 
     if ($filePath === null || ! Storage::disk('local')->exists($filePath)) {
       abort(404, 'Fichier introuvable.');
     }
 
-    return Storage::disk('local')->response($filePath);
+    $mimeType = $access->bookFormat?->digital_file_type?->mimeTypes()[0]
+      ?? Storage::disk('local')->mimeType($filePath)
+      ?? 'application/octet-stream';
+
+    return Storage::disk('local')->response($filePath, null, [
+      'Content-Type' => $mimeType,
+      'Cache-Control' => 'private, no-store',
+    ]);
   }
 
   /**

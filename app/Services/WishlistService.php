@@ -87,6 +87,24 @@ class WishlistService
   }
 
   /**
+   * Retourne les livres favoris avec leurs métadonnées catalogue.
+   *
+   * @param User $user Utilisateur connecté
+   * @return Collection<int, Book> Livres favoris
+   */
+  public function booksFor(User $user): Collection
+  {
+    return WishlistItem::query()
+      ->where('user_id', $user->id)
+      ->with(['book.author', 'book.formats.pricingPeriods'])
+      ->latest('created_at')
+      ->get()
+      ->map(fn (WishlistItem $item): ?Book => $item->book)
+      ->filter()
+      ->values();
+  }
+
+  /**
    * Indique si un livre est en favori.
    *
    * @param User $user Utilisateur connecté

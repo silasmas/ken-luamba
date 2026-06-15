@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\Api\V1\BookSummaryResource;
 use App\Models\Book;
 use App\Services\WishlistService;
 use Illuminate\Http\JsonResponse;
@@ -32,10 +33,12 @@ class WishlistController extends Controller
   public function index(Request $request): JsonResponse
   {
     $user = $request->user();
+    $books = $this->wishlistService->booksFor($user);
 
     return response()->json([
       'data' => [
-        'bookSlugs' => $this->wishlistService->bookSlugsFor($user)->all(),
+        'bookSlugs' => $books->pluck('slug')->filter()->values()->all(),
+        'books' => BookSummaryResource::collection($books),
       ],
     ]);
   }
