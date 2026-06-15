@@ -11,8 +11,6 @@ Fichiers générés par `php artisan books:export-dashboard-data` dans l'ordre d
 
 ## Dashboard Filament
 
-1. Ouvrir le JSON du livre
-2. Remplir **Identification**, **Contenu**, **Fiche éditoriale**
-3. Uploader les images depuis `ken-luamba-book-site/public/images/`
-4. Recréer chaque page dans **Aperçu feuilletable** (`excerptPages`)
-5. Uploader le PDF `-extrait.pdf` dans **Extrait PDF** pour tester le lecteur PDF
+1. Exécuter `AuthorSeeder` puis `CatalogBookSeeder` (extraits + textes déjà en base)
+2. Uploader **couverture recto** et **quatrième de couverture** dans chaque livre
+3. Option PDF : uploader le fichier `-extrait.pdf` dans **Extrait PDF**

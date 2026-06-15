@@ -63,6 +63,36 @@ class BookSiteData
   }
 
   /**
+   * Convertit une durée book-site (ex. « 6 h de lecture ») en minutes.
+   *
+   * @param string|null $readingTime Libellé durée
+   * @return int|null Minutes ou null
+   */
+  public static function readingTimeMinutes(?string $readingTime): ?int
+  {
+    if ($readingTime === null || $readingTime === '') {
+      return null;
+    }
+
+    $hours = 0;
+    $minutes = 0;
+
+    if (preg_match('/(\d+)\s*h/i', $readingTime, $hourMatch)) {
+      $hours = (int) $hourMatch[1];
+    }
+
+    if (preg_match('/(\d+)\s*(?:min|mn)/i', $readingTime, $minuteMatch)) {
+      $minutes = (int) $minuteMatch[1];
+    } elseif (preg_match('/(\d+)\s*h\s*(\d+)/i', $readingTime, $combinedMatch)) {
+      $minutes = (int) $combinedMatch[2];
+    }
+
+    $total = ($hours * 60) + $minutes;
+
+    return $total > 0 ? $total : null;
+  }
+
+  /**
    * Livre 1 — L'Église face aux défis de l'heure.
    *
    * @return array<string, mixed>
