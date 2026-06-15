@@ -76,12 +76,12 @@ class AuthorForm
           'Images et liens externes.',
           [
             FileUpload::make('profile_image')
-              ->label('Photo de profil')
+              ->label('Photo de profil (générique)')
               ->image()
               ->disk('public')
               ->visibility('public')
               ->directory('authors/profiles')
-              ->helperText('Portrait carré ou portrait, format JPG/PNG.'),
+              ->helperText('Portrait utilisé en secours si les emplacements ci-dessous sont vides.'),
             FileUpload::make('cover_image')
               ->label('Image de couverture')
               ->image()
@@ -95,6 +95,66 @@ class AuthorForm
               ->valueLabel('URL')
               ->columnSpanFull()
               ->helperText('Liens Facebook, YouTube, Instagram, etc.'),
+          ],
+        ),
+        AdminFormLayout::section(
+          'Photos accueil — Hero',
+          'Deux images affichées en haut de la page d\'accueil (grande + petite en surimpression).',
+          [
+            FileUpload::make('home_hero_primary_image')
+              ->label('Photo principale (hero)')
+              ->image()
+              ->disk('public')
+              ->visibility('public')
+              ->directory('authors/home-hero')
+              ->helperText('Portrait vertical, format JPG/PNG.'),
+            FileUpload::make('home_hero_overlay_image')
+              ->label('Photo secondaire (hero)')
+              ->image()
+              ->disk('public')
+              ->visibility('public')
+              ->directory('authors/home-hero')
+              ->helperText('Petite photo en surimpression sur le hero.'),
+          ],
+        ),
+        AdminFormLayout::section(
+          'Photos accueil — Rubrique auteur',
+          'Deux images pour la section « L\'auteur » en bas de la page d\'accueil.',
+          [
+            FileUpload::make('home_section_primary_image')
+              ->label('Photo principale (rubrique auteur)')
+              ->image()
+              ->disk('public')
+              ->visibility('public')
+              ->directory('authors/home-section')
+              ->helperText('Grande photo de la rubrique auteur sur l\'accueil.'),
+            FileUpload::make('home_section_overlay_image')
+              ->label('Photo secondaire (rubrique auteur)')
+              ->image()
+              ->disk('public')
+              ->visibility('public')
+              ->directory('authors/home-section')
+              ->helperText('Petite photo en surimpression.'),
+          ],
+        ),
+        AdminFormLayout::section(
+          'Photos page auteur',
+          'Deux images affichées sur la page /auteur.',
+          [
+            FileUpload::make('page_primary_image')
+              ->label('Photo principale (page auteur)')
+              ->image()
+              ->disk('public')
+              ->visibility('public')
+              ->directory('authors/page')
+              ->helperText('Grande photo en tête de la page auteur.'),
+            FileUpload::make('page_overlay_image')
+              ->label('Photo secondaire (page auteur)')
+              ->image()
+              ->disk('public')
+              ->visibility('public')
+              ->directory('authors/page')
+              ->helperText('Petite photo en surimpression sur la page auteur.'),
           ],
         ),
         AdminFormLayout::section(

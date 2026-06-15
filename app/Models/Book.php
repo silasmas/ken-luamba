@@ -48,6 +48,7 @@ class Book extends Model
     'description',
     'author_note',
     'cover_image',
+    'preview_pdf_path',
     'is_published',
     'is_featured',
     'sort_order',

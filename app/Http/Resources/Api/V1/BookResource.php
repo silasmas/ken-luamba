@@ -41,6 +41,7 @@ class BookResource extends JsonResource
       'description' => $this->description,
       'authorNote' => $this->author_note,
       'coverImage' => MediaUrl::fromPath($this->cover_image),
+      'previewPdfUrl' => MediaUrl::fromPath($this->preview_pdf_path),
       'isFeatured' => $this->is_featured,
       'publishedAt' => $this->published_at?->toIso8601String(),
       'category' => $this->category,

@@ -126,6 +126,14 @@ class BookForm
               ->directory('books/covers')
               ->columnSpanFull()
               ->helperText('Image de couverture (ratio portrait recommandé).'),
+            FileUpload::make('preview_pdf_path')
+              ->label('Extrait PDF (feuilletable)')
+              ->acceptedFileTypes(['application/pdf'])
+              ->disk('public')
+              ->visibility('public')
+              ->directory('books/previews')
+              ->columnSpanFull()
+              ->helperText('PDF public affiché dans le lecteur « Lire un extrait » avec animation de pages.'),
           ],
           1,
         ),

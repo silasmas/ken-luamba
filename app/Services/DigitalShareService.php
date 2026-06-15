@@ -153,18 +153,18 @@ class DigitalShareService
       $this->logShareAction($share->digitalAccess, $share->createdBy, 'share_open', $request);
     }
 
-    return $this->buildPublicPayload($share);
+    return $this->buildRecipientPayload($share->fresh(['digitalAccess.bookFormat.book', 'digitalAccess.orderItem', 'progress']));
   }
 
   /**
-   * Retourne les métadonnées publiques d'un lien de partage.
+   * Retourne les métadonnées publiques d'un lien de partage (destinataire).
    *
    * @param string $token Token public
    * @return array<string, mixed> Métadonnées sérialisées
    */
   public function getPublicMetadata(string $token): array
   {
-    return $this->buildPublicPayload($this->resolveByToken($token));
+    return $this->buildRecipientPayload($this->resolveByToken($token));
   }
 
   /**
@@ -322,7 +322,41 @@ class DigitalShareService
   }
 
   /**
-   * Construit la réponse publique complète d'un lien partagé.
+   * Construit la réponse publique destinée au lecteur (sans infos d'expiration du lien).
+   *
+   * @param DigitalAccessShare $share Lien cible
+   * @return array<string, mixed> Données destinataire
+   */
+  private function buildRecipientPayload(DigitalAccessShare $share): array
+  {
+    $access = $share->digitalAccess;
+    $format = $access?->bookFormat;
+    $isUnavailable = $share->revoked_at !== null || ! $share->isLinkValid();
+
+    return [
+      'token' => $share->token,
+      'bookTitle' => $access?->orderItem?->book_title ?? $format?->book?->title,
+      'bookSubtitle' => $format?->book?->subtitle,
+      'coverImage' => MediaUrl::fromPath($format?->book?->cover_image),
+      'formatType' => $format?->type->value,
+      'formatLabel' => $format?->type->label(),
+      'digitalFileType' => $format?->digital_file_type?->value,
+      'digitalFileTypeLabel' => $format?->digital_file_type?->label(),
+      'shareReadingMinutes' => DigitalFormatLimits::shareReadingMinutes($format),
+      'hasReadingStarted' => $share->hasReadingStarted(),
+      'readingSecondsRemaining' => $share->hasReadingStarted()
+        ? $share->readingSecondsRemaining()
+        : 0,
+      'isReadingExpired' => $share->hasReadingStarted() && ! $share->isReadingActive(),
+      'canRead' => $share->canRead(),
+      'isUnavailable' => $isUnavailable,
+      'hasFile' => filled($format?->digital_file_path),
+      'progress' => $this->serializeProgress($share),
+    ];
+  }
+
+  /**
+   * Construit la réponse publique complète d'un lien partagé (propriétaire).
    *
    * @param DigitalAccessShare $share Lien cible
    * @return array<string, mixed> Données publiques
@@ -417,7 +451,7 @@ class DigitalShareService
 
     if ($share->expires_at?->isPast()) {
       throw ValidationException::withMessages([
-        'share' => ['Ce lien de partage a expiré. Demandez un nouveau lien au propriétaire.'],
+        'share' => ['Ce contenu n\'est plus disponible. Contactez la personne qui vous l\'a partagé.'],
       ]);
     }
   }
@@ -434,7 +468,7 @@ class DigitalShareService
 
     if (! $share->hasReadingStarted()) {
       throw ValidationException::withMessages([
-        'share' => ['Ouvrez d\'abord le lien de partage pour démarrer la session de lecture.'],
+        'share' => ['Lancez d\'abord la lecture pour accéder au contenu.'],
       ]);
     }
 
