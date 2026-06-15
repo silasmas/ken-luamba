@@ -43,10 +43,19 @@ class AuthorForm
               ->maxLength(255)
               ->helperText('Identifiant utilisé dans l\'adresse /auteur/{slug}.'),
             TextInput::make('title')
-              ->label('Titre / fonction')
+              ->label('Titre / fonction (résumé)')
               ->placeholder('Pasteur, auteur, conférencier')
               ->maxLength(255)
               ->helperText('Courte mention sous le nom (ex. Pasteur, auteur).'),
+            Textarea::make('roles')
+              ->label('Titres / fonctions (liste)')
+              ->rows(4)
+              ->columnSpanFull()
+              ->formatStateUsing(fn ($state) => is_array($state) ? implode("\n", $state) : '')
+              ->dehydrateStateUsing(
+                fn ($state) => array_values(array_filter(array_map('trim', preg_split("/\R/", (string) $state) ?: []))),
+              )
+              ->helperText('Un titre ou une fonction par ligne — affichés dans le hero de l\'accueil.'),
           ],
         ),
         AdminFormLayout::section(

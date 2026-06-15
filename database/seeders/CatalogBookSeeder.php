@@ -40,6 +40,11 @@ class CatalogBookSeeder extends Seeder
     if ($authorImage !== null) {
       $author->update([
         'profile_image' => $authorImage,
+        'roles' => [
+          'Pasteur titulaire du C.M.P.',
+          'Master en Théologie',
+          'Auteur & conférencier',
+        ],
         'short_bio' => 'Pasteur titulaire du Centre Missionnaire Philadelphie et coordinateur des extensions de la Communauté Philadelphie.',
         'full_bio' => 'Pasteur titulaire du Centre Missionnaire Philadelphie, Ken Luamba consacre sa vie à l\'enseignement de la Parole et à la formation d\'une génération de croyants solides. Titulaire d\'un Master en Théologie, il coordonne les extensions de la Communauté Philadelphie. Auteur et conférencier, il écrit pour édifier et préparer une génération aux défis de son temps.',
         'featured_quote' => 'Je n\'écris pas pour distraire une génération. J\'écris pour la préparer.',

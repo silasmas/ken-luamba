@@ -24,6 +24,7 @@ class AuthorResource extends JsonResource
       'fullName' => $this->full_name,
       'slug' => $this->slug,
       'title' => $this->title,
+      'roles' => $this->roles ?? ($this->title ? [$this->title] : []),
       'shortBio' => $this->short_bio,
       'fullBio' => $this->full_bio,
       'profileImage' => MediaUrl::fromPath($this->profile_image),

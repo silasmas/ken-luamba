@@ -59,7 +59,7 @@ class BookCatalogService
   public function availabilityLabel(string $status): string
   {
     return match ($status) {
-      'preorder' => 'En précommande',
+      'preorder' => 'Bientôt disponible',
       'coming' => 'À paraître',
       default => 'Disponible',
     };

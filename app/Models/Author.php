@@ -22,6 +22,7 @@ class Author extends Model
     'full_name',
     'slug',
     'title',
+    'roles',
     'short_bio',
     'full_bio',
     'profile_image',
@@ -49,6 +50,7 @@ class Author extends Model
   {
     return [
       'social_links' => 'array',
+      'roles' => 'array',
       'is_primary' => 'boolean',
       'is_published' => 'boolean',
     ];
