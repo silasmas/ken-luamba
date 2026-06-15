@@ -120,7 +120,7 @@ class FormatsRelationManager extends RelationManager
               ->minValue(1)
               ->maxValue(168)
               ->default(fn (): int => (int) config('digital.stream_expiry_hours', 2))
-              ->helperText('Durée affichée au client pour les liens de lecture (variable DIGITAL_STREAM_EXPIRY_HOURS par défaut).'),
+              ->helperText('Durée du lien signé pour Lire / Écouter en ligne. Après expiration, le client doit rouvrir depuis Ma bibliothèque. N\'affecte pas le fichier déjà téléchargé.'),
           ])
           ->columnSpanFull(),
       ]);

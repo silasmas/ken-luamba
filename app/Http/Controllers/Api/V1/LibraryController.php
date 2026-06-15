@@ -70,23 +70,32 @@ class LibraryController extends Controller
    */
   public function file(Request $request, string $accessId)
   {
-    $mode = $request->string('mode', 'read')->toString();
+    $mode = $request->string('mode', 'download')->toString();
 
-    if (! in_array($mode, ['read', 'download'], true)) {
-      $mode = 'read';
+    if ($mode !== 'download') {
+      abort(403, 'La lecture en ligne nécessite un lien signé temporaire. Rouvrez le livre depuis Ma bibliothèque.');
     }
 
     $access = $this->digitalAccessService->authorizeFileAccess(
       $request->user(),
       $accessId,
       $request,
-      $mode,
+      'download',
     );
 
-    return $this->digitalAccessService->buildFileResponse(
-      $access,
-      $mode === 'download',
-    );
+    return $this->digitalAccessService->buildFileResponse($access, true);
+  }
+
+  /**
+   * Sert le fichier via URL signée temporaire (lecture en ligne).
+   *
+   * @param string $accessId Identifiant d'accès
+   * @param int $userId Identifiant utilisateur
+   * @return \Symfony\Component\HttpFoundation\StreamedResponse Fichier streamé
+   */
+  public function signedFile(string $accessId, int $userId)
+  {
+    return $this->digitalAccessService->serveSignedStreamFile($accessId, $userId);
   }
 
   /**

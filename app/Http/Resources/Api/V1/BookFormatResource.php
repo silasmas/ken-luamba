@@ -36,8 +36,9 @@ class BookFormatResource extends JsonResource
         'maxDownloads' => DigitalFormatLimits::maxDownloads($this->resource),
         'personalAccess' => true,
         'noSharing' => true,
-        'summary' => 'Accès personnel lié à votre compte. Lecture en ligne recommandée. Téléchargements limités à '
-          .DigitalFormatLimits::maxDownloads($this->resource).' fois.',
+        'summary' => 'Lecture en ligne via lien signé ('
+          .DigitalFormatLimits::streamExpiryHours($this->resource).' h max). Téléchargements limités à '
+          .DigitalFormatLimits::maxDownloads($this->resource).' fois. Le fichier téléchargé n\'est pas verrouillé techniquement.',
       ]),
       'stockQuantity' => $this->stock_quantity,
       'currentPrice' => $pricingService->getCurrentPrice($this->resource),

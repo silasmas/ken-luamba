@@ -11,6 +11,7 @@ use App\Support\DigitalFilePath;
 use App\Support\DigitalFormatLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -81,14 +82,18 @@ class DigitalAccessService
    */
   public function getStreamUrl(User $user, string $accessId, Request $request, string $mode = 'read'): array
   {
-    $access = $this->authorizeFileAccess($user, $accessId, $request, $mode);
+    if ($mode !== 'read') {
+      throw ValidationException::withMessages([
+        'mode' => ['Le téléchargement utilise l\'endpoint /file avec authentification.'],
+      ]);
+    }
 
-    $streamUrl = rtrim((string) config('app.url'), '/')
-      .'/api/v1/library/'.$access->id.'/file?mode='.$mode;
+    $access = $this->authorizeFileAccess($user, $accessId, $request, 'read');
 
     $format = $access->bookFormat;
     $maxDownloads = DigitalFormatLimits::maxDownloads($format);
     $streamExpiryHours = DigitalFormatLimits::streamExpiryHours($format);
+    $expiresAt = now()->addHours($streamExpiryHours);
 
     return [
       'accessId' => $access->id,
@@ -97,13 +102,55 @@ class DigitalAccessService
       'formatLabel' => $format?->type->label(),
       'digitalFileType' => $format?->digital_file_type?->value,
       'digitalFileTypeLabel' => $format?->digital_file_type?->label(),
-      'streamUrl' => $streamUrl,
+      'streamUrl' => $this->buildSignedStreamUrl($access, $user, $expiresAt),
       'watermark' => $user->email.' — '.$access->order_id,
+      'expiresAt' => $expiresAt->toIso8601String(),
       'expiresInMinutes' => $streamExpiryHours * 60,
+      'streamExpiryHours' => $streamExpiryHours,
       'downloadCount' => $access->download_count,
       'maxDownloads' => $maxDownloads,
       'remainingDownloads' => max(0, $maxDownloads - $access->download_count),
     ];
+  }
+
+  /**
+   * Génère une URL signée temporaire pour la lecture en ligne.
+   *
+   * @param DigitalAccess $access Accès validé
+   * @param User $user Client connecté
+   * @param \Illuminate\Support\Carbon $expiresAt Date d'expiration
+   * @return string URL signée absolue
+   */
+  public function buildSignedStreamUrl(DigitalAccess $access, User $user, \Illuminate\Support\Carbon $expiresAt): string
+  {
+    return URL::temporarySignedRoute(
+      'library.stream-file',
+      $expiresAt,
+      [
+        'accessId' => $access->id,
+        'userId' => $user->id,
+      ],
+      absolute: true,
+    );
+  }
+
+  /**
+   * Sert un fichier via lien signé (lecture en ligne uniquement).
+   *
+   * @param string $accessId Identifiant accès
+   * @param int $userId Identifiant utilisateur
+   * @return \Symfony\Component\HttpFoundation\StreamedResponse Fichier streamé
+   */
+  public function serveSignedStreamFile(string $accessId, int $userId)
+  {
+    $access = DigitalAccess::query()
+      ->where('id', $accessId)
+      ->where('user_id', $userId)
+      ->where('is_active', true)
+      ->with('bookFormat.book')
+      ->firstOrFail();
+
+    return $this->buildFileResponse($access, false);
   }
 
   /**

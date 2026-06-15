@@ -38,6 +38,10 @@ Route::prefix('v1')->group(function (): void {
   Route::get('/invitations/{token}', [InvitationController::class, 'show']);
   Route::post('/invitations/{token}/rsvp', [InvitationController::class, 'respond']);
 
+  Route::get('/library/stream-file/{accessId}/{userId}', [LibraryController::class, 'signedFile'])
+    ->middleware('signed')
+    ->name('library.stream-file');
+
   Route::post('/payments/flexpay-callback', [PaymentController::class, 'flexpayCallback']);
   Route::get('/payments/status', [PaymentController::class, 'checkStatus']);
   Route::get('/payments/card-return', [PaymentController::class, 'cardReturn']);
