@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ContactSettings\Schemas;
 use App\Filament\Support\AdminFormLayout;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
 class ContactSettingForm
@@ -58,6 +59,30 @@ class ContactSettingForm
               ->maxLength(1000),
           ],
           2,
+        ),
+        AdminFormLayout::section(
+          'Pied de page',
+          'Crédit affiché en bas du site à la place du lien Contact si activé.',
+          [
+            Toggle::make('show_sdev_credit')
+              ->label('Afficher « Designed by SDev »')
+              ->default(true)
+              ->helperText('Si désactivé, le lien Contact s\'affiche à la place.'),
+            TextInput::make('sdev_label')
+              ->label('Libellé du crédit')
+              ->default('SDev')
+              ->maxLength(80)
+              ->required()
+              ->visible(fn (callable $get): bool => (bool) $get('show_sdev_credit')),
+            TextInput::make('sdev_url')
+              ->label('URL du crédit')
+              ->url()
+              ->default('https://silasmas.com')
+              ->maxLength(255)
+              ->required()
+              ->visible(fn (callable $get): bool => (bool) $get('show_sdev_credit')),
+          ],
+          1,
         ),
       ]);
   }

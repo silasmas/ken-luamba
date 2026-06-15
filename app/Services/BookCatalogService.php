@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Enums\PricingPeriodType;
 use App\Models\Book;
+use Illuminate\Support\Carbon;
 
 /**
  * Calcule le statut commercial et les statistiques d'un livre catalogue.
@@ -88,5 +89,29 @@ class BookCatalogService
     }
 
     return "{$remaining} min de lecture";
+  }
+
+  /**
+   * Date de fin de la période de précommande active (la plus tardive entre les formats).
+   *
+   * @param Book $book Livre avec formats et périodes tarifaires chargés
+   * @return Carbon|null Date/heure de fin ou null
+   */
+  public function preorderEndsAt(Book $book): ?Carbon
+  {
+    $endDates = $book->formats
+      ->where('is_active', true)
+      ->map(fn ($format) => $this->pricingService->getCurrentPeriod($format))
+      ->filter(
+        fn ($period) => $period !== null && $period->type === PricingPeriodType::Preorder,
+      )
+      ->map(fn ($period) => $period->end_at)
+      ->filter();
+
+    if ($endDates->isEmpty()) {
+      return null;
+    }
+
+    return $endDates->max();
   }
 }

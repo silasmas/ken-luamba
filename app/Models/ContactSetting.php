@@ -23,6 +23,9 @@ class ContactSetting extends Model
     'email' => 'kenluamba@gmail.com',
     'physical_address' => '4524, Avenue Des Forces Armées (ex. Haut-Commandement), C/ Gombe Kinshasa • RD Congo',
     'intro_description' => 'Pour toute demande — ministère, conférences, presse ou édition — notre équipe vous répond avec attention.',
+    'show_sdev_credit' => true,
+    'sdev_label' => 'SDev',
+    'sdev_url' => 'https://silasmas.com',
   ];
 
   /**
@@ -36,7 +39,22 @@ class ContactSetting extends Model
     'email',
     'physical_address',
     'intro_description',
+    'show_sdev_credit',
+    'sdev_label',
+    'sdev_url',
   ];
+
+  /**
+   * Casts des attributs du modèle.
+   *
+   * @return array<string, string>
+   */
+  protected function casts(): array
+  {
+    return [
+      'show_sdev_credit' => 'boolean',
+    ];
+  }
 
   /**
    * Retourne l'enregistrement unique des paramètres de contact.

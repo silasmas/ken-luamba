@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\V1\AppearanceController;
 use App\Http\Controllers\Api\V1\AuthController;
 use App\Http\Controllers\Api\V1\AuthorController;
+use App\Http\Controllers\Api\V1\BookReleaseNotificationController;
 use App\Http\Controllers\Api\V1\BookController;
 use App\Http\Controllers\Api\V1\BookReviewController;
 use App\Http\Controllers\Api\V1\CartController;
@@ -14,7 +15,7 @@ use App\Http\Controllers\Api\V1\LibraryController;
 use App\Http\Controllers\Api\V1\OrderController;
 use App\Http\Controllers\Api\V1\PaymentController;
 use App\Http\Controllers\Api\V1\PickupPointController;
-use App\Http\Controllers\Api\V1\ShippingController;
+use App\Http\Controllers\Api\V1\WishlistController;
 use App\Http\Controllers\Api\V1\ShopConfigController;
 use Illuminate\Support\Facades\Route;
 
@@ -28,6 +29,7 @@ Route::prefix('v1')->group(function (): void {
   Route::get('/books', [BookController::class, 'index']);
   Route::get('/books/{slug}/reviews', [BookReviewController::class, 'index']);
   Route::get('/books/{slug}', [BookController::class, 'show']);
+  Route::post('/books/{slug}/release-notifications', [BookReleaseNotificationController::class, 'store']);
   Route::get('/pickup-points', [PickupPointController::class, 'index']);
   Route::get('/shipping/config', [ShippingController::class, 'config']);
   Route::post('/shipping/quote', [ShippingController::class, 'quote']);
@@ -72,6 +74,9 @@ Route::prefix('v1')->group(function (): void {
 
     Route::get('/library', [LibraryController::class, 'index']);
     Route::get('/library/{accessId}/stream', [LibraryController::class, 'stream']);
+
+    Route::get('/wishlist', [WishlistController::class, 'index']);
+    Route::post('/wishlist/{bookId}/toggle', [WishlistController::class, 'toggle']);
 
     Route::post('/books/{slug}/reviews', [BookReviewController::class, 'store']);
 

@@ -46,6 +46,11 @@ class ContactController extends Controller
           'href' => ContactLinkHelper::mailtoHref($settings->email),
           'action' => 'Envoyer ↗',
         ],
+        'footer' => [
+          'showSdevCredit' => (bool) $settings->show_sdev_credit,
+          'sdevLabel' => $settings->sdev_label,
+          'sdevUrl' => $settings->sdev_url,
+        ],
       ],
     ]);
   }
