@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\BookReleaseSubscriptions\Tables;
 
+use App\Filament\Support\BookReleaseAdminActions;
+use Filament\Actions\BulkActionGroup;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -29,6 +32,15 @@ class BookReleaseSubscriptionsTable
           ->label('E-mail')
           ->searchable()
           ->copyable(),
+        IconColumn::make('notified_at')
+          ->label('Notifié')
+          ->boolean()
+          ->getStateUsing(fn ($record): bool => $record->notified_at !== null),
+        TextColumn::make('notified_at')
+          ->label('Dernier envoi')
+          ->dateTime('d/m/Y H:i')
+          ->placeholder('—')
+          ->toggleable(),
         TextColumn::make('created_at')
           ->label('Inscrit le')
           ->dateTime('d/m/Y H:i')
@@ -38,6 +50,14 @@ class BookReleaseSubscriptionsTable
         SelectFilter::make('book_id')
           ->label('Livre')
           ->relationship('book', 'title'),
+      ])
+      ->recordActions([
+        BookReleaseAdminActions::sendEmail(),
+      ])
+      ->toolbarActions([
+        BulkActionGroup::make([
+          BookReleaseAdminActions::sendEmailBulk(),
+        ]),
       ])
       ->defaultSort('created_at', 'desc');
   }

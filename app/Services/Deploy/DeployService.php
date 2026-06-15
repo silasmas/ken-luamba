@@ -119,13 +119,17 @@ class DeployService
     Artisan::call('storage:link', ['--force' => true]);
     $storageOutput = trim(Artisan::output());
 
+    Artisan::call('digital:ensure-files');
+    $digitalOutput = trim(Artisan::output());
+
     return [
       'action' => 'setup',
-      'message' => 'Migrations, seeders et lien storage exécutés avec succès.',
+      'message' => 'Migrations, seeders, storage et fichiers numériques exécutés avec succès.',
       'output' => [
         'migrate' => $migrateOutput,
         'seed' => $seedOutput,
         'storage' => $storageOutput,
+        'digital_files' => $digitalOutput,
       ],
     ];
   }

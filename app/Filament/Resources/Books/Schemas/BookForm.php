@@ -3,10 +3,14 @@
 namespace App\Filament\Resources\Books\Schemas;
 
 use App\Filament\Support\AdminFormLayout;
+use App\Filament\Support\BookReleasePlaceholderHelper;
 use App\Models\Author;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Hidden;
+use Filament\Forms\Components\Placeholder;
+use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -185,6 +189,47 @@ class BookForm
             DateTimePicker::make('published_at')
               ->label('Date de publication')
               ->helperText('Date officielle de mise en vente.'),
+          ],
+        ),
+        AdminFormLayout::section(
+          'Alertes sortie',
+          'Modèles d\'e-mail pour prévenir les inscrits et envoi automatique programmé.',
+          [
+            Placeholder::make('release_variables')
+              ->label('Variables disponibles')
+              ->content(fn () => BookReleasePlaceholderHelper::toHtml())
+              ->columnSpanFull(),
+            Repeater::make('release_notification_messages')
+              ->label('Modèles d\'e-mail')
+              ->schema([
+                Hidden::make('id')
+                  ->default(fn (): string => (string) Str::uuid()),
+                TextInput::make('label')
+                  ->label('Nom du modèle')
+                  ->required()
+                  ->maxLength(120),
+                TextInput::make('email_subject')
+                  ->label('Objet e-mail')
+                  ->required()
+                  ->maxLength(255),
+                Textarea::make('body')
+                  ->label('Contenu du message')
+                  ->required()
+                  ->rows(8)
+                  ->columnSpanFull(),
+              ])
+              ->columns(2)
+              ->collapsible()
+              ->itemLabel(fn (array $state): string => $state['label'] ?? 'Modèle')
+              ->addActionLabel('Ajouter un modèle')
+              ->columnSpanFull(),
+            Toggle::make('release_auto_notify_enabled')
+              ->label('Envoi automatique activé')
+              ->helperText('Envoie automatiquement l\'e-mail aux inscrits non notifiés.'),
+            DateTimePicker::make('release_auto_notify_at')
+              ->label('Date et heure d\'envoi automatique')
+              ->seconds(false)
+              ->helperText('L\'envoi démarre dès que cette date est atteinte (tâche planifiée).'),
           ],
         ),
       ]);

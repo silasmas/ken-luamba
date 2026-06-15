@@ -68,7 +68,7 @@ class SeederDigitalFileService
   }
 
   /**
-   * Crée un fichier MP3 minimal sur le disque local.
+   * Crée un fichier MP3 minimal lisible par les navigateurs.
    *
    * @param string $destinationPath Chemin relatif sur le disque local
    * @return string Chemin relatif publié
@@ -81,19 +81,25 @@ class SeederDigitalFileService
       Storage::disk('local')->makeDirectory($directory);
     }
 
-    $frame = base64_decode(
-      '//uQxAAAAAAAAAAAAAAAAAAAAAAAWGluZwAAAA8AAAACAAACcQCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA'
-      .'//////////////////////////////////////////////////////////////////8AAAA5TEFNRTMuMTAwA8MAAAAAAAAAABQgJAUHQQAB9gAAAnGMH0mHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
-      .'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA'
-      .'//uQxAACzAGXnAAAAABRBpP8AAAACAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA',
-      true,
-    );
+    $assetPath = database_path('seeders/assets/digital/demo-audio.mp3');
 
-    if ($frame === false || $frame === '') {
-      $frame = str_repeat("\0", 1024);
+    if (is_file($assetPath)) {
+      Storage::disk('local')->put($destinationPath, file_get_contents($assetPath) ?: '');
+
+      return $destinationPath;
     }
 
-    Storage::disk('local')->put($destinationPath, $frame);
+    $hex = '4944330300000000000000000000000000000000'
+      .'fff348c400000000000000000000000000000000000000000000000000000000000000000000'
+      .'fff348c400000000000000000000000000000000000000000000000000000000000000000000';
+
+    $binary = hex2bin($hex);
+
+    if ($binary === false || strlen($binary) < 128) {
+      $binary = str_repeat("\0", 2048);
+    }
+
+    Storage::disk('local')->put($destinationPath, $binary);
 
     return $destinationPath;
   }

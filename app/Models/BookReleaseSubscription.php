@@ -21,7 +21,20 @@ class BookReleaseSubscription extends Model
   protected $fillable = [
     'book_id',
     'email',
+    'notified_at',
   ];
+
+  /**
+   * Casts des attributs du modèle.
+   *
+   * @return array<string, string>
+   */
+  protected function casts(): array
+  {
+    return [
+      'notified_at' => 'datetime',
+    ];
+  }
 
   /**
    * Livre concerné par l'alerte.

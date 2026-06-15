@@ -19,6 +19,7 @@ class BookReleaseSubscriptionPermissionSeeder extends Seeder
     $permissions = [
       'ViewAny:BookReleaseSubscription',
       'View:BookReleaseSubscription',
+      'Update:BookReleaseSubscription',
       'Delete:BookReleaseSubscription',
     ];
 

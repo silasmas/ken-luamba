@@ -11,13 +11,17 @@ return [
     'http://127.0.0.1:3000',
     'http://127.0.0.1:3001',
     'http://127.0.0.1:3002',
+    'https://kenluamba.com',
+    'https://www.kenluamba.com',
+    'https://admin.kenluamba.com',
   ]),
   'allowed_origins_patterns' => [
     '#^https?://localhost(:\d+)?$#',
     '#^https?://127\.0\.0\.1(:\d+)?$#',
+    '#^https?://([a-z0-9-]+\.)?kenluamba\.com$#',
   ],
   'allowed_headers' => ['*'],
-  'exposed_headers' => [],
+  'exposed_headers' => ['Content-Disposition', 'Content-Type', 'Content-Length'],
   'max_age' => 0,
   'supports_credentials' => true,
 ];

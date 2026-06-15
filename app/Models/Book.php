@@ -37,6 +37,10 @@ class Book extends Model
     'preorder_campaign_goal',
     'preorder_reserved_count',
     'preorder_campaign_bonuses',
+    'release_notification_messages',
+    'release_auto_notify_enabled',
+    'release_auto_notify_at',
+    'release_auto_notify_sent_at',
     'slug',
     'description',
     'author_note',
@@ -67,6 +71,10 @@ class Book extends Model
       'preorder_campaign_goal' => 'integer',
       'preorder_reserved_count' => 'integer',
       'preorder_campaign_bonuses' => 'array',
+      'release_notification_messages' => 'array',
+      'release_auto_notify_enabled' => 'boolean',
+      'release_auto_notify_at' => 'datetime',
+      'release_auto_notify_sent_at' => 'datetime',
     ];
   }
 

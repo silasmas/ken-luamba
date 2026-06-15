@@ -76,16 +76,16 @@ class LibraryController extends Controller
       $mode = 'read';
     }
 
-    $this->digitalAccessService->getStreamUrl(
+    $access = $this->digitalAccessService->authorizeFileAccess(
       $request->user(),
       $accessId,
       $request,
       $mode,
     );
 
-    return $this->digitalAccessService->serveAuthenticatedFile(
-      $request->user(),
-      $accessId,
+    return $this->digitalAccessService->buildFileResponse(
+      $access,
+      $mode === 'download',
     );
   }
 

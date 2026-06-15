@@ -79,41 +79,7 @@ class DigitalAccessService
    */
   public function getStreamUrl(User $user, string $accessId, Request $request, string $mode = 'read'): array
   {
-    $access = DigitalAccess::query()
-      ->where('id', $accessId)
-      ->where('user_id', $user->id)
-      ->where('is_active', true)
-      ->with(['bookFormat.book', 'orderItem'])
-      ->firstOrFail();
-
-    $filePath = $access->bookFormat?->digital_file_path;
-
-    if ($filePath === null || $filePath === '') {
-      throw ValidationException::withMessages([
-        'access' => ['Fichier numérique non disponible pour ce format.'],
-      ]);
-    }
-
-    if (! Storage::disk('local')->exists($filePath)) {
-      throw ValidationException::withMessages([
-        'access' => ['Fichier introuvable sur le serveur.'],
-      ]);
-    }
-
-    $maxDownloads = (int) config('digital.max_downloads', 5);
-    $isDownload = $mode === 'download';
-
-    if ($isDownload && $access->download_count >= $maxDownloads) {
-      throw ValidationException::withMessages([
-        'access' => ['Limite de téléchargements atteinte ('.$maxDownloads.' max). Contactez le support.'],
-      ]);
-    }
-
-    if ($isDownload) {
-      $access->increment('download_count');
-    }
-
-    $this->logAccess($access, $user, $isDownload ? 'download' : 'read', $request);
+    $access = $this->authorizeFileAccess($user, $accessId, $request, $mode);
 
     $streamUrl = rtrim((string) config('app.url'), '/')
       .'/api/v1/library/'.$access->id.'/file?mode='.$mode;
@@ -132,6 +98,57 @@ class DigitalAccessService
       'maxDownloads' => (int) config('digital.max_downloads', 5),
       'remainingDownloads' => max(0, (int) config('digital.max_downloads', 5) - $access->download_count),
     ];
+  }
+
+  /**
+   * Valide l'accès, journalise et applique les limites de téléchargement.
+   *
+   * @param User $user Client connecté
+   * @param string $accessId Identifiant de l'accès
+   * @param Request $request Requête HTTP pour audit
+   * @param string $mode Mode d'accès : read ou download
+   * @return DigitalAccess Accès autorisé
+   */
+  public function authorizeFileAccess(User $user, string $accessId, Request $request, string $mode = 'read'): DigitalAccess
+  {
+    $access = DigitalAccess::query()
+      ->where('id', $accessId)
+      ->where('user_id', $user->id)
+      ->where('is_active', true)
+      ->with(['bookFormat.book', 'orderItem'])
+      ->firstOrFail();
+
+    $filePath = $access->bookFormat?->digital_file_path;
+
+    if ($filePath === null || $filePath === '') {
+      throw ValidationException::withMessages([
+        'access' => ['Fichier numérique non disponible pour ce format.'],
+      ]);
+    }
+
+    if (! Storage::disk('local')->exists($filePath)) {
+      throw ValidationException::withMessages([
+        'access' => ['Fichier introuvable sur le serveur. Uploadez le fichier dans l\'admin (Formats du livre).'],
+      ]);
+    }
+
+    $maxDownloads = (int) config('digital.max_downloads', 5);
+    $isDownload = $mode === 'download';
+
+    if ($isDownload && $access->download_count >= $maxDownloads) {
+      throw ValidationException::withMessages([
+        'access' => ['Limite de téléchargements atteinte ('.$maxDownloads.' max). Contactez le support.'],
+      ]);
+    }
+
+    if ($isDownload) {
+      $access->increment('download_count');
+      $access->refresh();
+    }
+
+    $this->logAccess($access, $user, $isDownload ? 'download' : 'read', $request);
+
+    return $access;
   }
 
   /**
@@ -160,16 +177,16 @@ class DigitalAccessService
    * @param string $accessId Identifiant accès
    * @return \Symfony\Component\HttpFoundation\StreamedResponse Fichier streamé
    */
-  public function serveAuthenticatedFile(User $user, string $accessId)
+  public function serveAuthenticatedFile(User $user, string $accessId, string $mode = 'read')
   {
     $access = DigitalAccess::query()
       ->where('id', $accessId)
       ->where('user_id', $user->id)
       ->where('is_active', true)
-      ->with('bookFormat')
+      ->with('bookFormat.book')
       ->firstOrFail();
 
-    return $this->buildFileResponse($access);
+    return $this->buildFileResponse($access, $mode === 'download');
   }
 
   /**
@@ -178,7 +195,7 @@ class DigitalAccessService
    * @param DigitalAccess $access Accès validé
    * @return \Symfony\Component\HttpFoundation\StreamedResponse Fichier streamé
    */
-  private function buildFileResponse(DigitalAccess $access)
+  public function buildFileResponse(DigitalAccess $access, bool $asDownload = false)
   {
     $filePath = $access->bookFormat?->digital_file_path;
 
@@ -190,10 +207,22 @@ class DigitalAccessService
       ?? Storage::disk('local')->mimeType($filePath)
       ?? 'application/octet-stream';
 
-    return Storage::disk('local')->response($filePath, null, [
+    $extension = $access->bookFormat?->digital_file_type?->extensions()[0] ?? 'bin';
+    $bookTitle = $access->bookFormat?->book?->title ?? 'livre';
+    $downloadName = preg_replace('/[^\pL\pN\-_ ]/u', '', $bookTitle) ?: 'livre';
+    $downloadName = trim($downloadName).'.'.$extension;
+
+    $headers = [
       'Content-Type' => $mimeType,
       'Cache-Control' => 'private, no-store',
-    ]);
+      'Access-Control-Expose-Headers' => 'Content-Disposition, Content-Type, Content-Length',
+    ];
+
+    if ($asDownload) {
+      $headers['Content-Disposition'] = 'attachment; filename="'.$downloadName.'"';
+    }
+
+    return Storage::disk('local')->response($filePath, $asDownload ? $downloadName : null, $headers);
   }
 
   /**

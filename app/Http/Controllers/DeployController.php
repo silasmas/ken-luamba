@@ -37,17 +37,9 @@ class DeployController extends Controller
       return view('welcome');
     }
 
-    return response()->json([
-      'status' => 'ok',
-      'service' => 'ken-luamba-api',
-      'message' => 'API Ken Luamba opérationnelle.',
-      'deploy' => [
-        'migrate' => '/?secret=VOTRE_SECRET',
-        'seed' => '/?secret=VOTRE_SECRET&action=seed',
-        'setup' => '/?secret=VOTRE_SECRET&action=setup',
-        'shield' => '/?secret=VOTRE_SECRET&action=shield',
-        'storage' => '/?secret=VOTRE_SECRET&action=storage',
-      ],
+    return view('admin-portal', [
+      'adminLoginUrl' => url('/admin/login'),
+      'frontendUrl' => config('app.frontend_url'),
     ]);
   }
 
