@@ -33,6 +33,9 @@ class BookFormat extends Model
     'digital_file_type',
     'digital_max_downloads',
     'digital_stream_expiry_hours',
+    'digital_share_enabled',
+    'digital_share_expiry_hours',
+    'digital_share_max_links',
     'is_active',
   ];
 
@@ -46,6 +49,7 @@ class BookFormat extends Model
     return [
       'type' => BookFormatType::class,
       'digital_file_type' => DigitalFileType::class,
+      'digital_share_enabled' => 'boolean',
       'is_active' => 'boolean',
     ];
   }

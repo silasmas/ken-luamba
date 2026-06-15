@@ -73,7 +73,7 @@ class FormatsRelationManager extends RelationManager
           ])
           ->columnSpanFull(),
         Section::make('Fichier numérique')
-          ->description('Ebook ou audio — accès sécurisé après achat, non partageable.')
+          ->description('Ebook ou audio — accès sécurisé après achat. Le partage par lien est optionnel.')
           ->visible(fn (callable $get): bool => in_array($get('type'), [
             BookFormatType::Ebook->value,
             BookFormatType::Audiobook->value,
@@ -121,6 +121,26 @@ class FormatsRelationManager extends RelationManager
               ->maxValue(168)
               ->default(fn (): int => (int) config('digital.stream_expiry_hours', 2))
               ->helperText('Durée du lien signé pour Lire / Écouter en ligne. Après expiration, le client doit rouvrir depuis Ma bibliothèque. N\'affecte pas le fichier déjà téléchargé.'),
+            Toggle::make('digital_share_enabled')
+              ->label('Autoriser le partage par lien')
+              ->default(false)
+              ->helperText('Permet au client de créer des liens publics temporaires (EPUB ou audio).'),
+            TextInput::make('digital_share_expiry_hours')
+              ->label('Durée lien partagé (heures)')
+              ->numeric()
+              ->minValue(1)
+              ->maxValue(168)
+              ->default(fn (): int => (int) config('digital.share_expiry_hours', 48))
+              ->visible(fn (callable $get): bool => (bool) $get('digital_share_enabled'))
+              ->helperText('Temps pendant lequel le destinataire peut ouvrir le lien partagé dans son navigateur.'),
+            TextInput::make('digital_share_max_links')
+              ->label('Liens de partage max')
+              ->numeric()
+              ->minValue(1)
+              ->maxValue(20)
+              ->default(fn (): int => (int) config('digital.share_max_links', 3))
+              ->visible(fn (callable $get): bool => (bool) $get('digital_share_enabled'))
+              ->helperText('Nombre de liens actifs simultanés que le client peut créer pour ce livre.'),
           ])
           ->columnSpanFull(),
       ]);
@@ -144,6 +164,10 @@ class FormatsRelationManager extends RelationManager
           ->label('Type fichier')
           ->formatStateUsing(fn (?DigitalFileType $state): string => $state?->label() ?? '—')
           ->toggleable(),
+        IconColumn::make('digital_share_enabled')
+          ->label('Partage')
+          ->boolean()
+          ->toggleable(isToggledHiddenByDefault: true),
         TextColumn::make('digital_max_downloads')
           ->label('Téléch. max')
           ->formatStateUsing(fn (?int $state, BookFormat $record): string => (string) $record->resolvedMaxDownloads())

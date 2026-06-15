@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Services\DigitalShareService;
 use App\Support\DigitalFilePath;
 use App\Support\DigitalFormatLimits;
 use App\Support\MediaUrl;
@@ -24,6 +25,11 @@ class DigitalAccessResource extends JsonResource
     $format = $this->bookFormat;
     $maxDownloads = DigitalFormatLimits::maxDownloads($format);
     $streamExpiryHours = DigitalFormatLimits::streamExpiryHours($format);
+    $sharingEnabled = DigitalFormatLimits::sharingEnabled($format);
+    $shareMaxLinks = DigitalFormatLimits::shareMaxLinks($format);
+    $activeShareCount = $sharingEnabled
+      ? app(DigitalShareService::class)->countActiveShares($this->resource)
+      : 0;
 
     return [
       'id' => $this->id,
@@ -43,6 +49,11 @@ class DigitalAccessResource extends JsonResource
       'maxDownloads' => $maxDownloads,
       'remainingDownloads' => max(0, $maxDownloads - $this->download_count),
       'streamExpiryHours' => $streamExpiryHours,
+      'sharingEnabled' => $sharingEnabled,
+      'shareExpiryHours' => DigitalFormatLimits::shareExpiryHours($format),
+      'shareMaxLinks' => $shareMaxLinks,
+      'activeShareCount' => $activeShareCount,
+      'remainingShareLinks' => $sharingEnabled ? max(0, $shareMaxLinks - $activeShareCount) : 0,
       'progressPercent' => $this->readingProgress?->progress_percent ?? 0,
       'epubCfi' => $this->readingProgress?->epub_cfi,
       'audioPositionSeconds' => $this->readingProgress?->audio_position_seconds,

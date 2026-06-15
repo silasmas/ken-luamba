@@ -104,4 +104,14 @@ class DigitalAccess extends Model
   {
     return $this->hasOne(DigitalReadingProgress::class);
   }
+
+  /**
+   * Liens de partage créés pour cet accès.
+   *
+   * @return HasMany<DigitalAccessShare, $this>
+   */
+  public function shares(): HasMany
+  {
+    return $this->hasMany(DigitalAccessShare::class);
+  }
 }

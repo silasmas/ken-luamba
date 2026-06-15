@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\V1\BookReviewController;
 use App\Http\Controllers\Api\V1\CartController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CourierController;
+use App\Http\Controllers\Api\V1\DigitalShareController;
 use App\Http\Controllers\Api\V1\InvitationController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\LibraryController;
@@ -41,6 +42,13 @@ Route::prefix('v1')->group(function (): void {
   Route::get('/library/stream-file/{accessId}/{userId}', [LibraryController::class, 'signedFile'])
     ->middleware('signed')
     ->name('library.stream-file');
+
+  Route::get('/library/share-stream-file/{token}', [DigitalShareController::class, 'signedFile'])
+    ->middleware('signed')
+    ->name('library.share-stream-file');
+
+  Route::get('/shares/{token}', [DigitalShareController::class, 'show']);
+  Route::get('/shares/{token}/stream', [DigitalShareController::class, 'stream']);
 
   Route::post('/payments/flexpay-callback', [PaymentController::class, 'flexpayCallback']);
   Route::get('/payments/status', [PaymentController::class, 'checkStatus']);
@@ -81,6 +89,9 @@ Route::prefix('v1')->group(function (): void {
     Route::get('/library/{accessId}/stream', [LibraryController::class, 'stream']);
     Route::get('/library/{accessId}/file', [LibraryController::class, 'file']);
     Route::put('/library/{accessId}/progress', [LibraryController::class, 'saveProgress']);
+    Route::get('/library/{accessId}/shares', [DigitalShareController::class, 'index']);
+    Route::post('/library/{accessId}/shares', [DigitalShareController::class, 'store']);
+    Route::delete('/library/{accessId}/shares/{shareId}', [DigitalShareController::class, 'destroy']);
 
     Route::get('/wishlist', [WishlistController::class, 'index']);
     Route::post('/wishlist/{bookId}/toggle', [WishlistController::class, 'toggle']);
