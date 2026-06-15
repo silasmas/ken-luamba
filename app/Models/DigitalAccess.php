@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
  * Modèle représentant un droit d'accès à un contenu numérique.
@@ -92,5 +93,15 @@ class DigitalAccess extends Model
   public function logs(): HasMany
   {
     return $this->hasMany(DigitalAccessLog::class);
+  }
+
+  /**
+   * Progression de lecture enregistrée pour cet accès.
+   *
+   * @return HasOne<DigitalReadingProgress, $this>
+   */
+  public function readingProgress(): HasOne
+  {
+    return $this->hasOne(DigitalReadingProgress::class);
   }
 }

@@ -60,4 +60,38 @@ class LibraryController extends Controller
 
     return response()->json(['data' => $result]);
   }
+
+  /**
+   * Enregistre la progression de lecture ou d'écoute.
+   *
+   * @param Request $request Requête authentifiée
+   * @param string $accessId Identifiant d'accès
+   * @return JsonResponse Progression enregistrée
+   */
+  public function saveProgress(Request $request, string $accessId): JsonResponse
+  {
+    $validated = $request->validate([
+      'progressPercent' => ['nullable', 'integer', 'min:0', 'max:100'],
+      'epubCfi' => ['nullable', 'string', 'max:5000'],
+      'audioPositionSeconds' => ['nullable', 'integer', 'min:0'],
+      'audioDurationSeconds' => ['nullable', 'integer', 'min:0'],
+    ]);
+
+    $progress = $this->digitalAccessService->saveReadingProgress(
+      $request->user(),
+      $accessId,
+      $validated,
+    );
+
+    return response()->json([
+      'data' => [
+        'accessId' => $progress->digital_access_id,
+        'progressPercent' => $progress->progress_percent,
+        'epubCfi' => $progress->epub_cfi,
+        'audioPositionSeconds' => $progress->audio_position_seconds,
+        'audioDurationSeconds' => $progress->audio_duration_seconds,
+        'lastOpenedAt' => $progress->last_opened_at?->toIso8601String(),
+      ],
+    ]);
+  }
 }

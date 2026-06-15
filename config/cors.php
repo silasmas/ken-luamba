@@ -1,7 +1,7 @@
 <?php
 
 return [
-  'paths' => ['api/*', 'sanctum/csrf-cookie'],
+  'paths' => ['api/*', 'sanctum/csrf-cookie', 'digital/stream/*'],
   'allowed_methods' => ['*'],
   'allowed_origins' => array_filter([
     env('FRONTEND_URL', 'http://localhost:3001'),

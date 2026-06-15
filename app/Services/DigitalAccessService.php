@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\DigitalAccess;
 use App\Models\DigitalAccessLog;
+use App\Models\DigitalReadingProgress;
 use App\Models\Order;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -61,6 +62,7 @@ class DigitalAccessService
       ->with([
         'bookFormat.book',
         'orderItem',
+        'readingProgress',
         'logs' => fn ($query) => $query->latest('accessed_at')->limit(1),
       ])
       ->latest('granted_at')
@@ -159,6 +161,41 @@ class DigitalAccessService
     }
 
     return Storage::disk('local')->response($filePath);
+  }
+
+  /**
+   * Enregistre ou met à jour la progression de lecture d'un contenu.
+   *
+   * @param User $user Client connecté
+   * @param string $accessId Identifiant de l'accès
+   * @param array<string, mixed> $payload Données de progression
+   * @return DigitalReadingProgress Progression enregistrée
+   */
+  public function saveReadingProgress(User $user, string $accessId, array $payload): DigitalReadingProgress
+  {
+    $access = DigitalAccess::query()
+      ->where('id', $accessId)
+      ->where('user_id', $user->id)
+      ->where('is_active', true)
+      ->firstOrFail();
+
+    return DigitalReadingProgress::query()->updateOrCreate(
+      [
+        'digital_access_id' => $access->id,
+        'user_id' => $user->id,
+      ],
+      [
+        'progress_percent' => min(100, max(0, (int) ($payload['progressPercent'] ?? 0))),
+        'epub_cfi' => $payload['epubCfi'] ?? null,
+        'audio_position_seconds' => isset($payload['audioPositionSeconds'])
+          ? max(0, (int) $payload['audioPositionSeconds'])
+          : null,
+        'audio_duration_seconds' => isset($payload['audioDurationSeconds'])
+          ? max(0, (int) $payload['audioDurationSeconds'])
+          : null,
+        'last_opened_at' => now(),
+      ],
+    );
   }
 
   /**

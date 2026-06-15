@@ -37,6 +37,11 @@ class DigitalAccessResource extends JsonResource
       'maxDownloads' => (int) config('digital.max_downloads', 5),
       'remainingDownloads' => max(0, (int) config('digital.max_downloads', 5) - $this->download_count),
       'streamExpiryHours' => (int) config('digital.stream_expiry_hours', 2),
+      'progressPercent' => $this->readingProgress?->progress_percent ?? 0,
+      'epubCfi' => $this->readingProgress?->epub_cfi,
+      'audioPositionSeconds' => $this->readingProgress?->audio_position_seconds,
+      'audioDurationSeconds' => $this->readingProgress?->audio_duration_seconds,
+      'readingLastOpenedAt' => $this->readingProgress?->last_opened_at?->toIso8601String(),
     ];
   }
 }

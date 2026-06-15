@@ -74,6 +74,7 @@ Route::prefix('v1')->group(function (): void {
 
     Route::get('/library', [LibraryController::class, 'index']);
     Route::get('/library/{accessId}/stream', [LibraryController::class, 'stream']);
+    Route::put('/library/{accessId}/progress', [LibraryController::class, 'saveProgress']);
 
     Route::get('/wishlist', [WishlistController::class, 'index']);
     Route::post('/wishlist/{bookId}/toggle', [WishlistController::class, 'toggle']);
