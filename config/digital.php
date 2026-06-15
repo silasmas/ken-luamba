@@ -8,11 +8,13 @@ return [
   |--------------------------------------------------------------------------
   */
 
-  'stream_expiry_hours' => (int) env('DIGITAL_STREAM_EXPIRY_HOURS', 2),
+  'stream_expiry_minutes' => (int) env('DIGITAL_STREAM_EXPIRY_MINUTES', 120),
 
   'max_downloads' => (int) env('DIGITAL_MAX_DOWNLOADS', 5),
 
-  'share_expiry_hours' => (int) env('DIGITAL_SHARE_EXPIRY_HOURS', 48),
+  'share_expiry_minutes' => (int) env('DIGITAL_SHARE_EXPIRY_MINUTES', 2880),
+
+  'share_reading_minutes' => (int) env('DIGITAL_SHARE_READING_MINUTES', 90),
 
   'share_max_links' => (int) env('DIGITAL_SHARE_MAX_LINKS', 3),
 

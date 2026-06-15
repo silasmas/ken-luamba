@@ -48,6 +48,8 @@ Route::prefix('v1')->group(function (): void {
     ->name('library.share-stream-file');
 
   Route::get('/shares/{token}', [DigitalShareController::class, 'show']);
+  Route::post('/shares/{token}/open', [DigitalShareController::class, 'open']);
+  Route::put('/shares/{token}/progress', [DigitalShareController::class, 'saveProgress']);
   Route::get('/shares/{token}/stream', [DigitalShareController::class, 'stream']);
 
   Route::post('/payments/flexpay-callback', [PaymentController::class, 'flexpayCallback']);

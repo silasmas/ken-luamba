@@ -27,20 +27,20 @@ class DigitalFormatLimits
   }
 
   /**
-   * Retourne la durée de validité des liens de lecture en heures.
+   * Retourne la durée de validité des liens de lecture en minutes.
    *
    * @param BookFormat|null $format Format numérique
-   * @return int Durée en heures
+   * @return int Durée en minutes
    */
-  public static function streamExpiryHours(?BookFormat $format): int
+  public static function streamExpiryMinutes(?BookFormat $format): int
   {
-    $configured = $format?->digital_stream_expiry_hours;
+    $configured = $format?->digital_stream_expiry_minutes;
 
     if (is_int($configured) && $configured > 0) {
       return $configured;
     }
 
-    return max(1, (int) config('digital.stream_expiry_hours', 2));
+    return max(1, (int) config('digital.stream_expiry_minutes', 120));
   }
 
   /**
@@ -55,20 +55,48 @@ class DigitalFormatLimits
   }
 
   /**
-   * Retourne la durée de validité d'un lien de partage en heures.
+   * Retourne la durée de validité de l'URL du lien partagé (depuis la création).
    *
    * @param BookFormat|null $format Format numérique
-   * @return int Durée en heures
+   * @return int Durée en minutes
    */
-  public static function shareExpiryHours(?BookFormat $format): int
+  public static function shareLinkExpiryMinutes(?BookFormat $format): int
   {
-    $configured = $format?->digital_share_expiry_hours;
+    $configured = $format?->digital_share_expiry_minutes;
 
     if (is_int($configured) && $configured > 0) {
       return $configured;
     }
 
-    return max(1, (int) config('digital.share_expiry_hours', 48));
+    return max(1, (int) config('digital.share_expiry_minutes', 2880));
+  }
+
+  /**
+   * Retourne la durée de lecture accessible après ouverture du lien.
+   *
+   * @param BookFormat|null $format Format numérique
+   * @return int Durée en minutes
+   */
+  public static function shareReadingMinutes(?BookFormat $format): int
+  {
+    $configured = $format?->digital_share_reading_minutes;
+
+    if (is_int($configured) && $configured > 0) {
+      return $configured;
+    }
+
+    return max(1, (int) config('digital.share_reading_minutes', 90));
+  }
+
+  /**
+   * Alias de compatibilité pour la validité du lien partagé.
+   *
+   * @param BookFormat|null $format Format numérique
+   * @return int Durée en minutes
+   */
+  public static function shareExpiryMinutes(?BookFormat $format): int
+  {
+    return self::shareLinkExpiryMinutes($format);
   }
 
   /**
@@ -86,5 +114,29 @@ class DigitalFormatLimits
     }
 
     return max(1, (int) config('digital.share_max_links', 3));
+  }
+
+  /**
+   * Formate une durée en minutes pour affichage humain.
+   *
+   * @param int $minutes Durée en minutes
+   * @return string Libellé lisible (ex. 90 min, 2 h 30 min)
+   */
+  public static function formatMinutesLabel(int $minutes): string
+  {
+    $minutes = max(1, $minutes);
+
+    if ($minutes < 60) {
+      return $minutes.' min';
+    }
+
+    $hours = intdiv($minutes, 60);
+    $rest = $minutes % 60;
+
+    if ($rest === 0) {
+      return $hours.' h';
+    }
+
+    return $hours.' h '.$rest.' min';
   }
 }

@@ -21,6 +21,9 @@ class BookFormatResource extends JsonResource
   public function toArray(Request $request): array
   {
     $pricingService = app(PricingService::class);
+    $streamExpiryMinutes = DigitalFormatLimits::streamExpiryMinutes($this->resource);
+    $shareExpiryMinutes = DigitalFormatLimits::shareLinkExpiryMinutes($this->resource);
+    $shareReadingMinutes = DigitalFormatLimits::shareReadingMinutes($this->resource);
 
     return [
       'id' => $this->id,
@@ -32,20 +35,22 @@ class BookFormatResource extends JsonResource
       'digitalFileTypeLabel' => $this->digital_file_type?->label(),
       'digitalLimits' => $this->when($this->type->isDigital(), fn () => [
         'fileTypeLabel' => $this->digital_file_type?->label(),
-        'streamExpiryHours' => DigitalFormatLimits::streamExpiryHours($this->resource),
+        'streamExpiryMinutes' => $streamExpiryMinutes,
         'maxDownloads' => DigitalFormatLimits::maxDownloads($this->resource),
         'sharingEnabled' => DigitalFormatLimits::sharingEnabled($this->resource),
-        'shareExpiryHours' => DigitalFormatLimits::shareExpiryHours($this->resource),
+        'shareExpiryMinutes' => $shareExpiryMinutes,
+        'shareReadingMinutes' => $shareReadingMinutes,
         'shareMaxLinks' => DigitalFormatLimits::shareMaxLinks($this->resource),
         'personalAccess' => true,
         'noSharing' => ! DigitalFormatLimits::sharingEnabled($this->resource),
         'summary' => DigitalFormatLimits::sharingEnabled($this->resource)
           ? 'Lecture en ligne via lien signé ('
-            .DigitalFormatLimits::streamExpiryHours($this->resource).' h). Partage possible : '
-            .DigitalFormatLimits::shareMaxLinks($this->resource).' lien(s) actif(s) de '
-            .DigitalFormatLimits::shareExpiryHours($this->resource).' h chacun.'
+            .DigitalFormatLimits::formatMinutesLabel($streamExpiryMinutes).'). Partage : '
+            .DigitalFormatLimits::shareMaxLinks($this->resource).' lien(s), validité '
+            .DigitalFormatLimits::formatMinutesLabel($shareExpiryMinutes).', lecture '
+            .DigitalFormatLimits::formatMinutesLabel($shareReadingMinutes).' après ouverture.'
           : 'Lecture en ligne via lien signé ('
-            .DigitalFormatLimits::streamExpiryHours($this->resource).' h max). Téléchargements limités à '
+            .DigitalFormatLimits::formatMinutesLabel($streamExpiryMinutes).' max). Téléchargements limités à '
             .DigitalFormatLimits::maxDownloads($this->resource).' fois.',
       ]),
       'stockQuantity' => $this->stock_quantity,

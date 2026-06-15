@@ -87,6 +87,49 @@ class DigitalShareController extends Controller
   }
 
   /**
+   * Démarre ou reprend la session de lecture partagée.
+   *
+   * @param Request $request Requête publique
+   * @param string $token Token public
+   * @return JsonResponse État de session
+   */
+  public function open(Request $request, string $token): JsonResponse
+  {
+    return response()->json([
+      'data' => $this->digitalShareService->openShare($token, $request),
+    ]);
+  }
+
+  /**
+   * Enregistre la progression de lecture d'un lien partagé.
+   *
+   * @param Request $request Requête publique
+   * @param string $token Token public
+   * @return JsonResponse Progression enregistrée
+   */
+  public function saveProgress(Request $request, string $token): JsonResponse
+  {
+    $validated = $request->validate([
+      'progressPercent' => ['nullable', 'integer', 'min:0', 'max:100'],
+      'epubCfi' => ['nullable', 'string', 'max:5000'],
+      'audioPositionSeconds' => ['nullable', 'integer', 'min:0'],
+      'audioDurationSeconds' => ['nullable', 'integer', 'min:0'],
+    ]);
+
+    $progress = $this->digitalShareService->saveShareProgress($token, $validated);
+
+    return response()->json([
+      'data' => [
+        'progressPercent' => $progress->progress_percent,
+        'epubCfi' => $progress->epub_cfi,
+        'audioPositionSeconds' => $progress->audio_position_seconds,
+        'audioDurationSeconds' => $progress->audio_duration_seconds,
+        'lastOpenedAt' => $progress->last_opened_at?->toIso8601String(),
+      ],
+    ]);
+  }
+
+  /**
    * Retourne les métadonnées publiques d'un lien de partage.
    *
    * @param string $token Token public

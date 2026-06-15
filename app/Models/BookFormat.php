@@ -32,9 +32,10 @@ class BookFormat extends Model
     'digital_file_path',
     'digital_file_type',
     'digital_max_downloads',
-    'digital_stream_expiry_hours',
+    'digital_stream_expiry_minutes',
     'digital_share_enabled',
-    'digital_share_expiry_hours',
+    'digital_share_expiry_minutes',
+    'digital_share_reading_minutes',
     'digital_share_max_links',
     'is_active',
   ];
@@ -98,11 +99,11 @@ class BookFormat extends Model
   /**
    * Retourne la durée de validité des liens de lecture pour ce format.
    *
-   * @return int Durée en heures
+   * @return int Durée en minutes
    */
-  public function resolvedStreamExpiryHours(): int
+  public function resolvedStreamExpiryMinutes(): int
   {
-    return DigitalFormatLimits::streamExpiryHours($this);
+    return DigitalFormatLimits::streamExpiryMinutes($this);
   }
 
   /**

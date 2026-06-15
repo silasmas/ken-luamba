@@ -114,33 +114,41 @@ class FormatsRelationManager extends RelationManager
               ->maxValue(50)
               ->default(fn (): int => (int) config('digital.max_downloads', 5))
               ->helperText('Nombre de fois que le client peut télécharger le fichier (variable DIGITAL_MAX_DOWNLOADS par défaut).'),
-            TextInput::make('digital_stream_expiry_hours')
-              ->label('Validité lien lecture (heures)')
+            TextInput::make('digital_stream_expiry_minutes')
+              ->label('Validité lien lecture (minutes)')
               ->numeric()
               ->minValue(1)
-              ->maxValue(168)
-              ->default(fn (): int => (int) config('digital.stream_expiry_hours', 2))
-              ->helperText('Durée du lien signé pour Lire / Écouter en ligne. Après expiration, le client doit rouvrir depuis Ma bibliothèque. N\'affecte pas le fichier déjà téléchargé.'),
+              ->maxValue(10080)
+              ->default(fn (): int => (int) config('digital.stream_expiry_minutes', 120))
+              ->helperText('Durée du lien signé pour Lire / Écouter en ligne (ex. 120 = 2 h). Après expiration, le client rouvre depuis Ma bibliothèque.'),
             Toggle::make('digital_share_enabled')
               ->label('Autoriser le partage par lien')
               ->default(false)
               ->helperText('Permet au client de créer des liens publics temporaires (EPUB ou audio).'),
-            TextInput::make('digital_share_expiry_hours')
-              ->label('Durée lien partagé (heures)')
+            TextInput::make('digital_share_expiry_minutes')
+              ->label('Validité du lien (minutes)')
               ->numeric()
               ->minValue(1)
-              ->maxValue(168)
-              ->default(fn (): int => (int) config('digital.share_expiry_hours', 48))
+              ->maxValue(10080)
+              ->default(fn (): int => (int) config('digital.share_expiry_minutes', 2880))
               ->visible(fn (callable $get): bool => (bool) $get('digital_share_enabled'))
-              ->helperText('Temps pendant lequel le destinataire peut ouvrir le lien partagé dans son navigateur.'),
+              ->helperText('Durée pendant laquelle l\'URL reste utilisable, à compter de la création du lien.'),
+            TextInput::make('digital_share_reading_minutes')
+              ->label('Durée de lecture (minutes)')
+              ->numeric()
+              ->minValue(1)
+              ->maxValue(10080)
+              ->default(fn (): int => (int) config('digital.share_reading_minutes', 90))
+              ->visible(fn (callable $get): bool => (bool) $get('digital_share_enabled'))
+              ->helperText('Temps de lecture accordé au destinataire dès la première ouverture du lien.'),
             TextInput::make('digital_share_max_links')
-              ->label('Liens de partage max')
+              ->label('Nombre max de liens actifs')
               ->numeric()
               ->minValue(1)
               ->maxValue(20)
               ->default(fn (): int => (int) config('digital.share_max_links', 3))
               ->visible(fn (callable $get): bool => (bool) $get('digital_share_enabled'))
-              ->helperText('Nombre de liens actifs simultanés que le client peut créer pour ce livre.'),
+              ->helperText('Nombre de liens de partage simultanés que le client peut créer pour ce livre.'),
           ])
           ->columnSpanFull(),
       ]);

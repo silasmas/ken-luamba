@@ -24,7 +24,7 @@ class DigitalAccessResource extends JsonResource
   {
     $format = $this->bookFormat;
     $maxDownloads = DigitalFormatLimits::maxDownloads($format);
-    $streamExpiryHours = DigitalFormatLimits::streamExpiryHours($format);
+    $streamExpiryMinutes = DigitalFormatLimits::streamExpiryMinutes($format);
     $sharingEnabled = DigitalFormatLimits::sharingEnabled($format);
     $shareMaxLinks = DigitalFormatLimits::shareMaxLinks($format);
     $activeShareCount = $sharingEnabled
@@ -48,9 +48,11 @@ class DigitalAccessResource extends JsonResource
       'downloadCount' => $this->download_count,
       'maxDownloads' => $maxDownloads,
       'remainingDownloads' => max(0, $maxDownloads - $this->download_count),
-      'streamExpiryHours' => $streamExpiryHours,
+      'streamExpiryMinutes' => $streamExpiryMinutes,
       'sharingEnabled' => $sharingEnabled,
-      'shareExpiryHours' => DigitalFormatLimits::shareExpiryHours($format),
+      'shareExpiryMinutes' => DigitalFormatLimits::shareLinkExpiryMinutes($format),
+      'shareReadingMinutes' => DigitalFormatLimits::shareReadingMinutes($format),
+      'shareReadingMinutes' => DigitalFormatLimits::shareReadingMinutes($format),
       'shareMaxLinks' => $shareMaxLinks,
       'activeShareCount' => $activeShareCount,
       'remainingShareLinks' => $sharingEnabled ? max(0, $shareMaxLinks - $activeShareCount) : 0,

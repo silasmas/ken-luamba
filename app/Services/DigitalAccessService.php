@@ -92,8 +92,8 @@ class DigitalAccessService
 
     $format = $access->bookFormat;
     $maxDownloads = DigitalFormatLimits::maxDownloads($format);
-    $streamExpiryHours = DigitalFormatLimits::streamExpiryHours($format);
-    $expiresAt = now()->addHours($streamExpiryHours);
+    $streamExpiryMinutes = DigitalFormatLimits::streamExpiryMinutes($format);
+    $expiresAt = now()->addMinutes($streamExpiryMinutes);
 
     return [
       'accessId' => $access->id,
@@ -105,8 +105,8 @@ class DigitalAccessService
       'streamUrl' => $this->buildSignedStreamUrl($access, $user, $expiresAt),
       'watermark' => $user->email.' — '.$access->order_id,
       'expiresAt' => $expiresAt->toIso8601String(),
-      'expiresInMinutes' => $streamExpiryHours * 60,
-      'streamExpiryHours' => $streamExpiryHours,
+      'expiresInMinutes' => $streamExpiryMinutes,
+      'streamExpiryMinutes' => $streamExpiryMinutes,
       'downloadCount' => $access->download_count,
       'maxDownloads' => $maxDownloads,
       'remainingDownloads' => max(0, $maxDownloads - $access->download_count),
