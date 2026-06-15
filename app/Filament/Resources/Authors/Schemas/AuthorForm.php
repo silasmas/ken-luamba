@@ -42,20 +42,20 @@ class AuthorForm
               ->unique(ignoreRecord: true)
               ->maxLength(255)
               ->helperText('Identifiant utilisé dans l\'adresse /auteur/{slug}.'),
-            TextInput::make('title')
-              ->label('Titre / fonction (résumé)')
-              ->placeholder('Pasteur, auteur, conférencier')
-              ->maxLength(255)
-              ->helperText('Courte mention sous le nom (ex. Pasteur, auteur).'),
             Textarea::make('roles')
-              ->label('Titres / fonctions (liste)')
+              ->label('Titres / fonctions')
               ->rows(4)
               ->columnSpanFull()
               ->formatStateUsing(fn ($state) => is_array($state) ? implode("\n", $state) : '')
               ->dehydrateStateUsing(
                 fn ($state) => array_values(array_filter(array_map('trim', preg_split("/\R/", (string) $state) ?: []))),
               )
-              ->helperText('Un titre ou une fonction par ligne — affichés dans le hero de l\'accueil.'),
+              ->helperText('Un titre ou une fonction par ligne — affichés sur l\'accueil et la page auteur.'),
+            TextInput::make('title')
+              ->label('Titre / fonction (résumé court)')
+              ->placeholder('Pasteur · Auteur · Conférencier')
+              ->maxLength(255)
+              ->helperText('Résumé court sous le nom (secours si la liste ci-dessus est vide).'),
           ],
         ),
         AdminFormLayout::section(
@@ -103,7 +103,7 @@ class AuthorForm
               ->keyLabel('Plateforme')
               ->valueLabel('URL')
               ->columnSpanFull()
-              ->helperText('Liens Facebook, YouTube, Instagram, etc.'),
+              ->helperText('Clés conseillées : facebook, instagram, x, youtube. Valeur = URL complète.'),
           ],
         ),
         AdminFormLayout::section(
