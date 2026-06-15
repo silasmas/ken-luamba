@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\V1\AuthorController;
 use App\Http\Controllers\Api\V1\BookController;
 use App\Http\Controllers\Api\V1\BookReviewController;
 use App\Http\Controllers\Api\V1\CartController;
+use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CourierController;
 use App\Http\Controllers\Api\V1\InvitationController;
 use App\Http\Controllers\Api\V1\HealthController;
@@ -20,6 +21,7 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->group(function (): void {
   Route::get('/health', HealthController::class);
   Route::get('/appearance', AppearanceController::class);
+  Route::get('/contact', ContactController::class);
   Route::get('/shop/config', ShopConfigController::class);
 
   Route::get('/authors/{slug}', [AuthorController::class, 'show']);
