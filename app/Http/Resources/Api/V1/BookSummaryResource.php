@@ -31,6 +31,7 @@ class BookSummaryResource extends JsonResource
       'slug' => $this->slug,
       'description' => $this->description,
       'coverImage' => MediaUrl::fromPath($this->cover_image),
+      'backCoverImage' => MediaUrl::fromPath($this->back_cover_image),
       'previewPdfUrl' => MediaUrl::fromPath($this->preview_pdf_path),
       'accentColor' => $this->accent_color,
       'isFeatured' => $this->is_featured,

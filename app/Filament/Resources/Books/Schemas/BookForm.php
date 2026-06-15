@@ -103,37 +103,89 @@ class BookForm
                 fn ($state) => array_values(array_filter(array_map('trim', preg_split("/\R/", (string) $state) ?: []))),
               )
               ->helperText('Un thème par ligne.'),
-            Textarea::make('excerpt')
-              ->label('Extrait (JSON)')
-              ->rows(10)
-              ->columnSpanFull()
-              ->formatStateUsing(fn ($state) => is_array($state) ? json_encode($state, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) : $state)
-              ->dehydrateStateUsing(function ($state) {
-                if (is_array($state)) {
-                  return $state;
-                }
-
-                $decoded = json_decode((string) $state, true);
-
-                return is_array($decoded) ? $decoded : [];
-              })
-              ->helperText('Pages de l\'aperçu feuilletable au format JSON.'),
             FileUpload::make('cover_image')
-              ->label('Couverture')
+              ->label('Couverture (recto)')
               ->image()
               ->disk('public')
               ->visibility('public')
               ->directory('books/covers')
-              ->columnSpanFull()
-              ->helperText('Image de couverture (ratio portrait recommandé).'),
+              ->helperText('Image de couverture — page « Couverture » de l\'aperçu.'),
+            FileUpload::make('back_cover_image')
+              ->label('Quatrième de couverture (verso)')
+              ->image()
+              ->disk('public')
+              ->visibility('public')
+              ->directory('books/covers/back')
+              ->helperText('Image verso — page « Quatrième de couverture » de l\'aperçu.'),
             FileUpload::make('preview_pdf_path')
-              ->label('Extrait PDF (feuilletable)')
+              ->label('Extrait PDF (optionnel)')
               ->acceptedFileTypes(['application/pdf'])
               ->disk('public')
               ->visibility('public')
               ->directory('books/previews')
               ->columnSpanFull()
-              ->helperText('PDF public affiché dans le lecteur « Lire un extrait » avec animation de pages.'),
+              ->helperText('Secours : PDF utilisé seulement si aucune page d\'aperçu n\'est définie ci-dessous.'),
+          ],
+          1,
+        ),
+        AdminFormLayout::section(
+          'Aperçu feuilletable',
+          'Pages du lecteur « Lire un extrait » (animation livre).',
+          [
+            Repeater::make('excerpt')
+              ->label('Pages de l\'aperçu')
+              ->schema([
+                Select::make('kind')
+                  ->label('Type de page')
+                  ->options([
+                    'cover' => 'Couverture (image recto)',
+                    'backCover' => 'Quatrième de couverture (image verso)',
+                    'chapter' => 'Page de chapitre',
+                    'section' => 'Section / introduction',
+                    'part' => 'Partie du livre',
+                    'text' => 'Page de texte',
+                  ])
+                  ->required()
+                  ->live(),
+                TextInput::make('eyebrow')
+                  ->label('Sur-titre')
+                  ->maxLength(255)
+                  ->visible(fn (callable $get): bool => in_array($get('kind'), ['section', 'part'], true)),
+                TextInput::make('chapter')
+                  ->label('Chapitre')
+                  ->maxLength(255)
+                  ->visible(fn (callable $get): bool => $get('kind') === 'chapter'),
+                TextInput::make('title')
+                  ->label('Titre')
+                  ->maxLength(255)
+                  ->visible(fn (callable $get): bool => ! in_array($get('kind'), ['cover', 'backCover'], true)),
+                TextInput::make('pageLabel')
+                  ->label('Numéro de page')
+                  ->maxLength(40)
+                  ->visible(fn (callable $get): bool => in_array($get('kind'), ['section', 'part', 'text'], true)),
+                Textarea::make('paragraphs')
+                  ->label('Paragraphes')
+                  ->rows(6)
+                  ->columnSpanFull()
+                  ->formatStateUsing(fn ($state) => is_array($state) ? implode("\n\n", $state) : '')
+                  ->dehydrateStateUsing(
+                    fn ($state) => array_values(array_filter(preg_split("/\R\R+/", (string) $state) ?: [])),
+                  )
+                  ->visible(fn (callable $get): bool => in_array($get('kind'), ['section', 'part', 'text'], true))
+                  ->helperText('Un paragraphe par bloc, séparés par une ligne vide.'),
+              ])
+              ->columns(2)
+              ->collapsible()
+              ->itemLabel(function (array $state): string {
+                $kind = $state['kind'] ?? 'page';
+                $title = $state['title'] ?? $state['chapter'] ?? $state['eyebrow'] ?? null;
+
+                return $title ? "{$kind} — {$title}" : $kind;
+              })
+              ->addActionLabel('Ajouter une page')
+              ->reorderable()
+              ->columnSpanFull()
+              ->helperText('Ordre des pages = ordre de feuilletage. Utilisez cover en début et backCover en fin.'),
           ],
           1,
         ),
