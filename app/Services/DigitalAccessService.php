@@ -8,6 +8,7 @@ use App\Models\DigitalReadingProgress;
 use App\Models\Order;
 use App\Models\User;
 use App\Support\DigitalFilePath;
+use App\Support\DigitalFormatLimits;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -85,19 +86,23 @@ class DigitalAccessService
     $streamUrl = rtrim((string) config('app.url'), '/')
       .'/api/v1/library/'.$access->id.'/file?mode='.$mode;
 
+    $format = $access->bookFormat;
+    $maxDownloads = DigitalFormatLimits::maxDownloads($format);
+    $streamExpiryHours = DigitalFormatLimits::streamExpiryHours($format);
+
     return [
       'accessId' => $access->id,
-      'bookTitle' => $access->orderItem?->book_title ?? $access->bookFormat?->book?->title,
-      'formatType' => $access->bookFormat?->type->value,
-      'formatLabel' => $access->bookFormat?->type->label(),
-      'digitalFileType' => $access->bookFormat?->digital_file_type?->value,
-      'digitalFileTypeLabel' => $access->bookFormat?->digital_file_type?->label(),
+      'bookTitle' => $access->orderItem?->book_title ?? $format?->book?->title,
+      'formatType' => $format?->type->value,
+      'formatLabel' => $format?->type->label(),
+      'digitalFileType' => $format?->digital_file_type?->value,
+      'digitalFileTypeLabel' => $format?->digital_file_type?->label(),
       'streamUrl' => $streamUrl,
       'watermark' => $user->email.' — '.$access->order_id,
-      'expiresInMinutes' => (int) config('digital.stream_expiry_hours', 2) * 60,
+      'expiresInMinutes' => $streamExpiryHours * 60,
       'downloadCount' => $access->download_count,
-      'maxDownloads' => (int) config('digital.max_downloads', 5),
-      'remainingDownloads' => max(0, (int) config('digital.max_downloads', 5) - $access->download_count),
+      'maxDownloads' => $maxDownloads,
+      'remainingDownloads' => max(0, $maxDownloads - $access->download_count),
     ];
   }
 
@@ -133,7 +138,7 @@ class DigitalAccessService
       ]);
     }
 
-    $maxDownloads = (int) config('digital.max_downloads', 5);
+    $maxDownloads = DigitalFormatLimits::maxDownloads($access->bookFormat);
     $isDownload = $mode === 'download';
 
     if ($isDownload && $access->download_count >= $maxDownloads) {

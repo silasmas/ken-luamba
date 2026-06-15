@@ -3,11 +3,13 @@
 namespace App\Filament\Support;
 
 use App\Enums\InvitationDispatchChannel;
+use App\Models\Event;
 use App\Models\Invitation;
 use App\Services\Invitations\InvitationDispatchService;
 use App\Services\Invitations\InvitationMessageService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
@@ -248,6 +250,70 @@ class InvitationAdminActions
 
         Notification::make()
           ->title($result['sent'].' envoi(s) réussi(s), '.$result['failed'].' échec(s)')
+          ->success()
+          ->send();
+      });
+  }
+
+  /**
+   * Action de programmation des rappels pour un événement.
+   *
+   * @param callable(): Event $eventResolver Fournit l'événement cible
+   * @return Action Action Filament
+   */
+  public static function scheduleSendForEvent(callable $eventResolver): Action
+  {
+    return Action::make('scheduleInvitationSend')
+      ->label('Programmer les rappels')
+      ->icon(Heroicon::OutlinedClock)
+      ->modalWidth('lg')
+      ->form(function () use ($eventResolver): array {
+        $event = $eventResolver();
+
+        return [
+          DateTimePicker::make('scheduled_at')
+            ->label('Date et heure d\'envoi')
+            ->seconds(false)
+            ->required()
+            ->minDate(now())
+            ->default($event->invitation_auto_send_at),
+          Select::make('channel')
+            ->label('Canal')
+            ->options([
+              InvitationDispatchChannel::Email->value => InvitationDispatchChannel::Email->label(),
+              InvitationDispatchChannel::Sms->value => InvitationDispatchChannel::Sms->label(),
+            ])
+            ->default($event->invitation_auto_send_channel ?? InvitationDispatchChannel::Email->value)
+            ->required()
+            ->live()
+            ->native(false),
+          Select::make('message_id')
+            ->label('Modèle de message')
+            ->options(function (callable $get) use ($event): array {
+              $channel = InvitationDispatchChannel::tryFrom((string) $get('channel'))
+                ?? InvitationDispatchChannel::Email;
+
+              return app(InvitationMessageService::class)->optionsForChannel($event, $channel);
+            })
+            ->required()
+            ->default($event->invitation_auto_send_message_id)
+            ->native(false),
+        ];
+      })
+      ->action(function (array $data) use ($eventResolver): void {
+        $event = $eventResolver();
+
+        $event->update([
+          'invitation_auto_send_enabled' => true,
+          'invitation_auto_send_at' => $data['scheduled_at'],
+          'invitation_auto_send_sent_at' => null,
+          'invitation_auto_send_channel' => $data['channel'],
+          'invitation_auto_send_message_id' => self::selectedMessageId($data),
+        ]);
+
+        Notification::make()
+          ->title('Rappels programmés')
+          ->body('Les invités éligibles seront contactés automatiquement à la date choisie.')
           ->success()
           ->send();
       });

@@ -4,6 +4,7 @@ namespace App\Services\Invitations;
 
 use App\Enums\InvitationDispatchChannel;
 use App\Enums\InvitationDispatchStatus;
+use App\Models\Event;
 use App\Models\Invitation;
 use App\Notifications\Invitations\EventInvitationNotification;
 use App\Services\Sms\KecelSmsService;
@@ -371,5 +372,81 @@ class InvitationDispatchService
     }
 
     return $digits;
+  }
+
+  /**
+   * Traite les envois d'invitations programmés sur les événements.
+   *
+   * @return array{events:int, sent:int, failed:int} Statistiques globales
+   */
+  public function dispatchScheduled(): array
+  {
+    $events = Event::query()
+      ->where('invitation_auto_send_enabled', true)
+      ->whereNotNull('invitation_auto_send_at')
+      ->where('invitation_auto_send_at', '<=', now())
+      ->whereNull('invitation_auto_send_sent_at')
+      ->get();
+
+    $eventsCount = 0;
+    $sent = 0;
+    $failed = 0;
+
+    foreach ($events as $event) {
+      $channel = InvitationDispatchChannel::tryFrom((string) $event->invitation_auto_send_channel)
+        ?? InvitationDispatchChannel::Email;
+      $messageId = $event->invitation_auto_send_message_id;
+
+      $invitations = $this->pendingInvitationsForChannel($event, $channel);
+
+      if ($invitations->isEmpty()) {
+        $event->update(['invitation_auto_send_sent_at' => now()]);
+        continue;
+      }
+
+      if ($channel === InvitationDispatchChannel::Whatsapp) {
+        $event->update(['invitation_auto_send_sent_at' => now()]);
+        continue;
+      }
+
+      $result = $this->sendBulk($invitations, $channel, $messageId);
+      $eventsCount++;
+      $sent += $result['sent'];
+      $failed += $result['failed'];
+      $event->update(['invitation_auto_send_sent_at' => now()]);
+    }
+
+    return [
+      'events' => $eventsCount,
+      'sent' => $sent,
+      'failed' => $failed,
+    ];
+  }
+
+  /**
+   * Retourne les invitations non encore contactées sur un canal.
+   *
+   * @param Event $event Événement source
+   * @param InvitationDispatchChannel $channel Canal cible
+   * @return Collection<int, Invitation> Invitations éligibles
+   */
+  private function pendingInvitationsForChannel(Event $event, InvitationDispatchChannel $channel): Collection
+  {
+    $query = $event->invitations();
+
+    return match ($channel) {
+      InvitationDispatchChannel::Email => $query
+        ->whereNull('email_sent_at')
+        ->whereNotNull('email')
+        ->get(),
+      InvitationDispatchChannel::Sms => $query
+        ->whereNull('sms_sent_at')
+        ->whereNotNull('phone')
+        ->get(),
+      InvitationDispatchChannel::Whatsapp => $query
+        ->whereNull('whatsapp_sent_at')
+        ->whereNotNull('phone')
+        ->get(),
+    };
   }
 }

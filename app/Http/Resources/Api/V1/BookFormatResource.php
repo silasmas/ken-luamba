@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api\V1;
 
 use App\Services\PricingService;
+use App\Support\DigitalFormatLimits;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -31,11 +32,12 @@ class BookFormatResource extends JsonResource
       'digitalFileTypeLabel' => $this->digital_file_type?->label(),
       'digitalLimits' => $this->when($this->type->isDigital(), fn () => [
         'fileTypeLabel' => $this->digital_file_type?->label(),
-        'streamExpiryHours' => (int) config('digital.stream_expiry_hours', 2),
-        'maxDownloads' => (int) config('digital.max_downloads', 5),
+        'streamExpiryHours' => DigitalFormatLimits::streamExpiryHours($this->resource),
+        'maxDownloads' => DigitalFormatLimits::maxDownloads($this->resource),
         'personalAccess' => true,
         'noSharing' => true,
-        'summary' => 'Accès personnel lié à votre compte. Lien temporaire, pas de partage.',
+        'summary' => 'Accès personnel lié à votre compte. Lecture en ligne recommandée. Téléchargements limités à '
+          .DigitalFormatLimits::maxDownloads($this->resource).' fois.',
       ]),
       'stockQuantity' => $this->stock_quantity,
       'currentPrice' => $pricingService->getCurrentPrice($this->resource),

@@ -23,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
       $schedule->command('orders:send-payment-reminders')->hourly();
       $schedule->command('deliveries:send-stale-alerts')->hourly();
       $schedule->command('release-notifications:dispatch-scheduled')->everyMinute();
+      $schedule->command('invitations:dispatch-scheduled')->everyMinute();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

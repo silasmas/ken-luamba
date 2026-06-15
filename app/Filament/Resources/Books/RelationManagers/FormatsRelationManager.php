@@ -107,6 +107,20 @@ class FormatsRelationManager extends RelationManager
                 return $fileType?->mimeTypes() ?? [];
               })
               ->helperText('Le fichier doit correspondre au type sélectionné. Accès sécurisé après achat.'),
+            TextInput::make('digital_max_downloads')
+              ->label('Téléchargements max')
+              ->numeric()
+              ->minValue(1)
+              ->maxValue(50)
+              ->default(fn (): int => (int) config('digital.max_downloads', 5))
+              ->helperText('Nombre de fois que le client peut télécharger le fichier (variable DIGITAL_MAX_DOWNLOADS par défaut).'),
+            TextInput::make('digital_stream_expiry_hours')
+              ->label('Validité lien lecture (heures)')
+              ->numeric()
+              ->minValue(1)
+              ->maxValue(168)
+              ->default(fn (): int => (int) config('digital.stream_expiry_hours', 2))
+              ->helperText('Durée affichée au client pour les liens de lecture (variable DIGITAL_STREAM_EXPIRY_HOURS par défaut).'),
           ])
           ->columnSpanFull(),
       ]);
@@ -130,6 +144,10 @@ class FormatsRelationManager extends RelationManager
           ->label('Type fichier')
           ->formatStateUsing(fn (?DigitalFileType $state): string => $state?->label() ?? '—')
           ->toggleable(),
+        TextColumn::make('digital_max_downloads')
+          ->label('Téléch. max')
+          ->formatStateUsing(fn (?int $state, BookFormat $record): string => (string) $record->resolvedMaxDownloads())
+          ->toggleable(isToggledHiddenByDefault: true),
         TextColumn::make('sku')
           ->label('SKU')
           ->searchable(),

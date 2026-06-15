@@ -24,6 +24,7 @@ class ListBookReleaseSubscriptions extends ListRecords
   protected function getHeaderActions(): array
   {
     return [
+      BookReleaseAdminActions::scheduleEmailCampaign(),
       BookReleaseAdminActions::sendEmailToAllPending(),
     ];
   }

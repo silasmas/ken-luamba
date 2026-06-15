@@ -70,6 +70,7 @@ class InvitationsRelationManager extends RelationManager
     return InvitationsTable::configure($table)
       ->headerActions([
         CreateAction::make(),
+        InvitationAdminActions::scheduleSendForEvent(fn () => $this->getOwnerRecord()),
         ActionGroup::make([
           InvitationAdminActions::sendAllForEvent(
             InvitationDispatchChannel::Email,

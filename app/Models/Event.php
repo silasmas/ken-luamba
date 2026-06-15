@@ -29,6 +29,11 @@ class Event extends Model
     'description',
     'welcome_message',
     'invitation_messages',
+    'invitation_auto_send_enabled',
+    'invitation_auto_send_at',
+    'invitation_auto_send_sent_at',
+    'invitation_auto_send_channel',
+    'invitation_auto_send_message_id',
     'starts_at',
     'ends_at',
     'location',
@@ -49,6 +54,9 @@ class Event extends Model
       'ends_at' => 'datetime',
       'is_published' => 'boolean',
       'invitation_messages' => 'array',
+      'invitation_auto_send_enabled' => 'boolean',
+      'invitation_auto_send_at' => 'datetime',
+      'invitation_auto_send_sent_at' => 'datetime',
     ];
   }
 
@@ -75,6 +83,15 @@ class Event extends Model
     static::saving(function (Event $event): void {
       $event->invitation_messages = app(InvitationMessageService::class)
         ->normalizeStoredMessages($event->invitation_messages);
+
+      if ($event->isDirty([
+        'invitation_auto_send_enabled',
+        'invitation_auto_send_at',
+        'invitation_auto_send_channel',
+        'invitation_auto_send_message_id',
+      ])) {
+        $event->invitation_auto_send_sent_at = null;
+      }
     });
   }
 

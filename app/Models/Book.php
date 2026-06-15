@@ -40,6 +40,9 @@ class Book extends Model
     'release_notification_messages',
     'release_auto_notify_enabled',
     'release_auto_notify_at',
+    'release_auto_notify_message_id',
+    'release_auto_notify_email_subject',
+    'release_auto_notify_email_body',
     'release_auto_notify_sent_at',
     'slug',
     'description',
@@ -76,6 +79,24 @@ class Book extends Model
       'release_auto_notify_at' => 'datetime',
       'release_auto_notify_sent_at' => 'datetime',
     ];
+  }
+
+  /**
+   * Réinitialise l'envoi programmé si la planification change.
+   */
+  protected static function booted(): void
+  {
+    static::saving(function (Book $book): void {
+      if ($book->isDirty([
+        'release_auto_notify_enabled',
+        'release_auto_notify_at',
+        'release_auto_notify_message_id',
+        'release_auto_notify_email_subject',
+        'release_auto_notify_email_body',
+      ])) {
+        $book->release_auto_notify_sent_at = null;
+      }
+    });
   }
 
   /**

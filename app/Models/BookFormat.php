@@ -6,6 +6,7 @@ use App\Enums\BookFormatType;
 use App\Enums\DigitalFileType;
 use App\Services\Catalog\BookFormatSkuService;
 use App\Support\DigitalFilePath;
+use App\Support\DigitalFormatLimits;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -30,6 +31,8 @@ class BookFormat extends Model
     'stock_quantity',
     'digital_file_path',
     'digital_file_type',
+    'digital_max_downloads',
+    'digital_stream_expiry_hours',
     'is_active',
   ];
 
@@ -76,6 +79,26 @@ class BookFormat extends Model
   public function scopeActive($query)
   {
     return $query->where('is_active', true);
+  }
+
+  /**
+   * Retourne la limite de téléchargements effective pour ce format.
+   *
+   * @return int Nombre maximum de téléchargements
+   */
+  public function resolvedMaxDownloads(): int
+  {
+    return DigitalFormatLimits::maxDownloads($this);
+  }
+
+  /**
+   * Retourne la durée de validité des liens de lecture pour ce format.
+   *
+   * @return int Durée en heures
+   */
+  public function resolvedStreamExpiryHours(): int
+  {
+    return DigitalFormatLimits::streamExpiryHours($this);
   }
 
   /**

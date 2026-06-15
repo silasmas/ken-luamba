@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api\V1;
 
 use App\Support\DigitalFilePath;
+use App\Support\DigitalFormatLimits;
 use App\Support\MediaUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -20,6 +21,10 @@ class DigitalAccessResource extends JsonResource
    */
   public function toArray(Request $request): array
   {
+    $format = $this->bookFormat;
+    $maxDownloads = DigitalFormatLimits::maxDownloads($format);
+    $streamExpiryHours = DigitalFormatLimits::streamExpiryHours($format);
+
     return [
       'id' => $this->id,
       'bookTitle' => $this->orderItem?->book_title ?? $this->bookFormat?->book?->title,
@@ -35,9 +40,9 @@ class DigitalAccessResource extends JsonResource
       'lastAccessedAt' => $this->logs->first()?->accessed_at?->toIso8601String(),
       'hasFile' => DigitalFilePath::existsOnDisk($this->bookFormat?->digital_file_path),
       'downloadCount' => $this->download_count,
-      'maxDownloads' => (int) config('digital.max_downloads', 5),
-      'remainingDownloads' => max(0, (int) config('digital.max_downloads', 5) - $this->download_count),
-      'streamExpiryHours' => (int) config('digital.stream_expiry_hours', 2),
+      'maxDownloads' => $maxDownloads,
+      'remainingDownloads' => max(0, $maxDownloads - $this->download_count),
+      'streamExpiryHours' => $streamExpiryHours,
       'progressPercent' => $this->readingProgress?->progress_percent ?? 0,
       'epubCfi' => $this->readingProgress?->epub_cfi,
       'audioPositionSeconds' => $this->readingProgress?->audio_position_seconds,

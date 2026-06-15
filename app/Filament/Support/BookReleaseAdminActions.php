@@ -9,6 +9,7 @@ use App\Services\BookRelease\BookReleaseDispatchService;
 use App\Services\BookRelease\BookReleaseMessageService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
+use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -99,7 +100,7 @@ class BookReleaseAdminActions
   public static function sendEmailToAllPending(): Action
   {
     return Action::make('sendReleaseEmailAll')
-      ->label('Envoyer aux inscrits')
+      ->label('Envoyer maintenant')
       ->icon(Heroicon::OutlinedPaperAirplane)
       ->form([
         Select::make('book_id')
@@ -146,6 +147,63 @@ class BookReleaseAdminActions
         Notification::make()
           ->title('Campagne envoyée')
           ->body($result['sent'].' envoyé(s), '.$result['failed'].' échec(s).')
+          ->success()
+          ->send();
+      });
+  }
+
+  /**
+   * Action de programmation d'envoi aux inscrits non notifiés.
+   *
+   * @return Action Action Filament
+   */
+  public static function scheduleEmailCampaign(): Action
+  {
+    return Action::make('scheduleReleaseEmail')
+      ->label('Programmer l\'envoi')
+      ->icon(Heroicon::OutlinedClock)
+      ->form([
+        Select::make('book_id')
+          ->label('Livre')
+          ->options(fn (): array => Book::query()->orderBy('title')->pluck('title', 'id')->all())
+          ->searchable()
+          ->required()
+          ->live(),
+        DateTimePicker::make('scheduled_at')
+          ->label('Date et heure d\'envoi')
+          ->seconds(false)
+          ->required()
+          ->minDate(now())
+          ->helperText('L\'envoi démarre automatiquement à cette date (tâche planifiée chaque minute).'),
+        ...self::messageFields(
+          bookResolver: function (callable $get): ?Book {
+            $bookId = $get('book_id');
+
+            if (! $bookId) {
+              return null;
+            }
+
+            return Book::query()->find($bookId);
+          },
+          subscriptionResolver: fn (): ?BookReleaseSubscription => null,
+        ),
+      ])
+      ->action(function (array $data): void {
+        $book = Book::query()->findOrFail($data['book_id']);
+
+        $book->update([
+          'release_auto_notify_enabled' => true,
+          'release_auto_notify_at' => $data['scheduled_at'],
+          'release_auto_notify_sent_at' => null,
+          'release_auto_notify_message_id' => self::selectedMessageId($data),
+          'release_auto_notify_email_subject' => self::customSubject($data),
+          'release_auto_notify_email_body' => self::customBody($data),
+        ]);
+
+        Notification::make()
+          ->title('Envoi programmé')
+          ->body('Les inscrits non notifiés recevront l\'e-mail le '
+            .\Illuminate\Support\Carbon::parse($data['scheduled_at'])->locale('fr')->isoFormat('D MMMM YYYY à HH:mm').'.')
           ->success()
           ->send();
       });

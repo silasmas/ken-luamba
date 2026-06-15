@@ -153,7 +153,12 @@ class BookReleaseDispatchService
         continue;
       }
 
-      $result = $this->sendBulk($subscriptions);
+      $result = $this->sendBulk(
+        $subscriptions,
+        $book->release_auto_notify_message_id,
+        $book->release_auto_notify_email_subject,
+        $book->release_auto_notify_email_body,
+      );
       $booksCount++;
       $sent += $result['sent'];
       $failed += $result['failed'];

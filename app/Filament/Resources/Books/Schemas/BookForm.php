@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Books\Schemas;
 use App\Filament\Support\AdminFormLayout;
 use App\Filament\Support\BookReleasePlaceholderHelper;
 use App\Models\Author;
+use App\Models\Book;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
@@ -225,11 +226,25 @@ class BookForm
               ->columnSpanFull(),
             Toggle::make('release_auto_notify_enabled')
               ->label('Envoi automatique activé')
-              ->helperText('Envoie automatiquement l\'e-mail aux inscrits non notifiés.'),
+              ->helperText('Envoie automatiquement l\'e-mail aux inscrits non notifiés.')
+              ->live(),
             DateTimePicker::make('release_auto_notify_at')
               ->label('Date et heure d\'envoi automatique')
               ->seconds(false)
-              ->helperText('L\'envoi démarre dès que cette date est atteinte (tâche planifiée).'),
+              ->visible(fn (callable $get): bool => (bool) $get('release_auto_notify_enabled'))
+              ->helperText('L\'envoi démarre dès que cette date est atteinte (tâche planifiée chaque minute).'),
+            Select::make('release_auto_notify_message_id')
+              ->label('Modèle pour l\'envoi programmé')
+              ->options(function (?Book $record): array {
+                if ($record === null) {
+                  return [];
+                }
+
+                return app(\App\Services\BookRelease\BookReleaseMessageService::class)->optionsForBook($record);
+              })
+              ->native(false)
+              ->visible(fn (callable $get): bool => (bool) $get('release_auto_notify_enabled'))
+              ->helperText('Message utilisé lors de l\'envoi automatique.'),
           ],
         ),
       ]);

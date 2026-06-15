@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Events\Schemas;
 
 use App\Enums\EventType;
 use App\Enums\InvitationDispatchChannel;
+use App\Models\Event;
 use App\Filament\Support\AdminFormLayout;
 use App\Filament\Support\InvitationPlaceholderHelper;
 use Filament\Forms\Components\CheckboxList;
@@ -124,6 +125,43 @@ class EventForm
               ->itemLabel(fn (array $state): string => $state['label'] ?? 'Modèle')
               ->addActionLabel('Ajouter un modèle')
               ->columnSpanFull(),
+          ],
+          1,
+        ),
+        AdminFormLayout::section(
+          'Rappels programmés',
+          'Envoi automatique aux invités qui n\'ont pas encore reçu le message sur le canal choisi.',
+          [
+            Toggle::make('invitation_auto_send_enabled')
+              ->label('Envoi programmé activé')
+              ->live()
+              ->helperText('Nécessite que la tâche planifiée Laravel tourne (cron schedule:run).'),
+            DateTimePicker::make('invitation_auto_send_at')
+              ->label('Date et heure d\'envoi')
+              ->seconds(false)
+              ->visible(fn (callable $get): bool => (bool) $get('invitation_auto_send_enabled'))
+              ->helperText('Les invités éligibles recevront le rappel à cette date.'),
+            Select::make('invitation_auto_send_channel')
+              ->label('Canal')
+              ->options([
+                InvitationDispatchChannel::Email->value => InvitationDispatchChannel::Email->label(),
+                InvitationDispatchChannel::Sms->value => InvitationDispatchChannel::Sms->label(),
+              ])
+              ->default(InvitationDispatchChannel::Email->value)
+              ->native(false)
+              ->visible(fn (callable $get): bool => (bool) $get('invitation_auto_send_enabled'))
+              ->helperText('Email et SMS (Kecel) sont envoyés automatiquement. WhatsApp reste manuel.'),
+            Select::make('invitation_auto_send_message_id')
+              ->label('Modèle de message')
+              ->options(function (?Event $record, callable $get): array {
+                $channelValue = $get('invitation_auto_send_channel') ?? InvitationDispatchChannel::Email->value;
+                $channel = InvitationDispatchChannel::tryFrom((string) $channelValue) ?? InvitationDispatchChannel::Email;
+
+                return app(\App\Services\Invitations\InvitationMessageService::class)
+                  ->optionsForChannel($record, $channel);
+              })
+              ->native(false)
+              ->visible(fn (callable $get): bool => (bool) $get('invitation_auto_send_enabled')),
           ],
           1,
         ),
