@@ -2,6 +2,7 @@
 
 namespace App\Http\Resources\Api\V1;
 
+use App\Support\DigitalFilePath;
 use App\Support\MediaUrl;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -32,7 +33,7 @@ class DigitalAccessResource extends JsonResource
       'orderNumber' => $this->order?->order_number,
       'grantedAt' => $this->granted_at?->toIso8601String(),
       'lastAccessedAt' => $this->logs->first()?->accessed_at?->toIso8601String(),
-      'hasFile' => ! empty($this->bookFormat?->digital_file_path),
+      'hasFile' => DigitalFilePath::existsOnDisk($this->bookFormat?->digital_file_path),
       'downloadCount' => $this->download_count,
       'maxDownloads' => (int) config('digital.max_downloads', 5),
       'remainingDownloads' => max(0, (int) config('digital.max_downloads', 5) - $this->download_count),

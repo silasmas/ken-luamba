@@ -60,9 +60,7 @@ class BookReleaseMessageService
       }
 
       $normalized[] = [
-        'id' => is_string($message['id'] ?? null) && $message['id'] !== ''
-          ? $message['id']
-          : (string) Str::uuid(),
+        'id' => self::resolveMessageId($message, $body, count($normalized)),
         'label' => trim((string) ($message['label'] ?? 'Message')) ?: 'Message',
         'email_subject' => trim((string) ($message['email_subject'] ?? 'Votre livre est disponible')),
         'body' => $body,
@@ -80,7 +78,7 @@ class BookReleaseMessageService
   public function defaultMessages(): array
   {
     return [[
-      'id' => (string) Str::uuid(),
+      'id' => 'official-release',
       'label' => 'Sortie officielle',
       'email_subject' => '« {book_title} » est maintenant disponible',
       'body' => "Bonjour,\n\nLe livre « {book_title} » vient de paraître.\n\nDécouvrez-le dès maintenant : {book_link}\n\nKen Luamba Éditions",
@@ -213,5 +211,30 @@ class BookReleaseMessageService
     }
 
     return $messages[0] ?? $this->defaultMessages()[0];
+  }
+
+  /**
+   * Génère un identifiant stable pour un modèle sans id persisté.
+   *
+   * @param array<string, mixed> $message Modèle source
+   * @param string $body Corps du message
+   * @param int $index Position dans la liste
+   * @return string Identifiant stable
+   */
+  private static function resolveMessageId(array $message, string $body, int $index): string
+  {
+    $existingId = $message['id'] ?? null;
+
+    if (is_string($existingId) && $existingId !== '') {
+      return $existingId;
+    }
+
+    $label = trim((string) ($message['label'] ?? ''));
+
+    if ($label !== '') {
+      return 'message-'.Str::slug($label);
+    }
+
+    return 'message-'.$index.'-'.substr(md5($body), 0, 8);
   }
 }

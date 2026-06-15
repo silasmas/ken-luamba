@@ -56,11 +56,13 @@ class SeederDigitalFileService
     $zip->addFromString(
       'OEBPS/chapter1.xhtml',
       '<?xml version="1.0" encoding="UTF-8"?>'
-      .'<html xmlns="http://www.w3.org/1999/xhtml"><head><title>'.$safeTitle.'</title></head>'
-      .'<body><h1>'.$safeTitle.'</h1>'
+      .'<!DOCTYPE html>'
+      .'<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="fr">'
+      .'<head><meta charset="UTF-8"/><title>'.$safeTitle.'</title></head>'
+      .'<body><section epub:type="chapter"><h1>'.$safeTitle.'</h1>'
       .'<p>Extrait de démonstration Ken Luamba Éditions.</p>'
       .'<p>Ce fichier permet de tester la lecture EPUB dans l\'espace membre.</p>'
-      .'</body></html>',
+      .'</section></body></html>',
     );
     $zip->close();
 

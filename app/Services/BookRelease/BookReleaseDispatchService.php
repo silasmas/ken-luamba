@@ -36,6 +36,8 @@ class BookReleaseDispatchService
   public function sendToSubscription(
     BookReleaseSubscription $subscription,
     ?string $messageId = null,
+    ?string $customSubject = null,
+    ?string $customBody = null,
   ): BookReleaseDispatchLog {
     $subscription->loadMissing('book');
     $book = $subscription->book;
@@ -44,8 +46,18 @@ class BookReleaseDispatchService
       throw new \RuntimeException('Livre introuvable pour cette inscription.');
     }
 
-    $subject = $this->messageService->resolveEmailSubject($book, $subscription, $messageId);
-    $body = $this->messageService->resolveBody($book, $subscription, $messageId);
+    $subject = $customSubject
+      ?? $this->messageService->resolveEmailSubject($book, $subscription, $messageId);
+    $body = $customBody
+      ?? $this->messageService->resolveBody($book, $subscription, $messageId);
+
+    if ($customSubject !== null) {
+      $subject = $this->messageService->replacePlaceholders($subject, $book, $subscription);
+    }
+
+    if ($customBody !== null) {
+      $body = $this->messageService->replacePlaceholders($body, $book, $subscription);
+    }
 
     try {
       Notification::route('mail', $subscription->email)->notify(
@@ -84,13 +96,22 @@ class BookReleaseDispatchService
    * @param string|null $messageId Identifiant du modèle
    * @return array{sent:int, failed:int} Statistiques d'envoi
    */
-  public function sendBulk(Collection $subscriptions, ?string $messageId = null): array
-  {
+  public function sendBulk(
+    Collection $subscriptions,
+    ?string $messageId = null,
+    ?string $customSubject = null,
+    ?string $customBody = null,
+  ): array {
     $sent = 0;
     $failed = 0;
 
     foreach ($subscriptions as $subscription) {
-      $log = $this->sendToSubscription($subscription, $messageId);
+      $log = $this->sendToSubscription(
+        $subscription,
+        $messageId,
+        $customSubject,
+        $customBody,
+      );
 
       if ($log->status === BookReleaseDispatchStatus::Sent) {
         $sent++;

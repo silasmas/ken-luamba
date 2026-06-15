@@ -7,6 +7,7 @@ use App\Models\DigitalAccessLog;
 use App\Models\DigitalReadingProgress;
 use App\Models\Order;
 use App\Models\User;
+use App\Support\DigitalFilePath;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -118,9 +119,9 @@ class DigitalAccessService
       ->with(['bookFormat.book', 'orderItem'])
       ->firstOrFail();
 
-    $filePath = $access->bookFormat?->digital_file_path;
+    $filePath = DigitalFilePath::normalize($access->bookFormat?->digital_file_path);
 
-    if ($filePath === null || $filePath === '') {
+    if ($filePath === null) {
       throw ValidationException::withMessages([
         'access' => ['Fichier numérique non disponible pour ce format.'],
       ]);
@@ -197,7 +198,7 @@ class DigitalAccessService
    */
   public function buildFileResponse(DigitalAccess $access, bool $asDownload = false)
   {
-    $filePath = $access->bookFormat?->digital_file_path;
+    $filePath = DigitalFilePath::normalize($access->bookFormat?->digital_file_path);
 
     if ($filePath === null || ! Storage::disk('local')->exists($filePath)) {
       abort(404, 'Fichier introuvable.');
@@ -206,6 +207,10 @@ class DigitalAccessService
     $mimeType = $access->bookFormat?->digital_file_type?->mimeTypes()[0]
       ?? Storage::disk('local')->mimeType($filePath)
       ?? 'application/octet-stream';
+
+    if ($mimeType === 'application/octet-stream') {
+      $mimeType = self::guessMimeTypeFromPath($filePath) ?? $mimeType;
+    }
 
     $extension = $access->bookFormat?->digital_file_type?->extensions()[0] ?? 'bin';
     $bookTitle = $access->bookFormat?->book?->title ?? 'livre';
@@ -258,6 +263,24 @@ class DigitalAccessService
         'last_opened_at' => now(),
       ],
     );
+  }
+
+  /**
+   * Devine le type MIME à partir de l'extension du fichier.
+   *
+   * @param string $filePath Chemin relatif du fichier
+   * @return string|null Type MIME détecté
+   */
+  private static function guessMimeTypeFromPath(string $filePath): ?string
+  {
+    $extension = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+
+    return match ($extension) {
+      'epub' => 'application/epub+zip',
+      'pdf' => 'application/pdf',
+      'mp3' => 'audio/mpeg',
+      default => null,
+    };
   }
 
   /**

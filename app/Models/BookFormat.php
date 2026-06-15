@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\BookFormatType;
 use App\Enums\DigitalFileType;
 use App\Services\Catalog\BookFormatSkuService;
+use App\Support\DigitalFilePath;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -88,6 +89,10 @@ class BookFormat extends Model
       }
 
       $format->sku = app(BookFormatSkuService::class)->generate($format);
+    });
+
+    static::saving(function (BookFormat $format): void {
+      $format->digital_file_path = DigitalFilePath::normalize($format->digital_file_path);
     });
   }
 }

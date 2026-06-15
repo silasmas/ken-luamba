@@ -10,6 +10,8 @@ use App\Services\BookRelease\BookReleaseMessageService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
@@ -29,11 +31,14 @@ class BookReleaseAdminActions
     return Action::make('sendReleaseEmail')
       ->label('Envoyer e-mail')
       ->icon(Heroicon::OutlinedEnvelope)
-      ->form(fn (BookReleaseSubscription $record): array => self::messageSelectSchema($record))
+      ->fillForm(fn (BookReleaseSubscription $record): array => self::defaultMessageFormData($record))
+      ->form(fn (BookReleaseSubscription $record): array => self::messageFormSchema($record))
       ->action(function (BookReleaseSubscription $record, array $data): void {
         $log = app(BookReleaseDispatchService::class)->sendToSubscription(
           $record,
           self::selectedMessageId($data),
+          self::customSubject($data),
+          self::customBody($data),
         );
 
         if ($log->status === BookReleaseDispatchStatus::Failed) {
@@ -68,12 +73,14 @@ class BookReleaseAdminActions
         /** @var BookReleaseSubscription|null $first */
         $first = $records->first();
 
-        return self::messageSelectSchema($first);
+        return self::messageFormSchema($first);
       })
       ->action(function (Collection $records, array $data): void {
         $result = app(BookReleaseDispatchService::class)->sendBulk(
           $records,
           self::selectedMessageId($data),
+          self::customSubject($data),
+          self::customBody($data),
         );
 
         Notification::make()
@@ -101,21 +108,18 @@ class BookReleaseAdminActions
           ->searchable()
           ->required()
           ->live(),
-        Select::make('message_id')
-          ->label('Modèle de message')
-          ->options(function (callable $get): array {
+        ...self::messageFields(
+          bookResolver: function (callable $get): ?Book {
             $bookId = $get('book_id');
 
             if (! $bookId) {
-              return app(BookReleaseMessageService::class)->optionsForBook(null);
+              return null;
             }
 
-            $book = Book::query()->find($bookId);
-
-            return app(BookReleaseMessageService::class)->optionsForBook($book);
-          })
-          ->required()
-          ->native(false),
+            return Book::query()->find($bookId);
+          },
+          subscriptionResolver: fn (): ?BookReleaseSubscription => null,
+        ),
       ])
       ->action(function (array $data): void {
         $subscriptions = BookReleaseSubscription::query()
@@ -135,6 +139,8 @@ class BookReleaseAdminActions
         $result = app(BookReleaseDispatchService::class)->sendBulk(
           $subscriptions,
           self::selectedMessageId($data),
+          self::customSubject($data),
+          self::customBody($data),
         );
 
         Notification::make()
@@ -146,19 +152,72 @@ class BookReleaseAdminActions
   }
 
   /**
-   * Schéma de sélection du modèle de message.
+   * Schéma complet de sélection et édition du message.
    *
    * @param BookReleaseSubscription|null $record Inscription source
-   * @return list<Select>
+   * @return list<Select|TextInput|Textarea>
    */
-  private static function messageSelectSchema(?BookReleaseSubscription $record): array
+  private static function messageFormSchema(?BookReleaseSubscription $record): array
   {
+    return self::messageFields(
+      bookResolver: fn (): ?Book => $record?->book,
+      subscriptionResolver: fn (): ?BookReleaseSubscription => $record,
+    );
+  }
+
+  /**
+   * Champs de sélection, prévisualisation et édition du message.
+   *
+   * @param callable(): ?Book $bookResolver Résout le livre cible
+   * @param callable(): ?BookReleaseSubscription $subscriptionResolver Résout l'inscription cible
+   * @return list<Select|TextInput|Textarea>
+   */
+  private static function messageFields(
+    callable $bookResolver,
+    callable $subscriptionResolver,
+  ): array {
+    $messageService = app(BookReleaseMessageService::class);
+
     return [
       Select::make('message_id')
         ->label('Modèle de message')
-        ->options(fn (): array => app(BookReleaseMessageService::class)->optionsForBook($record?->book))
+        ->options(function (callable $get) use ($bookResolver, $messageService): array {
+          $book = $bookResolver($get);
+
+          return $messageService->optionsForBook($book);
+        })
         ->required()
+        ->live()
+        ->afterStateUpdated(function (?string $state, callable $set, callable $get) use (
+          $bookResolver,
+          $subscriptionResolver,
+          $messageService,
+        ): void {
+          $book = $bookResolver($get);
+
+          if ($book === null || $state === null || $state === '') {
+            return;
+          }
+
+          $subscription = $subscriptionResolver($get) ?? new BookReleaseSubscription([
+            'email' => 'exemple@email.com',
+          ]);
+
+          $set('email_subject', $messageService->resolveEmailSubject($book, $subscription, $state));
+          $set('email_body', $messageService->resolveBody($book, $subscription, $state));
+        })
         ->native(false),
+      TextInput::make('email_subject')
+        ->label('Objet de l\'e-mail')
+        ->required()
+        ->maxLength(255)
+        ->columnSpanFull(),
+      Textarea::make('email_body')
+        ->label('Contenu du message')
+        ->required()
+        ->rows(10)
+        ->helperText('Vous pouvez modifier le texte avant l\'envoi. Les variables seront remplacées pour chaque destinataire si vous les conservez.')
+        ->columnSpanFull(),
     ];
   }
 
@@ -173,5 +232,65 @@ class BookReleaseAdminActions
     $messageId = $data['message_id'] ?? null;
 
     return is_string($messageId) && $messageId !== '' ? $messageId : null;
+  }
+
+  /**
+   * Retourne l'objet personnalisé saisi dans le formulaire.
+   *
+   * @param array<string, mixed> $data Données du formulaire
+   * @return string|null Objet e-mail
+   */
+  private static function customSubject(array $data): ?string
+  {
+    $subject = trim((string) ($data['email_subject'] ?? ''));
+
+    return $subject !== '' ? $subject : null;
+  }
+
+  /**
+   * Retourne le corps personnalisé saisi dans le formulaire.
+   *
+   * @param array<string, mixed> $data Données du formulaire
+   * @return string|null Corps du message
+   */
+  private static function customBody(array $data): ?string
+  {
+    $body = trim((string) ($data['email_body'] ?? ''));
+
+    return $body !== '' ? $body : null;
+  }
+
+  /**
+   * Pré-remplit le formulaire avec le premier modèle disponible.
+   *
+   * @param BookReleaseSubscription|null $record Inscription source
+   * @return array<string, string> Valeurs initiales
+   */
+  private static function defaultMessageFormData(?BookReleaseSubscription $record): array
+  {
+    $messageService = app(BookReleaseMessageService::class);
+    $book = $record?->book;
+    $options = $messageService->optionsForBook($book);
+    $messageId = array_key_first($options);
+
+    if (! is_string($messageId) || $messageId === '') {
+      return [];
+    }
+
+    $subscription = $record ?? new BookReleaseSubscription([
+      'email' => 'exemple@email.com',
+    ]);
+
+    if ($book === null) {
+      return [
+        'message_id' => $messageId,
+      ];
+    }
+
+    return [
+      'message_id' => $messageId,
+      'email_subject' => $messageService->resolveEmailSubject($book, $subscription, $messageId),
+      'email_body' => $messageService->resolveBody($book, $subscription, $messageId),
+    ];
   }
 }

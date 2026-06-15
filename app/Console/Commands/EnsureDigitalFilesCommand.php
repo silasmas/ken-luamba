@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Enums\BookFormatType;
 use App\Enums\DigitalFileType;
 use App\Models\BookFormat;
+use App\Support\DigitalFilePath;
 use Database\Seeders\Support\SeederDigitalFileService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Storage;
@@ -45,7 +46,11 @@ class EnsureDigitalFilesCommand extends Command
       ->get();
 
     foreach ($formats as $format) {
-      $path = $format->digital_file_path;
+      $path = DigitalFilePath::normalize($format->digital_file_path);
+
+      if ($path !== null && $path !== $format->digital_file_path) {
+        $format->update(['digital_file_path' => $path]);
+      }
 
       if ($path !== null && Storage::disk('local')->exists($path)) {
         continue;

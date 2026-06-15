@@ -71,7 +71,7 @@ NAV_XHTML = """<?xml version="1.0" encoding="UTF-8"?>
 
 COVER_XHTML = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="fr">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="fr">
 <head>
   <meta charset="UTF-8"/>
   <title>Couverture</title>
@@ -90,7 +90,7 @@ COVER_XHTML = """<?xml version="1.0" encoding="UTF-8"?>
 
 CHAPTER1_XHTML = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="fr">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="fr">
 <head>
   <meta charset="UTF-8"/>
   <title>Chapitre 1</title>
@@ -112,7 +112,7 @@ CHAPTER1_XHTML = """<?xml version="1.0" encoding="UTF-8"?>
 
 CHAPTER2_XHTML = """<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="fr">
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops" lang="fr">
 <head>
   <meta charset="UTF-8"/>
   <title>Chapitre 2</title>
