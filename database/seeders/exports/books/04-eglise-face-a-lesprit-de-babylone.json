@@ -1,0 +1,185 @@
+{
+    "order": 4,
+    "slug": "eglise-face-a-lesprit-de-babylone",
+    "source": "ken-luamba-book-site\/src\/data\/books.ts",
+    "importGuide": {
+        "etape1": "Admin → Livres → Créer \/ Modifier",
+        "etape2": "Coller les champs de sectionContenu et sectionFicheEditoriale",
+        "etape3": "Uploader cover_image et back_cover_image (fichiers sectionVisuels)",
+        "etape4": "Repeater Aperçu feuilletable : une entrée par page de excerptPages",
+        "etape5": "Uploader le PDF {prefix}-extrait.pdf dans « Extrait PDF » pour tester le lecteur PDF"
+    },
+    "bookSite": {
+        "status": "preorder",
+        "featured": false,
+        "formats": [
+            {
+                "kind": "paper",
+                "label": "Édition imprimée",
+                "price": 23,
+                "available": true,
+                "detail": "Précommande · Couverture souple"
+            },
+            {
+                "kind": "epub",
+                "label": "Édition numérique (EPUB)",
+                "price": 13,
+                "available": true,
+                "detail": "Précommande · Compatible liseuses & mobile"
+            },
+            {
+                "kind": "audio",
+                "label": "Livre audio",
+                "price": 17,
+                "available": true,
+                "detail": "Précommande · Lu par l'auteur"
+            }
+        ],
+        "reviews": [
+            {
+                "name": "Comité de lecture",
+                "role": "Éditions Philadelphie",
+                "rating": 5,
+                "quote": "Un appel nécessaire au discernement et à la consécration."
+            }
+        ],
+        "campaign": null
+    },
+    "sectionIdentification": {
+        "title": "L'Église face à l'esprit de Babylone",
+        "slug": "eglise-face-a-lesprit-de-babylone",
+        "subtitle": "Un parcours prophétique pour discerner sa logique, résister à ses séductions et demeurer fidèle à la Parole.",
+        "tagline": "Discerner l'esprit de Babylone",
+        "is_featured": false,
+        "sort_order": 4,
+        "is_published": true
+    },
+    "sectionContenu": {
+        "description": "Ce livre naît d'une urgence prophétique : l'esprit de Babylone n'est pas une réalité lointaine, mais une logique active qui séduit, normalise et s'infiltre dans les pensées, les désirs et les choix du croyant.",
+        "author_note": null,
+        "about_paragraphs": [
+            "À partir d'Apocalypse 18:4 — « Sortez du milieu d'elle, mon peuple » — Ken Luamba montre qu'il est possible d'appartenir à Dieu tout en laissant des influences extérieures façonner silencieusement sa vie intérieure.",
+            "Le parcours conduit le lecteur du réveil prophétique aux glissements intérieurs, puis aux structures de rébellion, avant de s'arrêter sur Daniel en territoire hostile comme modèle de fidélité sous pression.",
+            "L'appel à sortir n'est pas une fuite physique du monde, mais une décision d'appartenance : refuser les logiques qui contestent la seigneurie de Christ."
+        ],
+        "about_paragraphs_text": "À partir d'Apocalypse 18:4 — « Sortez du milieu d'elle, mon peuple » — Ken Luamba montre qu'il est possible d'appartenir à Dieu tout en laissant des influences extérieures façonner silencieusement sa vie intérieure.\n\nLe parcours conduit le lecteur du réveil prophétique aux glissements intérieurs, puis aux structures de rébellion, avant de s'arrêter sur Daniel en territoire hostile comme modèle de fidélité sous pression.\n\nL'appel à sortir n'est pas une fuite physique du monde, mais une décision d'appartenance : refuser les logiques qui contestent la seigneurie de Christ.",
+        "themes": [
+            "Babylone",
+            "Discernement",
+            "Résistance",
+            "Fidélité"
+        ],
+        "themes_text": "Babylone\nDiscernement\nRésistance\nFidélité"
+    },
+    "sectionFicheEditoriale": {
+        "page_count": 232,
+        "reading_time": "5 h 30 de lecture",
+        "language": "Français",
+        "release_date": "2026-06-28",
+        "accent_color": "#2f1a12",
+        "category": "Discernement spirituel · Prophétique",
+        "preorder_campaign_goal": null,
+        "preorder_reserved_count": 0,
+        "preorder_campaign_bonuses": [],
+        "preorder_campaign_bonuses_text": ""
+    },
+    "sectionVisuels": {
+        "cover_image_source": "Cover Livre - Esprit de Babylone.jpg",
+        "back_cover_image_source": "Back Cover - Esprit de Babylone.jpg",
+        "cover_image_path_book_site": "\/images\/Cover%20Livre%20-%20Esprit%20de%20Babylone.jpg",
+        "back_cover_image_path_book_site": "\/images\/Back%20Cover%20-%20Esprit%20de%20Babylone.jpg",
+        "images_directory": "ken-luamba-book-site\/public\/images",
+        "preview_pdf_upload": "books\/previews\/eglise-face-a-lesprit-de-babylone.pdf",
+        "preview_pdf_export": "04-eglise-face-a-lesprit-de-babylone-extrait.pdf"
+    },
+    "excerptPages": [
+        {
+            "pageNumber": 1,
+            "kind": "cover",
+            "paragraphsText": null
+        },
+        {
+            "pageNumber": 2,
+            "kind": "section",
+            "eyebrow": "I. Présentation et contexte du livre",
+            "title": "Une urgence prophétique",
+            "paragraphs": [
+                "Ce livre ne s'inscrit pas dans une démarche de curiosité théologique. Il naît d'une urgence prophétique.",
+                "L'auteur part d'une conviction profonde : l'esprit de Babylone n'est pas une réalité lointaine réservée à des spécialistes ou à d'autres générations. Il est actif, actuel, et profondément lié à la vie quotidienne de chaque croyant."
+            ],
+            "paragraphsText": "Ce livre ne s'inscrit pas dans une démarche de curiosité théologique. Il naît d'une urgence prophétique.\n\nL'auteur part d'une conviction profonde : l'esprit de Babylone n'est pas une réalité lointaine réservée à des spécialistes ou à d'autres générations. Il est actif, actuel, et profondément lié à la vie quotidienne de chaque croyant."
+        },
+        {
+            "pageNumber": 3,
+            "kind": "section",
+            "eyebrow": "Présentation et contexte",
+            "title": "Sortez du milieu d'elle, mon peuple",
+            "paragraphs": [
+                "Le point de départ est une parole d'Apocalypse 18:4 — « Sortez du milieu d'elle, mon peuple » — que l'auteur analyse avec une précision remarquable.",
+                "Cette parole ne s'adresse pas aux inconvertis mais au peuple de Dieu lui-même, révélant une réalité troublante : il est possible d'appartenir à Dieu tout en laissant des influences extérieures façonner silencieusement ses pensées, ses désirs et ses choix."
+            ],
+            "paragraphsText": "Le point de départ est une parole d'Apocalypse 18:4 — « Sortez du milieu d'elle, mon peuple » — que l'auteur analyse avec une précision remarquable.\n\nCette parole ne s'adresse pas aux inconvertis mais au peuple de Dieu lui-même, révélant une réalité troublante : il est possible d'appartenir à Dieu tout en laissant des influences extérieures façonner silencieusement ses pensées, ses désirs et ses choix."
+        },
+        {
+            "pageNumber": 4,
+            "kind": "part",
+            "eyebrow": "Première partie",
+            "title": "Réveil prophétique et discernement",
+            "paragraphs": [
+                "L'auteur commence par poser les bases d'un diagnostic prophétique. Une influence est déjà à l'œuvre dans les mentalités, les systèmes et les normes du temps présent.",
+                "L'Église est appelée à passer d'une foi réactive à une foi lucide, capable de lire le temps présent à la lumière de la Parole."
+            ],
+            "paragraphsText": "L'auteur commence par poser les bases d'un diagnostic prophétique. Une influence est déjà à l'œuvre dans les mentalités, les systèmes et les normes du temps présent.\n\nL'Église est appelée à passer d'une foi réactive à une foi lucide, capable de lire le temps présent à la lumière de la Parole."
+        },
+        {
+            "pageNumber": 5,
+            "kind": "part",
+            "eyebrow": "Deuxième partie",
+            "title": "Les glissements intérieurs",
+            "paragraphs": [
+                "Babylone ne reste pas extérieure : elle s'installe dans l'accoutumance. Ce qui dérangeait autrefois devient tolérable ; ce qui est toléré devient acceptable ; ce qui est devenu acceptable finit par être adopté.",
+                "L'auteur décrit avec précision le danger de la normalisation silencieuse, la désacralisation du sacré, et comment Babylone commence dans le cœur avant de se manifester dans les comportements."
+            ],
+            "paragraphsText": "Babylone ne reste pas extérieure : elle s'installe dans l'accoutumance. Ce qui dérangeait autrefois devient tolérable ; ce qui est toléré devient acceptable ; ce qui est devenu acceptable finit par être adopté.\n\nL'auteur décrit avec précision le danger de la normalisation silencieuse, la désacralisation du sacré, et comment Babylone commence dans le cœur avant de se manifester dans les comportements."
+        },
+        {
+            "pageNumber": 6,
+            "kind": "part",
+            "eyebrow": "Troisième partie",
+            "title": "Les structures de la rébellion",
+            "paragraphs": [
+                "Babel devient dans cette partie un contre-projet durable. L'auteur analyse le refus du mandat divin, l'inversion des principes, la spiritualité autonome et la confusion érigée en système.",
+                "De Babel au système mondial, le parcours révèle comment ce qui commence par une rébellion individuelle devient une architecture spirituelle capable d'absorber des nations et des institutions entières."
+            ],
+            "paragraphsText": "Babel devient dans cette partie un contre-projet durable. L'auteur analyse le refus du mandat divin, l'inversion des principes, la spiritualité autonome et la confusion érigée en système.\n\nDe Babel au système mondial, le parcours révèle comment ce qui commence par une rébellion individuelle devient une architecture spirituelle capable d'absorber des nations et des institutions entières."
+        },
+        {
+            "pageNumber": 7,
+            "kind": "part",
+            "eyebrow": "Quatrième partie",
+            "title": "Daniel en territoire hostile",
+            "paragraphs": [
+                "Le livre de Daniel devient ici le terrain d'épreuve par excellence. L'auteur y voit illustrée toute la mécanique de Babylone : l'arrachement, la reprogrammation progressive, la pression sociale, la séduction de l'apparence et la promesse du pouvoir.",
+                "La résistance de Daniel et de ses compagnons — qui refusent les mets du roi — est présentée comme le modèle de la réponse du juste face à un système conçu pour effacer toute identité spirituelle."
+            ],
+            "paragraphsText": "Le livre de Daniel devient ici le terrain d'épreuve par excellence. L'auteur y voit illustrée toute la mécanique de Babylone : l'arrachement, la reprogrammation progressive, la pression sociale, la séduction de l'apparence et la promesse du pouvoir.\n\nLa résistance de Daniel et de ses compagnons — qui refusent les mets du roi — est présentée comme le modèle de la réponse du juste face à un système conçu pour effacer toute identité spirituelle."
+        },
+        {
+            "pageNumber": 8,
+            "kind": "part",
+            "eyebrow": "Cinquième partie",
+            "title": "Le choix final de l'Église",
+            "paragraphs": [
+                "Le parcours conduit à une décision claire et sans ambiguïté : face à la forme finale du système babylonien, l'Église est appelée à sortir intérieurement.",
+                "Non pas nécessairement par un retrait physique du monde, mais par un refus de la participation aux logiques qui contestent la seigneurie de Christ."
+            ],
+            "paragraphsText": "Le parcours conduit à une décision claire et sans ambiguïté : face à la forme finale du système babylonien, l'Église est appelée à sortir intérieurement.\n\nNon pas nécessairement par un retrait physique du monde, mais par un refus de la participation aux logiques qui contestent la seigneurie de Christ."
+        },
+        {
+            "pageNumber": 9,
+            "kind": "backCover",
+            "paragraphsText": null
+        }
+    ],
+    "excerptPageCount": 9
+}

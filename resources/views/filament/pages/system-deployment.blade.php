@@ -82,9 +82,9 @@
         Fichiers JSON prêts pour saisie dashboard + PDF de test pour le lecteur « option 2 ».
       </p>
       <ul class="mt-3 space-y-1 text-xs text-gray-700 dark:text-gray-300">
-        <li><code>php artisan books:export-dashboard-data</code> → <code>storage/app/private/exports/books/*.json</code></li>
-        <li><code>php artisan books:generate-preview-pdfs</code> → <code>storage/app/public/books/previews/*.pdf</code></li>
-        <li>Guide : <code>storage/app/private/exports/books/README-import-production.md</code></li>
+        <li><code>php artisan books:export-dashboard-data</code> → <code>database/seeders/exports/books/*.json</code></li>
+        <li><code>php artisan books:generate-preview-pdfs</code> → <code>database/seeders/exports/books/*-extrait.pdf</code></li>
+        <li>Guide : <code>database/seeders/exports/books/README-import-production.md</code></li>
       </ul>
     </section>
 

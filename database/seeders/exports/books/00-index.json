@@ -1,0 +1,38 @@
+{
+    "source": "ken-luamba-book-site\/src\/data\/books.ts",
+    "generatedAt": "2026-06-15T16:06:36+00:00",
+    "books": [
+        {
+            "order": 1,
+            "slug": "eglise-face-aux-defis-de-lheure",
+            "title": "L'Église face aux défis de l'heure",
+            "jsonFile": "01-eglise-face-aux-defis-de-lheure.json",
+            "pdfFile": "01-eglise-face-aux-defis-de-lheure-extrait.pdf",
+            "excerptPageCount": 7
+        },
+        {
+            "order": 2,
+            "slug": "le-poids-du-silence",
+            "title": "Le Prix du Sacrifice",
+            "jsonFile": "02-le-poids-du-silence.json",
+            "pdfFile": "02-le-poids-du-silence-extrait.pdf",
+            "excerptPageCount": 8
+        },
+        {
+            "order": 3,
+            "slug": "generation-debout",
+            "title": "Les Zones Sombres du Cœur Humain",
+            "jsonFile": "03-generation-debout.json",
+            "pdfFile": "03-generation-debout-extrait.pdf",
+            "excerptPageCount": 10
+        },
+        {
+            "order": 4,
+            "slug": "eglise-face-a-lesprit-de-babylone",
+            "title": "L'Église face à l'esprit de Babylone",
+            "jsonFile": "04-eglise-face-a-lesprit-de-babylone.json",
+            "pdfFile": "04-eglise-face-a-lesprit-de-babylone-extrait.pdf",
+            "excerptPageCount": 9
+        }
+    ]
+}

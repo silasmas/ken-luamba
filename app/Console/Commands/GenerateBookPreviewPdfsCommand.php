@@ -7,28 +7,18 @@ use Database\Seeders\Support\BookDashboardExportData;
 use Illuminate\Console\Command;
 
 /**
- * Génère les PDF d'extrait de test pour le lecteur feuilletable (mode secours).
+ * Génère un PDF d'extrait uploadable par livre (books.ts).
  */
 class GenerateBookPreviewPdfsCommand extends Command
 {
-  /**
-   * Signature de la commande Artisan.
-   *
-   * @var string
-   */
-  protected $signature = 'books:generate-preview-pdfs {slug? : Slug optionnel d\'un seul livre}';
+  protected $signature = 'books:generate-preview-pdfs {slug? : Slug optionnel}';
+
+  protected $description = 'Génère les PDF d\'extrait (couvertures + pages) prêts à uploader';
 
   /**
-   * Description affichée dans la liste des commandes.
+   * Génère les PDF dans database/seeders/exports/books/ et storage public.
    *
-   * @var string
-   */
-  protected $description = 'Génère un PDF d\'aperçu par livre pour tester le lecteur PDF (option 2)';
-
-  /**
-   * Génère les PDF et affiche les chemins publics.
-   *
-   * @param BookPreviewPdfService $pdfService Service de génération PDF
+   * @param BookPreviewPdfService $pdfService Service PDF
    * @return int Code de sortie
    */
   public function handle(BookPreviewPdfService $pdfService): int
@@ -45,14 +35,15 @@ class GenerateBookPreviewPdfsCommand extends Command
           return self::FAILURE;
         }
 
-        $path = $pdfService->generateForBook($slug, $book);
-        $this->info('PDF : storage/app/public/'.$path);
-        $this->line('URL : /storage/'.$path);
+        $paths = $pdfService->generateForBook($book);
+        $this->info('PDF dépôt : '.$paths['repo']);
+        $this->line('PDF public : storage/app/public/'.$paths['public']);
       } else {
         $paths = $pdfService->generateAll();
 
-        foreach ($paths as $path) {
-          $this->line('PDF : storage/app/public/'.$path.' → /storage/'.$path);
+        foreach ($paths as $item) {
+          $this->line('PDF dépôt : '.$item['repo']);
+          $this->line('PDF public : storage/app/public/'.$item['public']);
         }
       }
     } catch (\Throwable $exception) {
@@ -62,7 +53,7 @@ class GenerateBookPreviewPdfsCommand extends Command
     }
 
     $this->newLine();
-    $this->comment('Pour tester le mode PDF : vider le Repeater « Aperçu feuilletable » et uploader le PDF dans « Extrait PDF ».');
+    $this->comment('Uploader le fichier *-extrait.pdf dans Admin → Livres → Extrait PDF.');
 
     return self::SUCCESS;
   }

@@ -1,0 +1,198 @@
+{
+    "order": 3,
+    "slug": "generation-debout",
+    "source": "ken-luamba-book-site\/src\/data\/books.ts",
+    "importGuide": {
+        "etape1": "Admin → Livres → Créer \/ Modifier",
+        "etape2": "Coller les champs de sectionContenu et sectionFicheEditoriale",
+        "etape3": "Uploader cover_image et back_cover_image (fichiers sectionVisuels)",
+        "etape4": "Repeater Aperçu feuilletable : une entrée par page de excerptPages",
+        "etape5": "Uploader le PDF {prefix}-extrait.pdf dans « Extrait PDF » pour tester le lecteur PDF"
+    },
+    "bookSite": {
+        "status": "preorder",
+        "featured": false,
+        "formats": [
+            {
+                "kind": "paper",
+                "label": "Édition imprimée",
+                "price": 22,
+                "available": true,
+                "detail": "Précommande · Couverture souple"
+            },
+            {
+                "kind": "epub",
+                "label": "Édition numérique (EPUB)",
+                "price": 13,
+                "available": true,
+                "detail": "Précommande · Compatible liseuses & mobile"
+            },
+            {
+                "kind": "audio",
+                "label": "Livre audio",
+                "price": 17,
+                "available": true,
+                "detail": "Précommande · Lu par l'auteur"
+            }
+        ],
+        "reviews": [
+            {
+                "name": "Comité de lecture",
+                "role": "Éditions Philadelphie",
+                "rating": 5,
+                "quote": "Le texte le plus mobilisateur de l'auteur à ce jour."
+            }
+        ],
+        "campaign": null
+    },
+    "sectionIdentification": {
+        "title": "Les Zones Sombres du Cœur Humain",
+        "slug": "generation-debout",
+        "subtitle": "Tome 1 — Révélation, manifestations et ravages des ténèbres intérieures.",
+        "tagline": "Diagnostic spirituel du cœur",
+        "is_featured": false,
+        "sort_order": 3,
+        "is_published": true
+    },
+    "sectionContenu": {
+        "description": "Né d'un enseignement sur Caïn, ce livre explore les régions silencieuses du cœur humain : blessures anciennes, peurs enfouies, frustrations accumulées et mécanismes de défense que l'homme apprend parfois à dissimuler même à lui-même.",
+        "author_note": null,
+        "about_paragraphs": [
+            "« Les Zones Sombres du Cœur Humain » se présente comme un diagnostic honnête, respectueux et sans condamnation sur les profondeurs invisibles que beaucoup portent sans les comprendre.",
+            "L'auteur montre comment une humiliation ancienne, un rejet, une trahison ou une peur enfouie peuvent continuer à gouverner les émotions, les relations et même la vie spirituelle.",
+            "Mais le diagnostic ouvre sur un chemin de restauration : Dieu sonde le cœur non pour condamner, mais pour faire entrer Sa lumière dans les régions blessées et y commencer la guérison."
+        ],
+        "about_paragraphs_text": "« Les Zones Sombres du Cœur Humain » se présente comme un diagnostic honnête, respectueux et sans condamnation sur les profondeurs invisibles que beaucoup portent sans les comprendre.\n\nL'auteur montre comment une humiliation ancienne, un rejet, une trahison ou une peur enfouie peuvent continuer à gouverner les émotions, les relations et même la vie spirituelle.\n\nMais le diagnostic ouvre sur un chemin de restauration : Dieu sonde le cœur non pour condamner, mais pour faire entrer Sa lumière dans les régions blessées et y commencer la guérison.",
+        "themes": [
+            "Blessures intérieures",
+            "Guérison",
+            "Cœur",
+            "Restauration"
+        ],
+        "themes_text": "Blessures intérieures\nGuérison\nCœur\nRestauration"
+    },
+    "sectionFicheEditoriale": {
+        "page_count": 224,
+        "reading_time": "5 h de lecture",
+        "language": "Français",
+        "release_date": "2026-06-28",
+        "accent_color": "#1d2433",
+        "category": "Psychologie spirituelle · Counseling pastoral",
+        "preorder_campaign_goal": null,
+        "preorder_reserved_count": 0,
+        "preorder_campaign_bonuses": [],
+        "preorder_campaign_bonuses_text": ""
+    },
+    "sectionVisuels": {
+        "cover_image_source": "Cover Livre - Zones Sombres.jpg",
+        "back_cover_image_source": "Back bCover- Zones Sombres.jpg",
+        "cover_image_path_book_site": "\/images\/Cover%20Livre%20-%20Zones%20Sombres.jpg",
+        "back_cover_image_path_book_site": "\/images\/Back%20bCover-%20Zones%20Sombres.jpg",
+        "images_directory": "ken-luamba-book-site\/public\/images",
+        "preview_pdf_upload": "books\/previews\/generation-debout.pdf",
+        "preview_pdf_export": "03-generation-debout-extrait.pdf"
+    },
+    "excerptPages": [
+        {
+            "pageNumber": 1,
+            "kind": "cover",
+            "paragraphsText": null
+        },
+        {
+            "pageNumber": 2,
+            "kind": "section",
+            "eyebrow": "I. Présentation et contexte du livre",
+            "title": "Caïn comme miroir du cœur",
+            "paragraphs": [
+                "« Les Zones Sombres du Cœur Humain » est né d'un enseignement sur Caïn — cet homme qui, par jalousie et haine silencieuse, finit par ôter la vie à son propre frère.",
+                "Mais très vite, l'auteur a compris que Caïn n'est pas une exception : il est un miroir. C'est pourquoi ce qui devait être un simple enseignement est devenu un livre."
+            ],
+            "paragraphsText": "« Les Zones Sombres du Cœur Humain » est né d'un enseignement sur Caïn — cet homme qui, par jalousie et haine silencieuse, finit par ôter la vie à son propre frère.\n\nMais très vite, l'auteur a compris que Caïn n'est pas une exception : il est un miroir. C'est pourquoi ce qui devait être un simple enseignement est devenu un livre."
+        },
+        {
+            "pageNumber": 3,
+            "kind": "section",
+            "eyebrow": "Présentation et contexte",
+            "title": "Un diagnostic des profondeurs invisibles",
+            "paragraphs": [
+                "Le Pasteur Ken Luamba part d'un constat douloureux mais lucide : il existe dans le cœur humain des régions silencieuses que peu de personnes osent réellement explorer.",
+                "Des profondeurs invisibles où se cachent des blessures anciennes, des peurs enfouies, des frustrations accumulées, des mécanismes de défense que l'homme a appris à dissimuler même à lui-même.",
+                "Ce livre se présente avant tout comme un diagnostic — honnête, respectueux, sans condamnation — sur ces régions intérieures que beaucoup portent sans les comprendre."
+            ],
+            "paragraphsText": "Le Pasteur Ken Luamba part d'un constat douloureux mais lucide : il existe dans le cœur humain des régions silencieuses que peu de personnes osent réellement explorer.\n\nDes profondeurs invisibles où se cachent des blessures anciennes, des peurs enfouies, des frustrations accumulées, des mécanismes de défense que l'homme a appris à dissimuler même à lui-même.\n\nCe livre se présente avant tout comme un diagnostic — honnête, respectueux, sans condamnation — sur ces régions intérieures que beaucoup portent sans les comprendre."
+        },
+        {
+            "pageNumber": 4,
+            "kind": "part",
+            "eyebrow": "Première partie",
+            "title": "Le cœur, territoire caché de l'homme",
+            "paragraphs": [
+                "L'auteur établit dès le départ la thèse centrale : Dieu regarde au cœur, pas à l'apparence.",
+                "Le cœur humain n'est pas qu'un centre émotionnel ; il est le véritable poste de commandement de toute la vie intérieure.",
+                "L'homme peut aimer Dieu sincèrement tout en portant des régions encore fermées à Sa lumière."
+            ],
+            "paragraphsText": "L'auteur établit dès le départ la thèse centrale : Dieu regarde au cœur, pas à l'apparence.\n\nLe cœur humain n'est pas qu'un centre émotionnel ; il est le véritable poste de commandement de toute la vie intérieure.\n\nL'homme peut aimer Dieu sincèrement tout en portant des régions encore fermées à Sa lumière."
+        },
+        {
+            "pageNumber": 5,
+            "kind": "part",
+            "eyebrow": "Deuxième partie",
+            "title": "La naissance des ténèbres intérieures",
+            "paragraphs": [
+                "Les blessures invisibles de l'âme constituent le cœur de cette partie. L'auteur montre que le cœur humain possède une mémoire profonde.",
+                "Une humiliation vécue dans l'enfance peut continuer à gouverner un adulte extérieurement mature. Un rejet ancien produit une peur permanente de ne jamais être aimé."
+            ],
+            "paragraphsText": "Les blessures invisibles de l'âme constituent le cœur de cette partie. L'auteur montre que le cœur humain possède une mémoire profonde.\n\nUne humiliation vécue dans l'enfance peut continuer à gouverner un adulte extérieurement mature. Un rejet ancien produit une peur permanente de ne jamais être aimé."
+        },
+        {
+            "pageNumber": 6,
+            "kind": "part",
+            "eyebrow": "Troisième partie",
+            "title": "Les manifestations des zones sombres",
+            "paragraphs": [
+                "Les zones sombres ne restent jamais passives. Elles se manifestent à travers des troubles intérieurs : colères disproportionnées, angoisses persistantes, méfiance chronique, besoin excessif de contrôle, incapacité à recevoir l'amour.",
+                "Ces réactions ne sont souvent pas des défauts de caractère, mais les symptômes visibles de blessures invisibles jamais traitées."
+            ],
+            "paragraphsText": "Les zones sombres ne restent jamais passives. Elles se manifestent à travers des troubles intérieurs : colères disproportionnées, angoisses persistantes, méfiance chronique, besoin excessif de contrôle, incapacité à recevoir l'amour.\n\nCes réactions ne sont souvent pas des défauts de caractère, mais les symptômes visibles de blessures invisibles jamais traitées."
+        },
+        {
+            "pageNumber": 7,
+            "kind": "part",
+            "eyebrow": "Quatrième partie",
+            "title": "Les ravages des zones sombres",
+            "paragraphs": [
+                "Cette partie mesure l'impact des zones sombres sur la vie intérieure, les relations et la vie spirituelle.",
+                "Dans les relations, les blessures cachées blessent ceux qu'on voulait aimer. Dans la vie spirituelle, certaines personnes aiment sincèrement Dieu mais restent incapables de croire profondément qu'elles sont aimées par Lui."
+            ],
+            "paragraphsText": "Cette partie mesure l'impact des zones sombres sur la vie intérieure, les relations et la vie spirituelle.\n\nDans les relations, les blessures cachées blessent ceux qu'on voulait aimer. Dans la vie spirituelle, certaines personnes aiment sincèrement Dieu mais restent incapables de croire profondément qu'elles sont aimées par Lui."
+        },
+        {
+            "pageNumber": 8,
+            "kind": "part",
+            "eyebrow": "Cinquième partie",
+            "title": "La lumière qui expose les ténèbres",
+            "paragraphs": [
+                "Dieu commence à sonder le cœur. La confrontation avec soi-même devient inévitable.",
+                "L'auteur décrit le brisement intérieur non comme une destruction mais comme le début de la restauration : lorsque l'homme cesse enfin de fuir certaines vérités sur lui-même."
+            ],
+            "paragraphsText": "Dieu commence à sonder le cœur. La confrontation avec soi-même devient inévitable.\n\nL'auteur décrit le brisement intérieur non comme une destruction mais comme le début de la restauration : lorsque l'homme cesse enfin de fuir certaines vérités sur lui-même."
+        },
+        {
+            "pageNumber": 9,
+            "kind": "part",
+            "eyebrow": "Sixième partie",
+            "title": "Le chemin de la restauration",
+            "paragraphs": [
+                "La guérison commence dans la lumière. L'auteur conclut sur une promesse scripturaire : « Il guérit ceux qui ont le cœur brisé, et il panse leurs blessures » (Psaume 147:3).",
+                "Dieu ne travaille jamais superficiellement. Il descend dans les profondeurs blessées — non pour condamner, mais pour restaurer."
+            ],
+            "paragraphsText": "La guérison commence dans la lumière. L'auteur conclut sur une promesse scripturaire : « Il guérit ceux qui ont le cœur brisé, et il panse leurs blessures » (Psaume 147:3).\n\nDieu ne travaille jamais superficiellement. Il descend dans les profondeurs blessées — non pour condamner, mais pour restaurer."
+        },
+        {
+            "pageNumber": 10,
+            "kind": "backCover",
+            "paragraphsText": null
+        }
+    ],
+    "excerptPageCount": 10
+}

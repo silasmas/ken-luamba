@@ -3,101 +3,132 @@
 namespace App\Services\Books;
 
 use Database\Seeders\Support\BookDashboardExportData;
+use Database\Seeders\Support\SeederMediaService;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
 
 /**
- * Exporte les fiches livres en JSON pour import manuel en production.
+ * Exporte les fiches livres (books.ts) en JSON prêts pour upload dashboard.
  */
 class BookDashboardExportService
 {
   /**
-   * Dossier relatif sur le disque local pour les exports.
+   * Dossier d'export dans le dépôt (facile à retrouver / transférer).
    */
-  public const EXPORT_DIRECTORY = 'exports/books';
+  public const REPO_EXPORT_DIRECTORY = 'database/seeders/exports/books';
 
   /**
-   * Exporte tous les livres en fichiers JSON individuels.
+   * Exporte tous les livres dans l'ordre books.ts.
    *
-   * @return list<string> Chemins relatifs des fichiers générés
+   * @return list<string> Chemins absolus des JSON générés
    */
   public function exportAll(): array
   {
-    Storage::disk('local')->makeDirectory(self::EXPORT_DIRECTORY);
-
     $paths = [];
 
-    foreach (BookDashboardExportData::books() as $slug => $book) {
-      $paths[] = $this->exportBook($slug, $book);
+    foreach (BookDashboardExportData::orderedBooks() as $book) {
+      $paths[] = $this->exportBook($book);
     }
 
     $this->writeReadme();
+    $this->writeIndex();
 
     return $paths;
   }
 
   /**
-   * Exporte un livre vers un fichier JSON.
+   * Exporte un livre vers un fichier JSON numéroté.
    *
-   * @param string $slug Identifiant du livre
-   * @param array<string, mixed> $book Données du livre
-   * @return string Chemin relatif du fichier
+   * @param array<string, mixed> $book Fiche export
+   * @return string Chemin absolu du fichier
    */
-  public function exportBook(string $slug, array $book): string
+  public function exportBook(array $book): string
   {
-    $relativePath = self::EXPORT_DIRECTORY.'/'.$slug.'.json';
+    $directory = base_path(self::REPO_EXPORT_DIRECTORY);
+    File::ensureDirectoryExists($directory);
+
+    $prefix = BookDashboardExportData::exportFilePrefix($book);
+    $absolutePath = $directory.DIRECTORY_SEPARATOR.$prefix.'.json';
     $json = json_encode($book, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) ?: '{}';
 
-    Storage::disk('local')->put($relativePath, $json);
+    File::put($absolutePath, $json);
 
-    return $relativePath;
+    return $absolutePath;
   }
 
   /**
    * Écrit le guide d'import production.
    *
-   * @return string Chemin relatif du README
+   * @return string Chemin absolu du README
    */
   public function writeReadme(): string
   {
-    $readmePath = self::EXPORT_DIRECTORY.'/README-import-production.md';
-    $absoluteExportDir = Storage::disk('local')->path(self::EXPORT_DIRECTORY);
+    $directory = base_path(self::REPO_EXPORT_DIRECTORY);
+    File::ensureDirectoryExists($directory);
+    $path = $directory.DIRECTORY_SEPARATOR.'README-import-production.md';
 
-    $content = <<<'MD'
-# Import manuel des livres — Dashboard production
+    $lines = [
+      '# Import livres — données books.ts',
+      '',
+      'Fichiers générés par `php artisan books:export-dashboard-data` dans l\'ordre du book-site.',
+      '',
+      '| # | Livre | JSON | PDF à uploader |',
+      '|---|-------|------|----------------|',
+    ];
 
-Chaque fichier `{slug}.json` regroupe **toutes les données** d'un livre, section par section, alignées sur le formulaire Filament.
+    foreach (BookDashboardExportData::orderedBooks() as $book) {
+      $prefix = BookDashboardExportData::exportFilePrefix($book);
+      $title = (string) ($book['sectionIdentification']['title'] ?? $book['slug']);
+      $lines[] = sprintf(
+        '| %d | %s | `%s.json` | `%s-extrait.pdf` |',
+        (int) $book['order'],
+        $title,
+        $prefix,
+        $prefix,
+      );
+    }
 
-## Ordre recommandé
+    $lines[] = '';
+    $lines[] = '## Dashboard Filament';
+    $lines[] = '';
+    $lines[] = '1. Ouvrir le JSON du livre';
+    $lines[] = '2. Remplir **Identification**, **Contenu**, **Fiche éditoriale**';
+    $lines[] = '3. Uploader les images depuis `ken-luamba-book-site/public/images/`';
+    $lines[] = '4. Recréer chaque page dans **Aperçu feuilletable** (`excerptPages`)';
+    $lines[] = '5. Uploader le PDF `-extrait.pdf` dans **Extrait PDF** pour tester le lecteur PDF';
 
-1. **Auteur** : vérifier que Ken Luamba existe (seeder `AuthorSeeder` ou saisie manuelle).
-2. **Livre** : Admin → Livres → Créer.
-3. **Section Identification** : `sectionIdentification` du JSON.
-4. **Section Contenu** : `sectionContenu` (coller les textes, un thème par ligne).
-5. **Section Fiche éditoriale** : `sectionFicheEditoriale`.
-6. **Visuels** : uploader depuis `ken-luamba-book-site/public/images/` les fichiers indiqués dans `sectionVisuels`.
-7. **Aperçu feuilletable** : pour chaque entrée de `excerptPages`, ajouter une page dans le Repeater avec le `kind` et les champs correspondants.
-8. **Test lecteur PDF (option 2)** : uploader le PDF généré par `php artisan books:generate-preview-pdfs`.
+    File::put($path, implode("\n", $lines)."\n");
 
-## Fichiers par livre
+    return $path;
+  }
 
-| Slug | JSON | PDF test |
-|------|------|----------|
-| eglise-face-aux-defis-de-lheure | eglise-face-aux-defis-de-lheure.json | books/previews/eglise-face-aux-defis-de-lheure.pdf |
-| le-poids-du-silence | le-poids-du-silence.json | books/previews/le-poids-du-silence.pdf |
-| generation-debout | generation-debout.json | books/previews/generation-debout.pdf |
-| eglise-face-a-lesprit-de-babylone | eglise-face-a-lesprit-de-babylone.json | books/previews/eglise-face-a-lesprit-de-babylone.pdf |
+  /**
+   * Écrit un index JSON de tous les livres.
+   *
+   * @return string Chemin absolu
+   */
+  public function writeIndex(): string
+  {
+    $directory = base_path(self::REPO_EXPORT_DIRECTORY);
+    $path = $directory.DIRECTORY_SEPARATOR.'00-index.json';
+    $index = [
+      'source' => 'ken-luamba-book-site/src/data/books.ts',
+      'generatedAt' => now()->toIso8601String(),
+      'books' => array_map(
+        fn (array $book): array => [
+          'order' => $book['order'],
+          'slug' => $book['slug'],
+          'title' => $book['sectionIdentification']['title'] ?? '',
+          'jsonFile' => BookDashboardExportData::exportFilePrefix($book).'.json',
+          'pdfFile' => BookDashboardExportData::exportFilePrefix($book).'-extrait.pdf',
+          'excerptPageCount' => $book['excerptPageCount'],
+        ],
+        BookDashboardExportData::orderedBooks(),
+      ),
+    ];
 
-## Seeders en production (alternative)
+    File::put($path, json_encode($index, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT) ?: '{}');
 
-Page Admin → **Déploiement** → bouton **Seeders** → cocher uniquement `CatalogBookSeeder` (et `AuthorSeeder` si besoin).
-
-URL HTTP : `/?secret=XXX&action=seed&class=CatalogBookSeeder`
-MD;
-
-    Storage::disk('local')->put($readmePath, $content);
-
-    return $readmePath;
+    return $path;
   }
 
   /**
@@ -107,6 +138,24 @@ MD;
    */
   public function absoluteExportDirectory(): string
   {
-    return Storage::disk('local')->path(self::EXPORT_DIRECTORY);
+    return base_path(self::REPO_EXPORT_DIRECTORY);
+  }
+
+  /**
+   * Résout le chemin absolu d'une image book-site.
+   *
+   * @param string|null $fileName Nom de fichier couverture
+   * @return string|null Chemin absolu ou null
+   */
+  public function resolveBookSiteImage(?string $fileName): ?string
+  {
+    if ($fileName === null || $fileName === '') {
+      return null;
+    }
+
+    $media = new SeederMediaService();
+    $absolutePath = $media->bookSiteImagesDirectory().DIRECTORY_SEPARATOR.$fileName;
+
+    return File::exists($absolutePath) ? $absolutePath : null;
   }
 }

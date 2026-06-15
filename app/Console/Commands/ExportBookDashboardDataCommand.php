@@ -3,29 +3,20 @@
 namespace App\Console\Commands;
 
 use App\Services\Books\BookDashboardExportService;
+use Database\Seeders\Support\BookDashboardExportData;
 use Illuminate\Console\Command;
 
 /**
- * Exporte les fiches livres en JSON pour import dashboard production.
+ * Exporte les données books.ts en JSON numérotés pour le dashboard.
  */
 class ExportBookDashboardDataCommand extends Command
 {
-  /**
-   * Signature de la commande Artisan.
-   *
-   * @var string
-   */
-  protected $signature = 'books:export-dashboard-data {slug? : Slug optionnel d\'un seul livre}';
+  protected $signature = 'books:export-dashboard-data {slug? : Slug optionnel}';
+
+  protected $description = 'Exporte les livres books.ts (ordre, pages, textes) pour import dashboard';
 
   /**
-   * Description affichée dans la liste des commandes.
-   *
-   * @var string
-   */
-  protected $description = 'Exporte les données livres (pages, textes, visuels) pour import manuel en production';
-
-  /**
-   * Génère les fichiers JSON d'export.
+   * Génère les fichiers JSON dans database/seeders/exports/books/.
    *
    * @param BookDashboardExportService $exportService Service d'export
    * @return int Code de sortie
@@ -35,7 +26,7 @@ class ExportBookDashboardDataCommand extends Command
     $slug = $this->argument('slug');
 
     if (is_string($slug) && $slug !== '') {
-      $book = \Database\Seeders\Support\BookDashboardExportData::forSlug($slug);
+      $book = BookDashboardExportData::forSlug($slug);
 
       if ($book === null) {
         $this->error('Livre introuvable : '.$slug);
@@ -43,16 +34,14 @@ class ExportBookDashboardDataCommand extends Command
         return self::FAILURE;
       }
 
-      $path = $exportService->exportBook($slug, $book);
-      $this->info('Export : storage/app/private/'.$path);
+      $path = $exportService->exportBook($book);
+      $this->info('Export : '.$path);
     } else {
       $paths = $exportService->exportAll();
 
       foreach ($paths as $path) {
-        $this->line('Export : storage/app/private/'.$path);
+        $this->line('Export : '.$path);
       }
-
-      $this->info('Guide : storage/app/private/'.BookDashboardExportService::EXPORT_DIRECTORY.'/README-import-production.md');
     }
 
     $this->info('Dossier : '.$exportService->absoluteExportDirectory());

@@ -1,0 +1,190 @@
+{
+    "order": 1,
+    "slug": "eglise-face-aux-defis-de-lheure",
+    "source": "ken-luamba-book-site\/src\/data\/books.ts",
+    "importGuide": {
+        "etape1": "Admin → Livres → Créer \/ Modifier",
+        "etape2": "Coller les champs de sectionContenu et sectionFicheEditoriale",
+        "etape3": "Uploader cover_image et back_cover_image (fichiers sectionVisuels)",
+        "etape4": "Repeater Aperçu feuilletable : une entrée par page de excerptPages",
+        "etape5": "Uploader le PDF {prefix}-extrait.pdf dans « Extrait PDF » pour tester le lecteur PDF"
+    },
+    "bookSite": {
+        "status": "preorder",
+        "featured": true,
+        "formats": [
+            {
+                "kind": "paper",
+                "label": "Édition imprimée",
+                "price": 24,
+                "available": true,
+                "detail": "Précommande · Couverture souple"
+            },
+            {
+                "kind": "epub",
+                "label": "Édition numérique (EPUB)",
+                "price": 14,
+                "available": true,
+                "detail": "Précommande · Compatible liseuses & mobile"
+            },
+            {
+                "kind": "audio",
+                "label": "Livre audio",
+                "price": 18,
+                "available": true,
+                "detail": "Précommande · Lu par l'auteur"
+            }
+        ],
+        "reviews": [
+            {
+                "name": "Esther M.",
+                "role": "Responsable de cellule",
+                "rating": 5,
+                "quote": "Un livre qui secoue avec douceur et reconstruit avec profondeur. Je l'ai lu deux fois."
+            },
+            {
+                "name": "Daniel K.",
+                "role": "Étudiant en théologie",
+                "rating": 5,
+                "quote": "La clarté de l'analyse m'a marqué. Chaque chapitre se médite autant qu'il se lit."
+            },
+            {
+                "name": "Grâce N.",
+                "role": "Lectrice",
+                "rating": 5,
+                "quote": "Enfin un ouvrage qui parle vrai à notre génération sans jamais la flatter."
+            }
+        ],
+        "campaign": {
+            "goal": 1500,
+            "reserved": 1043,
+            "bonus": [
+                "Chapitre inédit en avant-première",
+                "Accès au webinaire de lancement",
+                "Nom inscrit dans les remerciements de l'édition limitée"
+            ]
+        }
+    },
+    "sectionIdentification": {
+        "title": "L'Église face aux défis de l'heure",
+        "slug": "eglise-face-aux-defis-de-lheure",
+        "subtitle": "Un appel prophétique au réveil, à la sainteté et à la fidélité jusqu'au retour du Roi.",
+        "tagline": "L'ouvrage phare du Pasteur Ken Luamba",
+        "is_featured": true,
+        "sort_order": 1,
+        "is_published": true
+    },
+    "sectionContenu": {
+        "description": "Né d'un fardeau porté dans la prière, ce livre sonne comme une trompette pour l'Église de Jésus-Christ. Le Pasteur Ken Luamba y dresse un diagnostic lucide d'une foi qui se refroidit, d'une piété devenue apparente et d'un message de la croix parfois remplacé par un évangile de confort.",
+        "author_note": null,
+        "about_paragraphs": [
+            "« L'Église face aux défis de l'heure » est écrit en sentinelle : non pour condamner, mais pour avertir ; non pour blesser, mais pour réveiller. L'auteur appelle à la repentance sincère, à la radicalité spirituelle et à la consécration.",
+            "Les premiers chapitres dressent l'état d'une Église confrontée à la perte du discernement, aux compromis du monde, aux fausses doctrines, à l'infiltration de l'esprit de Babylone et à l'apostasie rampante.",
+            "Le livre trace ensuite le chemin de la restauration : revenir à l'autel de Dieu, former des veilleurs, discerner les temps et demeurer fidèle jusqu'au retour du Seigneur."
+        ],
+        "about_paragraphs_text": "« L'Église face aux défis de l'heure » est écrit en sentinelle : non pour condamner, mais pour avertir ; non pour blesser, mais pour réveiller. L'auteur appelle à la repentance sincère, à la radicalité spirituelle et à la consécration.\n\nLes premiers chapitres dressent l'état d'une Église confrontée à la perte du discernement, aux compromis du monde, aux fausses doctrines, à l'infiltration de l'esprit de Babylone et à l'apostasie rampante.\n\nLe livre trace ensuite le chemin de la restauration : revenir à l'autel de Dieu, former des veilleurs, discerner les temps et demeurer fidèle jusqu'au retour du Seigneur.",
+        "themes": [
+            "Réveil",
+            "Sainteté",
+            "Apostasie",
+            "Veilleurs"
+        ],
+        "themes_text": "Réveil\nSainteté\nApostasie\nVeilleurs"
+    },
+    "sectionFicheEditoriale": {
+        "page_count": 248,
+        "reading_time": "6 h de lecture",
+        "language": "Français",
+        "release_date": "2026-06-28",
+        "accent_color": "#1b1f2a",
+        "category": "Ecclésiologie · Réveil spirituel",
+        "preorder_campaign_goal": 1500,
+        "preorder_reserved_count": 1043,
+        "preorder_campaign_bonuses": [
+            "Chapitre inédit en avant-première",
+            "Accès au webinaire de lancement",
+            "Nom inscrit dans les remerciements de l'édition limitée"
+        ],
+        "preorder_campaign_bonuses_text": "Chapitre inédit en avant-première\nAccès au webinaire de lancement\nNom inscrit dans les remerciements de l'édition limitée"
+    },
+    "sectionVisuels": {
+        "cover_image_source": "Cover Livre - Eglise Defis Heure.jpg",
+        "back_cover_image_source": "Back Cover - Eglise Defis Heure.jpg",
+        "cover_image_path_book_site": "\/images\/Cover%20Livre%20-%20Eglise%20Defis%20Heure.jpg",
+        "back_cover_image_path_book_site": "\/images\/Back%20Cover%20-%20Eglise%20Defis%20Heure.jpg",
+        "images_directory": "ken-luamba-book-site\/public\/images",
+        "preview_pdf_upload": "books\/previews\/eglise-face-aux-defis-de-lheure.pdf",
+        "preview_pdf_export": "01-eglise-face-aux-defis-de-lheure-extrait.pdf"
+    },
+    "excerptPages": [
+        {
+            "pageNumber": 1,
+            "kind": "cover",
+            "paragraphsText": null
+        },
+        {
+            "pageNumber": 2,
+            "kind": "section",
+            "eyebrow": "I. Présentation et contexte du livre",
+            "title": "Un fardeau porté dans la prière",
+            "paragraphs": [
+                "Ce livre est né d'un fardeau. Pas d'une réflexion théologique de cabinet, pas d'une commande intellectuelle — mais d'un poids porté dans la prière, d'un cri intérieur pour l'état de l'Église de Jésus-Christ.",
+                "Le Pasteur Ken Luamba écrit en sentinelle placée sur la muraille : non pour condamner, mais pour avertir ; non pour blesser, mais pour réveiller."
+            ],
+            "paragraphsText": "Ce livre est né d'un fardeau. Pas d'une réflexion théologique de cabinet, pas d'une commande intellectuelle — mais d'un poids porté dans la prière, d'un cri intérieur pour l'état de l'Église de Jésus-Christ.\n\nLe Pasteur Ken Luamba écrit en sentinelle placée sur la muraille : non pour condamner, mais pour avertir ; non pour blesser, mais pour réveiller."
+        },
+        {
+            "pageNumber": 3,
+            "kind": "section",
+            "eyebrow": "Présentation et contexte",
+            "title": "Le diagnostic de départ",
+            "paragraphs": [
+                "Le constat de départ est sévère mais juste : la foi se refroidit. La piété est devenue apparente plutôt que réelle. Le message exigeant de la croix laisse parfois place à un évangile centré sur le bien-être personnel.",
+                "La sanctification est perçue comme une option et non comme une exigence. La crainte de Dieu s'efface tandis que l'immoralité s'installe comme une norme acceptable.",
+                "Face à ce diagnostic, l'auteur ne se résigne pas. Il lance un appel solennel à la repentance sincère, à la radicalité spirituelle et à la consécration."
+            ],
+            "paragraphsText": "Le constat de départ est sévère mais juste : la foi se refroidit. La piété est devenue apparente plutôt que réelle. Le message exigeant de la croix laisse parfois place à un évangile centré sur le bien-être personnel.\n\nLa sanctification est perçue comme une option et non comme une exigence. La crainte de Dieu s'efface tandis que l'immoralité s'installe comme une norme acceptable.\n\nFace à ce diagnostic, l'auteur ne se résigne pas. Il lance un appel solennel à la repentance sincère, à la radicalité spirituelle et à la consécration."
+        },
+        {
+            "pageNumber": 4,
+            "kind": "part",
+            "eyebrow": "Première partie",
+            "title": "Le diagnostic : une Église en crise",
+            "paragraphs": [
+                "Les sept premiers chapitres dressent un état des lieux lucide de l'Église contemporaine. Le premier défi identifié est la perte du discernement spirituel : il est possible d'être actif sans être lucide, religieux sans être perspicace, d'avancer sans direction.",
+                "L'auteur examine ensuite l'Église tiraillée entre deux autels — celui de Dieu et celui du confort du monde — avant d'analyser l'oubli progressif de la mission évangélique, le paradoxe d'une Église hyperconnectée mais spirituellement isolée, la séduction des fausses doctrines, l'infiltration de l'esprit de Babylone dans la génération actuelle, et enfin l'apostasie rampante qui gagne du terrain dans le silence."
+            ],
+            "paragraphsText": "Les sept premiers chapitres dressent un état des lieux lucide de l'Église contemporaine. Le premier défi identifié est la perte du discernement spirituel : il est possible d'être actif sans être lucide, religieux sans être perspicace, d'avancer sans direction.\n\nL'auteur examine ensuite l'Église tiraillée entre deux autels — celui de Dieu et celui du confort du monde — avant d'analyser l'oubli progressif de la mission évangélique, le paradoxe d'une Église hyperconnectée mais spirituellement isolée, la séduction des fausses doctrines, l'infiltration de l'esprit de Babylone dans la génération actuelle, et enfin l'apostasie rampante qui gagne du terrain dans le silence."
+        },
+        {
+            "pageNumber": 5,
+            "kind": "part",
+            "eyebrow": "Deuxième partie",
+            "title": "La réponse : restaurer, veiller, demeurer",
+            "paragraphs": [
+                "L'auteur ne s'arrête pas au diagnostic. Il trace le chemin de la restauration.",
+                "Le chapitre 8 appelle à la restauration de l'autel de Dieu — revenir à la prière, à la consécration, à la vérité, à la croix.",
+                "Le chapitre 9 est un appel aux veilleurs : ces hommes et ces femmes capables d'entendre la voix de Dieu, de discerner les temps et de tenir leur position malgré l'obscurité."
+            ],
+            "paragraphsText": "L'auteur ne s'arrête pas au diagnostic. Il trace le chemin de la restauration.\n\nLe chapitre 8 appelle à la restauration de l'autel de Dieu — revenir à la prière, à la consécration, à la vérité, à la croix.\n\nLe chapitre 9 est un appel aux veilleurs : ces hommes et ces femmes capables d'entendre la voix de Dieu, de discerner les temps et de tenir leur position malgré l'obscurité."
+        },
+        {
+            "pageNumber": 6,
+            "kind": "part",
+            "eyebrow": "Troisième partie",
+            "title": "La vision : l'Église glorieuse",
+            "paragraphs": [
+                "Malgré les compromis et malgré les ténèbres, l'auteur clôt son livre sur une espérance intacte. L'Église de Jésus-Christ ne sera jamais vaincue.",
+                "Dieu prépare encore une Église : enracinée dans la Parole, conduite par l'Esprit, fidèle jusqu'à la fin, sanctifiée pour le retour du Seigneur.",
+                "Une Église sans tache ni ride. Une Église qui préfère la vérité au compromis. Une Église qui porte encore le feu de Dieu."
+            ],
+            "paragraphsText": "Malgré les compromis et malgré les ténèbres, l'auteur clôt son livre sur une espérance intacte. L'Église de Jésus-Christ ne sera jamais vaincue.\n\nDieu prépare encore une Église : enracinée dans la Parole, conduite par l'Esprit, fidèle jusqu'à la fin, sanctifiée pour le retour du Seigneur.\n\nUne Église sans tache ni ride. Une Église qui préfère la vérité au compromis. Une Église qui porte encore le feu de Dieu."
+        },
+        {
+            "pageNumber": 7,
+            "kind": "backCover",
+            "paragraphsText": null
+        }
+    ],
+    "excerptPageCount": 7
+}

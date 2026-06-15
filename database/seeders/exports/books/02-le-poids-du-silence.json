@@ -1,0 +1,181 @@
+{
+    "order": 2,
+    "slug": "le-poids-du-silence",
+    "source": "ken-luamba-book-site\/src\/data\/books.ts",
+    "importGuide": {
+        "etape1": "Admin → Livres → Créer \/ Modifier",
+        "etape2": "Coller les champs de sectionContenu et sectionFicheEditoriale",
+        "etape3": "Uploader cover_image et back_cover_image (fichiers sectionVisuels)",
+        "etape4": "Repeater Aperçu feuilletable : une entrée par page de excerptPages",
+        "etape5": "Uploader le PDF {prefix}-extrait.pdf dans « Extrait PDF » pour tester le lecteur PDF"
+    },
+    "bookSite": {
+        "status": "preorder",
+        "featured": false,
+        "formats": [
+            {
+                "kind": "paper",
+                "label": "Édition imprimée",
+                "price": 19,
+                "available": true,
+                "detail": "Précommande · Couverture souple"
+            },
+            {
+                "kind": "epub",
+                "label": "Édition numérique (EPUB)",
+                "price": 11,
+                "available": true,
+                "detail": "Précommande · Compatible liseuses & mobile"
+            },
+            {
+                "kind": "audio",
+                "label": "Livre audio",
+                "price": 15,
+                "available": true,
+                "detail": "Précommande · Lu par l'auteur"
+            }
+        ],
+        "reviews": [
+            {
+                "name": "Joëlle T.",
+                "role": "Lectrice",
+                "rating": 5,
+                "quote": "Une respiration. J'ai redécouvert la prière silencieuse."
+            },
+            {
+                "name": "Samuel B.",
+                "role": "Pasteur",
+                "rating": 4,
+                "quote": "Un texte délicat et exigeant à la fois."
+            }
+        ],
+        "campaign": null
+    },
+    "sectionIdentification": {
+        "title": "Le Prix du Sacrifice",
+        "slug": "le-poids-du-silence",
+        "subtitle": "Retrouver la place du renoncement, de la croix et de l'autel dans la vie chrétienne.",
+        "tagline": "Retrouver le chemin de l'autel",
+        "is_featured": false,
+        "sort_order": 2,
+        "is_published": true
+    },
+    "sectionContenu": {
+        "description": "Dans « Le Prix du Sacrifice », Ken Luamba restaure l'intelligence spirituelle de l'autel. Il rappelle qu'avant la terre promise, le palais, le trône ou la résurrection, il y a toujours un lieu de renoncement où Dieu détache, vide, façonne et prépare.",
+        "author_note": null,
+        "about_paragraphs": [
+            "Ce livre naît d'un constat douloureux : une génération aime les promesses mais fuit parfois les exigences, désire la gloire mais refuse la croix, veut aller loin avec Dieu sans rien perdre.",
+            "L'auteur présente le sacrifice non comme une punition ni comme une souffrance recherchée pour elle-même, mais comme une loi spirituelle : l'autel précède toujours la gloire.",
+            "Structuré autour du renoncement, de la croix, de ce que produit le sacrifice et de la disparition de la croix dans l'évangile contemporain, l'ouvrage conduit le lecteur vers une décision personnelle concrète."
+        ],
+        "about_paragraphs_text": "Ce livre naît d'un constat douloureux : une génération aime les promesses mais fuit parfois les exigences, désire la gloire mais refuse la croix, veut aller loin avec Dieu sans rien perdre.\n\nL'auteur présente le sacrifice non comme une punition ni comme une souffrance recherchée pour elle-même, mais comme une loi spirituelle : l'autel précède toujours la gloire.\n\nStructuré autour du renoncement, de la croix, de ce que produit le sacrifice et de la disparition de la croix dans l'évangile contemporain, l'ouvrage conduit le lecteur vers une décision personnelle concrète.",
+        "themes": [
+            "Renoncement",
+            "Croix",
+            "Consécration",
+            "Autel"
+        ],
+        "themes_text": "Renoncement\nCroix\nConsécration\nAutel"
+    },
+    "sectionFicheEditoriale": {
+        "page_count": 196,
+        "reading_time": "4 h 30 de lecture",
+        "language": "Français",
+        "release_date": "2026-06-28",
+        "accent_color": "#0f172a",
+        "category": "Discipolat · Vie chrétienne",
+        "preorder_campaign_goal": null,
+        "preorder_reserved_count": 0,
+        "preorder_campaign_bonuses": [],
+        "preorder_campaign_bonuses_text": ""
+    },
+    "sectionVisuels": {
+        "cover_image_source": "Cover Livre - Prix du Sacrifice.jpg",
+        "back_cover_image_source": "Backer Cover - Prix du Sacrifice.jpg",
+        "cover_image_path_book_site": "\/images\/Cover%20Livre%20-%20Prix%20du%20Sacrifice.jpg",
+        "back_cover_image_path_book_site": "\/images\/Backer%20Cover%20-%20Prix%20du%20Sacrifice.jpg",
+        "images_directory": "ken-luamba-book-site\/public\/images",
+        "preview_pdf_upload": "books\/previews\/le-poids-du-silence.pdf",
+        "preview_pdf_export": "02-le-poids-du-silence-extrait.pdf"
+    },
+    "excerptPages": [
+        {
+            "pageNumber": 1,
+            "kind": "cover",
+            "paragraphsText": null
+        },
+        {
+            "pageNumber": 2,
+            "kind": "section",
+            "eyebrow": "I. Présentation et contexte du livre",
+            "title": "Retrouver le chemin de l'autel",
+            "paragraphs": [
+                "« Le Prix du Sacrifice » naît d'un constat douloureux : quelque chose d'essentiel a progressivement disparu de beaucoup de vies chrétiennes. L'autel.",
+                "Nous vivons dans une génération qui aime les promesses mais fuit les exigences. Une génération qui désire la gloire mais refuse la croix. Plusieurs veulent aller loin avec Dieu — sans rien perdre."
+            ],
+            "paragraphsText": "« Le Prix du Sacrifice » naît d'un constat douloureux : quelque chose d'essentiel a progressivement disparu de beaucoup de vies chrétiennes. L'autel.\n\nNous vivons dans une génération qui aime les promesses mais fuit les exigences. Une génération qui désire la gloire mais refuse la croix. Plusieurs veulent aller loin avec Dieu — sans rien perdre."
+        },
+        {
+            "pageNumber": 3,
+            "kind": "section",
+            "eyebrow": "Présentation et contexte",
+            "title": "L'autel précède toujours la gloire",
+            "paragraphs": [
+                "Le Pasteur Ken Luamba engage dans ce livre un plaidoyer scripturaire rigoureux pour restaurer l'intelligence du sacrifice dans la vie chrétienne contemporaine.",
+                "Il part d'une observation fondamentale : dans les Écritures, chaque fois que Dieu veut conduire un homme vers sa destinée, un autel apparaît.",
+                "Avant la terre promise à Abraham, il y a le départ. Avant le palais de Joseph, il y a la fosse. Avant le trône de David, il y a le désert. Avant la gloire de la résurrection, il y a la croix."
+            ],
+            "paragraphsText": "Le Pasteur Ken Luamba engage dans ce livre un plaidoyer scripturaire rigoureux pour restaurer l'intelligence du sacrifice dans la vie chrétienne contemporaine.\n\nIl part d'une observation fondamentale : dans les Écritures, chaque fois que Dieu veut conduire un homme vers sa destinée, un autel apparaît.\n\nAvant la terre promise à Abraham, il y a le départ. Avant le palais de Joseph, il y a la fosse. Avant le trône de David, il y a le désert. Avant la gloire de la résurrection, il y a la croix."
+        },
+        {
+            "pageNumber": 4,
+            "kind": "part",
+            "eyebrow": "Première partie",
+            "title": "L'appel au sacrifice — Porter sa croix chaque jour",
+            "paragraphs": [
+                "L'auteur commence par établir que Jésus présente le sacrifice non comme une option spirituelle avancée réservée à une élite, mais comme la condition normale du discipolat.",
+                "Trois réalités inséparables composent la réponse du disciple — le renoncement à soi-même, le port de la croix, et la marche à la suite de Christ."
+            ],
+            "paragraphsText": "L'auteur commence par établir que Jésus présente le sacrifice non comme une option spirituelle avancée réservée à une élite, mais comme la condition normale du discipolat.\n\nTrois réalités inséparables composent la réponse du disciple — le renoncement à soi-même, le port de la croix, et la marche à la suite de Christ."
+        },
+        {
+            "pageNumber": 5,
+            "kind": "part",
+            "eyebrow": "Deuxième partie",
+            "title": "La croix — Une réalité à comprendre et à vivre",
+            "paragraphs": [
+                "La croix n'est pas un événement historique passé à célébrer une fois l'an ; elle est une réalité à embrasser chaque jour.",
+                "L'auteur distingue soigneusement le sacrifice comme punition, conception erronée, du sacrifice comme loi spirituelle, conception scripturaire."
+            ],
+            "paragraphsText": "La croix n'est pas un événement historique passé à célébrer une fois l'an ; elle est une réalité à embrasser chaque jour.\n\nL'auteur distingue soigneusement le sacrifice comme punition, conception erronée, du sacrifice comme loi spirituelle, conception scripturaire."
+        },
+        {
+            "pageNumber": 6,
+            "kind": "part",
+            "eyebrow": "Troisième partie",
+            "title": "Ce que produit le sacrifice",
+            "paragraphs": [
+                "L'auteur y montre que le sacrifice n'est jamais stérile dans l'économie de Dieu.",
+                "Il produit : une transformation profonde du caractère, une fécondité spirituelle durable, une autorité que le confort seul ne peut conférer, et une communion avec Dieu qui dépasse toute connaissance doctrinale."
+            ],
+            "paragraphsText": "L'auteur y montre que le sacrifice n'est jamais stérile dans l'économie de Dieu.\n\nIl produit : une transformation profonde du caractère, une fécondité spirituelle durable, une autorité que le confort seul ne peut conférer, et une communion avec Dieu qui dépasse toute connaissance doctrinale."
+        },
+        {
+            "pageNumber": 7,
+            "kind": "part",
+            "eyebrow": "Quatrième partie",
+            "title": "La disparition de la croix",
+            "paragraphs": [
+                "Le dernier chapitre analyse avec une lucidité prophétique la dérive contemporaine : un évangile qui a progressivement gardé les promesses mais perdu les autels.",
+                "L'auteur décrit comment le message de la croix a été édulcoré, comment le discipolat a été réduit à l'adhésion à un programme, et comment une génération entière grandit dans une foi déclarative mais dépourvue de profondeur sacrificielle."
+            ],
+            "paragraphsText": "Le dernier chapitre analyse avec une lucidité prophétique la dérive contemporaine : un évangile qui a progressivement gardé les promesses mais perdu les autels.\n\nL'auteur décrit comment le message de la croix a été édulcoré, comment le discipolat a été réduit à l'adhésion à un programme, et comment une génération entière grandit dans une foi déclarative mais dépourvue de profondeur sacrificielle."
+        },
+        {
+            "pageNumber": 8,
+            "kind": "backCover",
+            "paragraphsText": null
+        }
+    ],
+    "excerptPageCount": 8
+}
