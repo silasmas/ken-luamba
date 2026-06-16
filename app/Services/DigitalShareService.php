@@ -146,7 +146,10 @@ class DigitalShareService
 
       $share->update([
         'first_opened_at' => now(),
-        'reading_expires_at' => now()->addMinutes($readingMinutes),
+        'reading_seconds_budget' => $readingMinutes * 60,
+        'reading_seconds_consumed' => 0,
+        'reading_timer_active_at' => null,
+        'reading_expires_at' => null,
       ]);
 
       $share->refresh();
@@ -222,7 +225,40 @@ class DigitalShareService
   public function saveShareProgress(string $token, array $payload): DigitalAccessShareProgress
   {
     $share = $this->resolveByToken($token);
-    $this->assertReadable($share);
+    $isPauseSync = array_key_exists('readingActive', $payload) && $payload['readingActive'] === false;
+
+    if ($isPauseSync) {
+      $this->assertLinkValid($share);
+    } else {
+      $this->assertReadable($share);
+    }
+
+    if (array_key_exists('readingActive', $payload)) {
+      $this->syncReadingTimer(
+        $share,
+        (bool) $payload['readingActive'],
+        isset($payload['readingElapsedSeconds']) ? (int) $payload['readingElapsedSeconds'] : null,
+      );
+      $share->refresh();
+    }
+
+    if (! $share->isReadingActive() && ! $isPauseSync) {
+      throw ValidationException::withMessages([
+        'share' => ['Le temps de lecture alloué est écoulé.'],
+      ]);
+    }
+
+    $hasProgressUpdate = array_key_exists('progressPercent', $payload)
+      || array_key_exists('epubCfi', $payload)
+      || array_key_exists('audioPositionSeconds', $payload)
+      || array_key_exists('audioDurationSeconds', $payload);
+
+    if (! $hasProgressUpdate) {
+      return DigitalAccessShareProgress::query()->firstOrCreate(
+        ['digital_access_share_id' => $share->id],
+        ['progress_percent' => 0],
+      );
+    }
 
     return DigitalAccessShareProgress::query()->updateOrCreate(
       ['digital_access_share_id' => $share->id],
@@ -241,7 +277,75 @@ class DigitalShareService
   }
 
   /**
-   * Construit l'URL frontend publique du lien de partage.
+   * Synchronise le temps de lecture effective (lecture/écoute active uniquement).
+   *
+   * @param string $token Token public
+   * @param bool $active Indique si la lecture est en cours
+   * @param int|null $elapsedSeconds Secondes écoulées depuis le dernier tick client
+   * @return array<string, mixed> Temps restant et état
+   */
+  public function syncReadingTimer(string $token, bool $active, ?int $elapsedSeconds = null): array
+  {
+    $share = $this->resolveByToken($token);
+    $this->assertReadable($share);
+
+    $this->applyReadingTimerSync($share, $active, $elapsedSeconds);
+
+    return [
+      'readingSecondsRemaining' => $share->readingSecondsRemaining(),
+      'isReadingExpired' => ! $share->isReadingActive(),
+      'canRead' => $share->canRead(),
+    ];
+  }
+
+  /**
+   * Applique la progression du temps de lecture sur le lien partagé.
+   *
+   * @param DigitalAccessShare $share Lien cible
+   * @param bool $active Lecture en cours
+   * @param int|null $elapsedSeconds Secondes à ajouter
+   * @return void
+   */
+  private function applyReadingTimerSync(DigitalAccessShare $share, bool $active, ?int $elapsedSeconds): void
+  {
+    if ($share->reading_seconds_budget === null) {
+      return;
+    }
+
+    $consumed = (int) ($share->reading_seconds_consumed ?? 0);
+
+    if ($elapsedSeconds !== null && $elapsedSeconds > 0) {
+      $consumed = min((int) $share->reading_seconds_budget, $consumed + $elapsedSeconds);
+    }
+
+    if (! $active && $share->reading_timer_active_at instanceof Carbon) {
+      $consumed = min(
+        (int) $share->reading_seconds_budget,
+        $consumed + max(0, now()->diffInSeconds($share->reading_timer_active_at, false)),
+      );
+    }
+
+    $share->update([
+      'reading_seconds_consumed' => $consumed,
+      'reading_timer_active_at' => $active && $consumed < (int) $share->reading_seconds_budget
+        ? now()
+        : null,
+    ]);
+  }
+
+  /**
+   * Synchronise le timer de lecture interne (sans recharger le modèle).
+   *
+   * @param DigitalAccessShare $share Lien cible
+   * @param bool $active Lecture en cours
+   * @param int|null $elapsedSeconds Secondes à ajouter
+   * @return void
+   */
+  private function syncReadingTimer(DigitalAccessShare $share, bool $active, ?int $elapsedSeconds): void
+  {
+    $this->applyReadingTimerSync($share, $active, $elapsedSeconds);
+  }
+
    *
    * @param DigitalAccessShare $share Lien de partage
    * @return string URL complète
@@ -346,7 +450,7 @@ class DigitalShareService
       'hasReadingStarted' => $share->hasReadingStarted(),
       'readingSecondsRemaining' => $share->hasReadingStarted()
         ? $share->readingSecondsRemaining()
-        : 0,
+        : ($share->reading_seconds_budget ?? (DigitalFormatLimits::shareReadingMinutes($format) * 60)),
       'isReadingExpired' => $share->hasReadingStarted() && ! $share->isReadingActive(),
       'canRead' => $share->canRead(),
       'isUnavailable' => $isUnavailable,
@@ -428,10 +532,6 @@ class DigitalShareService
    */
   private function resolveStreamSignatureExpiry(DigitalAccessShare $share): Carbon
   {
-    if ($share->reading_expires_at instanceof Carbon && $share->reading_expires_at->isFuture()) {
-      return $share->reading_expires_at;
-    }
-
     return $share->expires_at;
   }
 

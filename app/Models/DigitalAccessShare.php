@@ -29,6 +29,9 @@ class DigitalAccessShare extends Model
     'expires_at',
     'first_opened_at',
     'reading_expires_at',
+    'reading_seconds_budget',
+    'reading_seconds_consumed',
+    'reading_timer_active_at',
     'revoked_at',
   ];
 
@@ -43,6 +46,7 @@ class DigitalAccessShare extends Model
       'expires_at' => 'datetime',
       'first_opened_at' => 'datetime',
       'reading_expires_at' => 'datetime',
+      'reading_timer_active_at' => 'datetime',
       'revoked_at' => 'datetime',
     ];
   }
@@ -113,13 +117,11 @@ class DigitalAccessShare extends Model
   /**
    * Indique si la session de lecture est encore active.
    *
-   * @return bool True si le temps de lecture n'est pas écoulé
+   * @return bool True si du temps de lecture reste disponible
    */
   public function isReadingActive(): bool
   {
-    return $this->hasReadingStarted()
-      && $this->reading_expires_at instanceof Carbon
-      && $this->reading_expires_at->isFuture();
+    return $this->hasReadingStarted() && $this->readingSecondsRemaining() > 0;
   }
 
   /**
@@ -165,12 +167,22 @@ class DigitalAccessShare extends Model
   }
 
   /**
-   * Retourne les secondes restantes de la session de lecture.
+   * Retourne les secondes restantes de la session de lecture effective.
    *
    * @return int Secondes restantes (0 si non démarrée ou expirée)
    */
   public function readingSecondsRemaining(): int
   {
+    if ($this->reading_seconds_budget !== null) {
+      $consumed = (int) ($this->reading_seconds_consumed ?? 0);
+
+      if ($this->reading_timer_active_at instanceof Carbon) {
+        $consumed += max(0, now()->diffInSeconds($this->reading_timer_active_at, false));
+      }
+
+      return max(0, (int) $this->reading_seconds_budget - $consumed);
+    }
+
     if (! $this->reading_expires_at instanceof Carbon) {
       return 0;
     }

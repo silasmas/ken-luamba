@@ -114,9 +114,12 @@ class DigitalShareController extends Controller
       'epubCfi' => ['nullable', 'string', 'max:5000'],
       'audioPositionSeconds' => ['nullable', 'integer', 'min:0'],
       'audioDurationSeconds' => ['nullable', 'integer', 'min:0'],
+      'readingActive' => ['nullable', 'boolean'],
+      'readingElapsedSeconds' => ['nullable', 'integer', 'min:1', 'max:120'],
     ]);
 
     $progress = $this->digitalShareService->saveShareProgress($token, $validated);
+    $share = $this->digitalShareService->resolveByToken($token);
 
     return response()->json([
       'data' => [
@@ -125,6 +128,9 @@ class DigitalShareController extends Controller
         'audioPositionSeconds' => $progress->audio_position_seconds,
         'audioDurationSeconds' => $progress->audio_duration_seconds,
         'lastOpenedAt' => $progress->last_opened_at?->toIso8601String(),
+        'readingSecondsRemaining' => $share->readingSecondsRemaining(),
+        'isReadingExpired' => $share->hasReadingStarted() && ! $share->isReadingActive(),
+        'canRead' => $share->canRead(),
       ],
     ]);
   }
