@@ -234,7 +234,7 @@ class DigitalShareService
     }
 
     if (array_key_exists('readingActive', $payload)) {
-      $this->syncReadingTimer(
+      $this->applyReadingTimerSync(
         $share,
         (bool) $payload['readingActive'],
         isset($payload['readingElapsedSeconds']) ? (int) $payload['readingElapsedSeconds'] : null,
@@ -334,18 +334,7 @@ class DigitalShareService
   }
 
   /**
-   * Synchronise le timer de lecture interne (sans recharger le modèle).
-   *
-   * @param DigitalAccessShare $share Lien cible
-   * @param bool $active Lecture en cours
-   * @param int|null $elapsedSeconds Secondes à ajouter
-   * @return void
-   */
-  private function syncReadingTimer(DigitalAccessShare $share, bool $active, ?int $elapsedSeconds): void
-  {
-    $this->applyReadingTimerSync($share, $active, $elapsedSeconds);
-  }
-
+   * Construit l'URL frontend publique du lien de partage.
    *
    * @param DigitalAccessShare $share Lien de partage
    * @return string URL complète
