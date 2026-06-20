@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api\V1;
 
 use App\Support\MediaUrl;
+use App\Services\Invitations\InvitationShareImageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -41,6 +42,7 @@ class EventResource extends JsonResource
         ->filter()
         ->values()
         ->all()),
+      'shareImageUrl' => $this->whenLoaded('books', fn () => app(InvitationShareImageService::class)->urlForEvent($this->resource)),
     ];
   }
 }

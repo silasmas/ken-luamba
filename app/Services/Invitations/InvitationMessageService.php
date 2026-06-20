@@ -62,8 +62,31 @@ class InvitationMessageService
 
     return array_values(array_filter(
       $messages,
-      fn (array $message): bool => in_array($channel->value, $message['channels'] ?? [], true),
+      fn (array $message): bool => $this->messageSupportsChannel($message, $channel),
     ));
+  }
+
+  /**
+   * Indique si un modèle de message active un canal donné.
+   *
+   * @param array<string, mixed> $message Modèle enregistré
+   * @param InvitationDispatchChannel $channel Canal cible
+   * @return bool True si le canal est coché sur le modèle
+   */
+  private function messageSupportsChannel(array $message, InvitationDispatchChannel $channel): bool
+  {
+    $channels = $message['channels'] ?? [];
+
+    if (! is_array($channels)) {
+      return false;
+    }
+
+    $normalized = array_map(
+      fn (mixed $value): string => is_string($value) ? strtolower(trim($value)) : '',
+      $channels,
+    );
+
+    return in_array($channel->value, $normalized, true);
   }
 
   /**
@@ -200,7 +223,7 @@ class InvitationMessageService
 
       if (
         $template !== null
-        && in_array($channel->value, $template['channels'] ?? [], true)
+        && $this->messageSupportsChannel($template, $channel)
         && filled($template['body'] ?? null)
       ) {
         return $this->render((string) $template['body'], $invitation);
@@ -227,7 +250,7 @@ class InvitationMessageService
 
       if (
         $template !== null
-        && in_array(InvitationDispatchChannel::Email->value, $template['channels'] ?? [], true)
+        && $this->messageSupportsChannel($template, InvitationDispatchChannel::Email)
         && filled($template['email_subject'] ?? null)
       ) {
         return $this->render((string) $template['email_subject'], $invitation);

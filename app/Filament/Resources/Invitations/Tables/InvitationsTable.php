@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Invitations\Tables;
 
 use App\Enums\InvitationRsvpStatus;
 use App\Filament\Support\InvitationAdminActions;
+use App\Models\Event;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -18,9 +19,10 @@ class InvitationsTable
    * Configure le tableau de liste des invitations.
    *
    * @param Table $table Table Filament à configurer
+   * @param Event|null $eventContext Événement parent pour filtrer les canaux d'envoi
    * @return Table Table configurée
    */
-  public static function configure(Table $table): Table
+  public static function configure(Table $table, ?Event $eventContext = null): Table
   {
     return $table
       ->columns([
@@ -101,9 +103,7 @@ class InvitationsTable
       ])
       ->toolbarActions([
         BulkActionGroup::make([
-          InvitationAdminActions::bulkSendEmail(),
-          InvitationAdminActions::bulkSendSms(),
-          InvitationAdminActions::bulkSendWhatsapp(),
+          ...InvitationAdminActions::bulkActionsForEvent($eventContext),
           DeleteBulkAction::make(),
         ]),
       ])

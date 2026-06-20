@@ -295,11 +295,37 @@ class InvitationAdminActions
   }
 
   /**
+   * Actions groupées d'envoi filtrées selon les canaux activés pour l'événement.
+   *
+   * @param Event|null $eventContext Événement connu (relation manager) ou null (liste globale)
+   * @return list<BulkAction> Actions groupées disponibles
+   */
+  public static function bulkActionsForEvent(?Event $eventContext = null): array
+  {
+    $messageService = app(InvitationMessageService::class);
+    $channels = $eventContext !== null
+      ? $messageService->enabledChannels($eventContext)
+      : InvitationDispatchChannel::cases();
+
+    $actions = [];
+
+    foreach ($channels as $channel) {
+      $actions[] = match ($channel) {
+        InvitationDispatchChannel::Email => self::bulkSendEmail($eventContext),
+        InvitationDispatchChannel::Sms => self::bulkSendSms($eventContext),
+        InvitationDispatchChannel::Whatsapp => self::bulkSendWhatsapp($eventContext),
+      };
+    }
+
+    return $actions;
+  }
+
+  /**
    * Envoi email en masse.
    *
    * @return BulkAction Action groupée
    */
-  public static function bulkSendEmail(): BulkAction
+  public static function bulkSendEmail(?Event $eventContext = null): BulkAction
   {
     return self::configureBulkChannelAction(
       name: 'bulkSendEmail',
@@ -309,6 +335,7 @@ class InvitationAdminActions
       heading: 'Envoyer par email',
       submitLabel: 'Envoyer',
       successLabel: 'invitation(s) envoyée(s) par email',
+      eventContext: $eventContext,
     );
   }
 
@@ -317,7 +344,7 @@ class InvitationAdminActions
    *
    * @return BulkAction Action groupée
    */
-  public static function bulkSendSms(): BulkAction
+  public static function bulkSendSms(?Event $eventContext = null): BulkAction
   {
     return self::configureBulkChannelAction(
       name: 'bulkSendSms',
@@ -329,6 +356,7 @@ class InvitationAdminActions
         : 'Envoyer par SMS',
       submitLabel: 'Envoyer',
       successLabel: 'invitation(s) traitée(s) par SMS',
+      eventContext: $eventContext,
       afterBulk: function (array $result, Action $action): void {
         if ($result['urls'] !== []) {
           self::openUrlsInNewTabs($action, $result['urls']);
@@ -342,7 +370,7 @@ class InvitationAdminActions
    *
    * @return BulkAction Action groupée
    */
-  public static function bulkSendWhatsapp(): BulkAction
+  public static function bulkSendWhatsapp(?Event $eventContext = null): BulkAction
   {
     return self::configureBulkChannelAction(
       name: 'bulkSendWhatsapp',
@@ -352,6 +380,7 @@ class InvitationAdminActions
       heading: 'Envoyer via WhatsApp',
       submitLabel: 'Préparer les conversations',
       successLabel: 'conversation(s) WhatsApp préparée(s)',
+      eventContext: $eventContext,
       afterBulk: function (array $result): void {
         self::notifyWhatsappLinks($result['whatsappLinks'] ?? []);
       },
@@ -589,18 +618,40 @@ class InvitationAdminActions
     string|callable $heading,
     string $submitLabel,
     string $successLabel,
+    ?Event $eventContext = null,
     ?callable $afterBulk = null,
   ): BulkAction {
     return BulkAction::make($name)
       ->label($label)
       ->icon($icon)
-      ->visible(fn (Collection $records): bool => self::bulkCanUseChannel($records, $channel))
       ->modal(fn (Collection $records): bool => self::bulkHasMessageTemplates($records, $channel))
       ->form(fn (Collection $records): array => self::bulkMessageTemplateFields($records, $channel))
       ->fillForm(fn (Collection $records): array => self::bulkDefaultMessageFormData($records, $channel))
       ->modalHeading($heading)
       ->modalSubmitActionLabel($submitLabel)
-      ->action(function (Collection $records, array $data, Action $action) use ($channel, $successLabel, $afterBulk): void {
+      ->action(function (Collection $records, array $data, Action $action) use ($channel, $successLabel, $afterBulk, $eventContext): void {
+        $event = $eventContext ?? self::resolveEventFromRecords($records);
+
+        if ($event === null) {
+          Notification::make()
+            ->title('Événement introuvable')
+            ->body('Sélectionnez des invitations du même événement.')
+            ->danger()
+            ->send();
+
+          return;
+        }
+
+        if (! app(InvitationMessageService::class)->isChannelEnabled($event, $channel)) {
+          Notification::make()
+            ->title('Canal non activé')
+            ->body('Ce canal n\'est pas activé dans les modèles de message de cet événement.')
+            ->danger()
+            ->send();
+
+          return;
+        }
+
         $messageId = self::selectedMessageId($data);
         $eligible = $records->filter(function ($record) use ($channel): bool {
           if (! $record instanceof Invitation) {
@@ -609,6 +660,16 @@ class InvitationAdminActions
 
           return self::recordCanUseChannel($record, $channel);
         });
+
+        if ($eligible->isEmpty()) {
+          Notification::make()
+            ->title('Aucun invité éligible')
+            ->body('Vérifiez que les invités sélectionnés ont les coordonnées requises pour ce canal.')
+            ->warning()
+            ->send();
+
+          return;
+        }
 
         $result = app(InvitationDispatchService::class)->sendBulk($eligible, $channel, $messageId);
 
@@ -857,36 +918,29 @@ class InvitationAdminActions
   }
 
   /**
-   * Indique si une action groupée peut utiliser un canal pour la sélection.
+   * Résout l'événement associé à une sélection d'invitations.
    *
    * @param Collection $records Invitations sélectionnées
-   * @param InvitationDispatchChannel $channel Canal d'envoi
-   * @return bool True si l'action groupée doit être visible
+   * @return Event|null Événement unique ou null
    */
-  private static function bulkCanUseChannel(Collection $records, InvitationDispatchChannel $channel): bool
+  private static function resolveEventFromRecords(Collection $records): ?Event
   {
     $invitations = $records->filter(fn ($record): bool => $record instanceof Invitation);
 
     if ($invitations->isEmpty()) {
-      return false;
+      return null;
     }
 
     $eventIds = $invitations->pluck('event_id')->unique();
 
     if ($eventIds->count() !== 1) {
-      return false;
+      return null;
     }
 
     $first = $invitations->first();
     $first->loadMissing('event');
 
-    if (! app(InvitationMessageService::class)->isChannelEnabled($first->event, $channel)) {
-      return false;
-    }
-
-    return $invitations->contains(
-      fn (Invitation $record): bool => self::recordCanUseChannel($record, $channel),
-    );
+    return $first->event;
   }
 
   /**

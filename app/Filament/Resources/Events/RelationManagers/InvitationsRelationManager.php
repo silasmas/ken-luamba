@@ -66,7 +66,7 @@ class InvitationsRelationManager extends RelationManager
    */
   public function table(Table $table): Table
   {
-    return InvitationsTable::configure($table)
+    return InvitationsTable::configure($table, $this->getOwnerRecord())
       ->headerActions([
         CreateAction::make(),
         InvitationAdminActions::downloadGuestImportTemplate(),
