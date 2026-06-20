@@ -96,13 +96,23 @@ class Event extends Model
   }
 
   /**
-   * Livres associés à l'événement.
+   * Livres explicitement associés à l'événement via la table pivot book_event.
    *
    * @return BelongsToMany<Book, $this>
    */
   public function books(): BelongsToMany
   {
-    return $this->belongsToMany(Book::class)
+    return $this->associatedBooks();
+  }
+
+  /**
+   * Livres sélectionnés dans le dashboard (aucun autre livre publié n'est inclus).
+   *
+   * @return BelongsToMany<Book, $this>
+   */
+  public function associatedBooks(): BelongsToMany
+  {
+    return $this->belongsToMany(Book::class, 'book_event', 'event_id', 'book_id')
       ->select('books.*')
       ->distinct()
       ->orderBy('books.title');

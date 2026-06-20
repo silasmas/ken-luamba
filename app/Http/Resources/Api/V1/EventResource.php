@@ -33,32 +33,34 @@ class EventResource extends JsonResource
       'displayTimezone' => config('app.timezone'),
       'location' => $this->location,
       'venueDetails' => $this->venue_details,
-      'books' => $this->whenLoaded('books', function () {
-        $coverService = app(BookCoverService::class);
-
-        return $this->books
-          ->unique('id')
-          ->values()
-          ->map(fn ($book) => [
-            'id' => $book->id,
-            'title' => $book->title,
-            'slug' => $book->slug,
-            'coverImage' => $coverService->url($book),
-          ])
-          ->all();
-      }),
-      'coverImages' => $this->whenLoaded('books', function () {
-        $coverService = app(BookCoverService::class);
-
-        return $this->books
-          ->unique('id')
-          ->values()
-          ->map(fn ($book) => $coverService->url($book))
-          ->filter()
-          ->values()
-          ->all();
-      }),
+      'books' => $this->whenLoaded('books', fn () => $this->serializeAssociatedBooks()),
+      'coverImages' => $this->whenLoaded('books', fn () => collect($this->serializeAssociatedBooks())
+        ->pluck('coverImage')
+        ->filter()
+        ->values()
+        ->all()),
       'shareImageUrl' => $this->whenLoaded('books', fn () => app(InvitationShareImageService::class)->urlForEvent($this->resource)),
     ];
+  }
+
+  /**
+   * Sérialise uniquement les livres enregistrés dans la table pivot book_event.
+   *
+   * @return list<array{id: string, title: string, slug: string, coverImage: string|null}> Livres associés
+   */
+  private function serializeAssociatedBooks(): array
+  {
+    $coverService = app(BookCoverService::class);
+
+    return $this->books
+      ->unique('id')
+      ->values()
+      ->map(fn ($book) => [
+        'id' => $book->id,
+        'title' => $book->title,
+        'slug' => $book->slug,
+        'coverImage' => $coverService->url($book),
+      ])
+      ->all();
   }
 }
