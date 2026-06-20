@@ -24,32 +24,19 @@ class InvitationPlaceholderHelper
       $encodedToken = Js::from($token);
       $encodedDescription = e($description);
 
-      $items[] = '<div class="relative inline-flex" x-data="{ copied: false, showTooltip: false }">'
-        .'<button type="button"'
+      $items[] = '<button type="button"'
         .' class="inline-flex items-center rounded-full border border-primary-200 bg-primary-50 px-2.5 py-1 text-xs font-semibold text-primary-800 shadow-sm transition hover:border-primary-400 hover:bg-primary-100 dark:border-primary-500/40 dark:bg-primary-950/50 dark:text-primary-100 dark:hover:border-primary-400 dark:hover:bg-primary-950"'
-        .' x-on:mouseenter="showTooltip = true"'
-        .' x-on:mouseleave="showTooltip = false"'
-        .' x-on:focus="showTooltip = true"'
-        .' x-on:blur="showTooltip = false"'
+        .' title="'.$encodedDescription.'"'
+        .' x-data="{ copied: false }"'
         .' x-on:click="navigator.clipboard.writeText('.$encodedToken.').then(() => { copied = true; setTimeout(() => copied = false, 1500) })"'
         .'>'
         .'<span x-show="!copied">'.e($token).'</span>'
         .'<span x-show="copied" x-cloak class="text-primary-600 dark:text-primary-400">Copié</span>'
-        .'</button>'
-        .'<div'
-        .' x-show="showTooltip"'
-        .' x-cloak'
-        .' x-transition.opacity.duration.150ms'
-        .' class="pointer-events-none absolute bottom-full left-1/2 z-50 mb-2 w-max max-w-xs -translate-x-1/2 rounded-lg bg-gray-900 px-3 py-2 text-xs font-normal text-white shadow-lg dark:bg-gray-800"'
-        .'>'
-        .$encodedDescription
-        .'<span class="absolute left-1/2 top-full -translate-x-1/2 border-4 border-transparent border-t-gray-900 dark:border-t-gray-800"></span>'
-        .'</div>'
-        .'</div>';
+        .'</button>';
     }
 
     return new HtmlString(
-      '<div class="flex flex-wrap gap-2">'.implode('', $items).'</div>'
+      '<div class="flex flex-wrap items-center gap-2">'.implode('', $items).'</div>'
         .'<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">Cliquez sur une variable pour la copier, ou insérez-la via le panneau « Variables » de l\'éditeur. Survolez un badge pour voir son utilisation.</p>',
     );
   }

@@ -3,7 +3,7 @@
 namespace App\Services\Invitations;
 
 use App\Models\Event;
-use App\Support\MediaUrl;
+use App\Services\Books\BookCoverService;
 
 /**
  * Résout l'URL d'aperçu social (Open Graph / WhatsApp) pour un événement.
@@ -20,8 +20,10 @@ class InvitationShareImageService
   {
     $event?->loadMissing('books');
 
+    $coverService = app(BookCoverService::class);
+
     foreach ($event?->books ?? [] as $book) {
-      $coverUrl = MediaUrl::fromPath($book->cover_image);
+      $coverUrl = $coverService->url($book);
 
       if ($coverUrl !== null && $coverUrl !== '') {
         return $coverUrl;

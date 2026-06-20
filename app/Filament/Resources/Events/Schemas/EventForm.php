@@ -54,10 +54,15 @@ class EventForm
               ->default(EventType::BookLaunch->value),
             Select::make('books')
               ->label('Livres associés')
-              ->relationship('books', 'title')
+              ->relationship(
+                'books',
+                'title',
+                fn ($query) => $query->published()->orderBy('books.title'),
+              )
               ->multiple()
               ->searchable()
-              ->preload(),
+              ->preload()
+              ->helperText('Seuls les livres publiés sont proposés.'),
             DateTimePicker::make('starts_at')
               ->label('Date de début')
               ->required()

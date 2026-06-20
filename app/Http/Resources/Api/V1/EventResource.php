@@ -2,7 +2,7 @@
 
 namespace App\Http\Resources\Api\V1;
 
-use App\Support\MediaUrl;
+use App\Services\Books\BookCoverService;
 use App\Services\Invitations\InvitationShareImageService;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -33,16 +33,24 @@ class EventResource extends JsonResource
       'displayTimezone' => config('app.timezone'),
       'location' => $this->location,
       'venueDetails' => $this->venue_details,
-      'books' => $this->whenLoaded('books', fn () => $this->books->map(fn ($book) => [
-        'title' => $book->title,
-        'slug' => $book->slug,
-        'coverImage' => MediaUrl::fromPath($book->cover_image),
-      ])->values()->all()),
-      'coverImages' => $this->whenLoaded('books', fn () => $this->books
-        ->map(fn ($book) => MediaUrl::fromPath($book->cover_image))
-        ->filter()
-        ->values()
-        ->all()),
+      'books' => $this->whenLoaded('books', function () {
+        $coverService = app(BookCoverService::class);
+
+        return $this->books->map(fn ($book) => [
+          'title' => $book->title,
+          'slug' => $book->slug,
+          'coverImage' => $coverService->url($book),
+        ])->values()->all();
+      }),
+      'coverImages' => $this->whenLoaded('books', function () {
+        $coverService = app(BookCoverService::class);
+
+        return $this->books
+          ->map(fn ($book) => $coverService->url($book))
+          ->filter()
+          ->values()
+          ->all();
+      }),
       'shareImageUrl' => $this->whenLoaded('books', fn () => app(InvitationShareImageService::class)->urlForEvent($this->resource)),
     ];
   }
