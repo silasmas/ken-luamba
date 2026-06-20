@@ -6,7 +6,6 @@ use App\Enums\InvitationDispatchChannel;
 use App\Filament\Resources\Invitations\Tables\InvitationsTable;
 use App\Filament\Support\AdminFormLayout;
 use App\Filament\Support\InvitationAdminActions;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -73,23 +72,17 @@ class InvitationsRelationManager extends RelationManager
         InvitationAdminActions::downloadGuestImportTemplate(),
         InvitationAdminActions::importGuestsFromExcel(fn () => $this->getOwnerRecord()),
         InvitationAdminActions::scheduleSendForEvent(fn () => $this->getOwnerRecord()),
-        ActionGroup::make([
-          InvitationAdminActions::sendAllForEvent(
-            InvitationDispatchChannel::Email,
-            fn () => $this->getOwnerRecord()->invitations()->whereNotNull('email')->get(),
-          ),
-          InvitationAdminActions::sendAllForEvent(
-            InvitationDispatchChannel::Sms,
-            fn () => $this->getOwnerRecord()->invitations()->whereNotNull('phone')->get(),
-          ),
-          InvitationAdminActions::sendAllForEvent(
-            InvitationDispatchChannel::Whatsapp,
-            fn () => $this->getOwnerRecord()->invitations()->whereNotNull('phone')->get(),
-          ),
-        ])
-          ->label('Envoyer à tous')
-          ->icon(\Filament\Support\Icons\Heroicon::OutlinedPaperAirplane),
+        InvitationAdminActions::sendAllForEventActionGroup(
+          fn () => $this->getOwnerRecord(),
+          fn (InvitationDispatchChannel $channel) => $this->getOwnerRecord()->invitations()
+            ->when(
+              $channel === InvitationDispatchChannel::Email,
+              fn ($query) => $query->whereNotNull('email'),
+              fn ($query) => $query->whereNotNull('phone'),
+            )
+            ->get(),
+        ),
       ])
-      ->description('Cochez plusieurs invités puis utilisez « Envoyer par WhatsApp » dans les actions groupées, ou « Envoyer WhatsApp à tous » pour tout le monde.');
+      ->description('Cochez plusieurs invités puis cliquez « Envoyer par WhatsApp » : une notification listera les liens à ouvrir un par un.');
   }
 }

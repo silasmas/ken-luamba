@@ -10,6 +10,7 @@ use App\Services\Invitations\InvitationDispatchService;
 use App\Services\Invitations\InvitationGuestImportService;
 use App\Services\Invitations\InvitationMessageService;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\FileUpload;
@@ -20,6 +21,7 @@ use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
 use Illuminate\Support\Js;
 use Livewire\Component;
 use RuntimeException;
@@ -43,7 +45,7 @@ class InvitationAdminActions
       label: 'Email',
       icon: Heroicon::OutlinedEnvelope,
       channel: InvitationDispatchChannel::Email,
-      visible: fn (Invitation $record): bool => filled($record->email),
+      visible: fn (Invitation $record): bool => self::recordCanUseChannel($record, InvitationDispatchChannel::Email),
       heading: 'Envoyer par email',
       submitLabel: 'Envoyer',
       handler: function (Invitation $record, array $data): void {
@@ -68,7 +70,7 @@ class InvitationAdminActions
       label: 'WhatsApp',
       icon: Heroicon::OutlinedChatBubbleLeftRight,
       channel: InvitationDispatchChannel::Whatsapp,
-      visible: fn (Invitation $record): bool => filled($record->phone),
+      visible: fn (Invitation $record): bool => self::recordCanUseChannel($record, InvitationDispatchChannel::Whatsapp),
       heading: 'Envoyer via WhatsApp',
       submitLabel: 'Ouvrir WhatsApp',
       handler: function (Invitation $record, array $data, Action $action): void {
@@ -99,7 +101,7 @@ class InvitationAdminActions
       label: 'SMS',
       icon: Heroicon::OutlinedDevicePhoneMobile,
       channel: InvitationDispatchChannel::Sms,
-      visible: fn (Invitation $record): bool => filled($record->phone),
+      visible: fn (Invitation $record): bool => self::recordCanUseChannel($record, InvitationDispatchChannel::Sms),
       heading: fn (): string => app(InvitationDispatchService::class)->usesKecelSms()
         ? 'Envoyer par SMS (Kecel)'
         : 'Envoyer par SMS',
@@ -348,14 +350,40 @@ class InvitationAdminActions
       icon: Heroicon::OutlinedChatBubbleLeftRight,
       channel: InvitationDispatchChannel::Whatsapp,
       heading: 'Envoyer via WhatsApp',
-      submitLabel: 'Ouvrir WhatsApp',
+      submitLabel: 'Préparer les conversations',
       successLabel: 'conversation(s) WhatsApp préparée(s)',
-      afterBulk: function (array $result, Action $action): void {
-        if ($result['urls'] !== []) {
-          self::openUrlsInNewTabs($action, $result['urls']);
-        }
+      afterBulk: function (array $result): void {
+        self::notifyWhatsappLinks($result['whatsappLinks'] ?? []);
       },
     );
+  }
+
+  /**
+   * Groupe d'actions « Envoyer à tous » filtré selon les canaux activés de l'événement.
+   *
+   * @param callable(): Event $eventResolver Fournit l'événement cible
+   * @param callable(InvitationDispatchChannel): Collection<int, Invitation> $invitationsResolver Fournit les invitations par canal
+   * @return ActionGroup Groupe d'actions Filament
+   */
+  public static function sendAllForEventActionGroup(
+    callable $eventResolver,
+    callable $invitationsResolver,
+  ): ActionGroup {
+    $event = $eventResolver();
+    $messageService = app(InvitationMessageService::class);
+    $actions = [];
+
+    foreach ($messageService->enabledChannels($event) as $channel) {
+      $actions[] = self::sendAllForEvent(
+        $channel,
+        fn () => $invitationsResolver($channel),
+      );
+    }
+
+    return ActionGroup::make($actions)
+      ->label('Envoyer à tous')
+      ->icon(Heroicon::OutlinedPaperAirplane)
+      ->visible($actions !== []);
   }
 
   /**
@@ -380,6 +408,17 @@ class InvitationAdminActions
     return Action::make('sendAll'.$channel->value)
       ->label($label)
       ->icon($icon)
+      ->visible(function () use ($invitationsResolver, $channel): bool {
+        $first = $invitationsResolver()->first();
+
+        if (! $first instanceof Invitation) {
+          return false;
+        }
+
+        $first->loadMissing('event');
+
+        return app(InvitationMessageService::class)->isChannelEnabled($first->event, $channel);
+      })
       ->modal(fn (): bool => self::eventHasMessageTemplates($invitationsResolver, $channel))
       ->form(fn (): array => self::eventMessageTemplateFields($invitationsResolver, $channel))
       ->fillForm(fn (): array => self::eventDefaultMessageFormData($invitationsResolver, $channel))
@@ -391,8 +430,12 @@ class InvitationAdminActions
         $messageId = self::selectedMessageId($data);
         $result = app(InvitationDispatchService::class)->sendBulk($invitations, $channel, $messageId);
 
-        if (in_array($channel, [InvitationDispatchChannel::Sms, InvitationDispatchChannel::Whatsapp], true) && $result['urls'] !== []) {
+        if ($channel === InvitationDispatchChannel::Sms && $result['urls'] !== []) {
           self::openUrlsInNewTabs($action, $result['urls']);
+        }
+
+        if ($channel === InvitationDispatchChannel::Whatsapp) {
+          self::notifyWhatsappLinks($result['whatsappLinks'] ?? []);
         }
 
         Notification::make()
@@ -426,10 +469,7 @@ class InvitationAdminActions
             ->default($event->invitation_auto_send_at),
           Select::make('channel')
             ->label('Canal')
-            ->options([
-              InvitationDispatchChannel::Email->value => InvitationDispatchChannel::Email->label(),
-              InvitationDispatchChannel::Sms->value => InvitationDispatchChannel::Sms->label(),
-            ])
+            ->options(app(InvitationMessageService::class)->enabledChannelOptions($event))
             ->default($event->invitation_auto_send_channel ?? InvitationDispatchChannel::Email->value)
             ->required()
             ->live()
@@ -554,6 +594,7 @@ class InvitationAdminActions
     return BulkAction::make($name)
       ->label($label)
       ->icon($icon)
+      ->visible(fn (Collection $records): bool => self::bulkCanUseChannel($records, $channel))
       ->modal(fn (Collection $records): bool => self::bulkHasMessageTemplates($records, $channel))
       ->form(fn (Collection $records): array => self::bulkMessageTemplateFields($records, $channel))
       ->fillForm(fn (Collection $records): array => self::bulkDefaultMessageFormData($records, $channel))
@@ -566,10 +607,7 @@ class InvitationAdminActions
             return false;
           }
 
-          return match ($channel) {
-            InvitationDispatchChannel::Email => filled($record->email),
-            default => filled($record->phone),
-          };
+          return self::recordCanUseChannel($record, $channel);
         });
 
         $result = app(InvitationDispatchService::class)->sendBulk($eligible, $channel, $messageId);
@@ -795,6 +833,90 @@ class InvitationAdminActions
     }
 
     return $messageId;
+  }
+
+  /**
+   * Indique si une invitation peut utiliser un canal d'envoi.
+   *
+   * @param Invitation $record Invitation cible
+   * @param InvitationDispatchChannel $channel Canal d'envoi
+   * @return bool True si l'action doit être visible
+   */
+  private static function recordCanUseChannel(Invitation $record, InvitationDispatchChannel $channel): bool
+  {
+    $record->loadMissing('event');
+
+    if (! app(InvitationMessageService::class)->isChannelEnabled($record->event, $channel)) {
+      return false;
+    }
+
+    return match ($channel) {
+      InvitationDispatchChannel::Email => filled($record->email),
+      default => filled($record->phone),
+    };
+  }
+
+  /**
+   * Indique si une action groupée peut utiliser un canal pour la sélection.
+   *
+   * @param Collection $records Invitations sélectionnées
+   * @param InvitationDispatchChannel $channel Canal d'envoi
+   * @return bool True si l'action groupée doit être visible
+   */
+  private static function bulkCanUseChannel(Collection $records, InvitationDispatchChannel $channel): bool
+  {
+    $invitations = $records->filter(fn ($record): bool => $record instanceof Invitation);
+
+    if ($invitations->isEmpty()) {
+      return false;
+    }
+
+    $eventIds = $invitations->pluck('event_id')->unique();
+
+    if ($eventIds->count() !== 1) {
+      return false;
+    }
+
+    $first = $invitations->first();
+    $first->loadMissing('event');
+
+    if (! app(InvitationMessageService::class)->isChannelEnabled($first->event, $channel)) {
+      return false;
+    }
+
+    return $invitations->contains(
+      fn (Invitation $record): bool => self::recordCanUseChannel($record, $channel),
+    );
+  }
+
+  /**
+   * Affiche une notification cliquable pour ouvrir les conversations WhatsApp en masse.
+   *
+   * @param list<array{url: string, guestName: string}> $links Liens wa.me préparés
+   * @return void
+   */
+  private static function notifyWhatsappLinks(array $links): void
+  {
+    if ($links === []) {
+      return;
+    }
+
+    $items = collect($links)->map(function (array $link, int $index): string {
+      $label = e($link['guestName'] ?? ('Conversation '.($index + 1)));
+      $url = e($link['url']);
+
+      return '<li style="margin:.45rem 0"><a href="'.$url.'" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:600">'.$label.'</a></li>';
+    })->join('');
+
+    Notification::make()
+      ->title(count($links).' conversation(s) WhatsApp prête(s)')
+      ->body(new HtmlString(
+        '<p style="margin:0 0 .6rem">Cliquez sur chaque nom pour ouvrir WhatsApp. Les onglets automatiques sont souvent bloés par le navigateur.</p>'.
+        '<ul style="margin:0;padding-left:1.15rem;max-height:240px;overflow:auto">'.$items.'</ul>'
+      ))
+      ->persistent()
+      ->success()
+      ->send();
   }
 
   /**

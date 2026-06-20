@@ -143,14 +143,12 @@ class EventForm
               ->helperText('Les invités éligibles recevront le rappel à cette date.'),
             Select::make('invitation_auto_send_channel')
               ->label('Canal')
-              ->options([
-                InvitationDispatchChannel::Email->value => InvitationDispatchChannel::Email->label(),
-                InvitationDispatchChannel::Sms->value => InvitationDispatchChannel::Sms->label(),
-              ])
+              ->options(fn (?Event $record): array => app(\App\Services\Invitations\InvitationMessageService::class)
+                ->enabledChannelOptions($record))
               ->default(InvitationDispatchChannel::Email->value)
               ->native(false)
               ->visible(fn (callable $get): bool => (bool) $get('invitation_auto_send_enabled'))
-              ->helperText('Email et SMS (Kecel) sont envoyés automatiquement. WhatsApp reste manuel.'),
+              ->helperText('Seuls les canaux activés dans vos modèles de message sont proposés.'),
             Select::make('invitation_auto_send_message_id')
               ->label('Modèle de message')
               ->options(function (?Event $record, callable $get): array {

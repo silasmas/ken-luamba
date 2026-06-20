@@ -103,6 +103,63 @@ class InvitationMessageService
   }
 
   /**
+   * Indique si un canal est activé pour l'événement (au moins un modèle l'utilise).
+   *
+   * @param Event|null $event Événement source
+   * @param InvitationDispatchChannel $channel Canal cible
+   * @return bool True si le canal peut être proposé dans l'admin
+   */
+  public function isChannelEnabled(?Event $event, InvitationDispatchChannel $channel): bool
+  {
+    if ($event === null) {
+      return false;
+    }
+
+    $messages = is_array($event->invitation_messages) ? $event->invitation_messages : [];
+
+    if ($messages === []) {
+      return true;
+    }
+
+    return $this->hasTemplatesForChannel($event, $channel);
+  }
+
+  /**
+   * Retourne les canaux activés pour un événement.
+   *
+   * @param Event|null $event Événement source
+   * @return list<InvitationDispatchChannel> Canaux disponibles
+   */
+  public function enabledChannels(?Event $event): array
+  {
+    if ($event === null) {
+      return [];
+    }
+
+    return array_values(array_filter(
+      InvitationDispatchChannel::cases(),
+      fn (InvitationDispatchChannel $channel): bool => $this->isChannelEnabled($event, $channel),
+    ));
+  }
+
+  /**
+   * Retourne les options Select Filament pour les canaux activés.
+   *
+   * @param Event|null $event Événement source
+   * @return array<string, string> Valeur => libellé
+   */
+  public function enabledChannelOptions(?Event $event): array
+  {
+    $options = [];
+
+    foreach ($this->enabledChannels($event) as $channel) {
+      $options[$channel->value] = $channel->label();
+    }
+
+    return $options;
+  }
+
+  /**
    * Retourne un modèle par identifiant.
    *
    * @param Event $event Événement source

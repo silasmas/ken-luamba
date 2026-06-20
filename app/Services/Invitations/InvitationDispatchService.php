@@ -168,6 +168,7 @@ class InvitationDispatchService
     $sent = 0;
     $failed = 0;
     $urls = [];
+    $whatsappLinks = [];
 
     foreach ($invitations as $invitation) {
       if (! $invitation instanceof Invitation) {
@@ -178,7 +179,13 @@ class InvitationDispatchService
         match ($channel) {
           InvitationDispatchChannel::Email => $this->sendEmail($invitation, $messageId),
           InvitationDispatchChannel::Sms => $this->handleBulkSms($invitation, $messageId, $urls, $sent),
-          InvitationDispatchChannel::Whatsapp => $this->handleBulkWhatsapp($invitation, $messageId, $urls, $sent),
+          InvitationDispatchChannel::Whatsapp => $this->handleBulkWhatsapp(
+            $invitation,
+            $messageId,
+            $urls,
+            $whatsappLinks,
+            $sent,
+          ),
         };
 
         if ($channel === InvitationDispatchChannel::Email) {
@@ -189,7 +196,7 @@ class InvitationDispatchService
       }
     }
 
-    return compact('sent', 'failed', 'urls');
+    return compact('sent', 'failed', 'urls', 'whatsappLinks');
   }
 
   /**
@@ -328,6 +335,7 @@ class InvitationDispatchService
     Invitation $invitation,
     ?string $messageId,
     array &$urls,
+    array &$whatsappLinks,
     int &$sent,
   ): void {
     if (! filled($invitation->phone)) {
@@ -342,6 +350,10 @@ class InvitationDispatchService
 
     $this->markWhatsappSent($invitation, $messageId);
     $urls[] = $url;
+    $whatsappLinks[] = [
+      'url' => $url,
+      'guestName' => $invitation->full_name,
+    ];
     $sent++;
   }
 
