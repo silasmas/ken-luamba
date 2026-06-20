@@ -36,16 +36,23 @@ class EventResource extends JsonResource
       'books' => $this->whenLoaded('books', function () {
         $coverService = app(BookCoverService::class);
 
-        return $this->books->map(fn ($book) => [
-          'title' => $book->title,
-          'slug' => $book->slug,
-          'coverImage' => $coverService->url($book),
-        ])->values()->all();
+        return $this->books
+          ->unique('id')
+          ->values()
+          ->map(fn ($book) => [
+            'id' => $book->id,
+            'title' => $book->title,
+            'slug' => $book->slug,
+            'coverImage' => $coverService->url($book),
+          ])
+          ->all();
       }),
       'coverImages' => $this->whenLoaded('books', function () {
         $coverService = app(BookCoverService::class);
 
         return $this->books
+          ->unique('id')
+          ->values()
           ->map(fn ($book) => $coverService->url($book))
           ->filter()
           ->values()

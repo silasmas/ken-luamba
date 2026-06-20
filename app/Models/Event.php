@@ -102,7 +102,10 @@ class Event extends Model
    */
   public function books(): BelongsToMany
   {
-    return $this->belongsToMany(Book::class)->orderBy('books.title');
+    return $this->belongsToMany(Book::class)
+      ->select('books.*')
+      ->distinct()
+      ->orderBy('books.title');
   }
 
   /**
