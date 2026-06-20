@@ -36,6 +36,11 @@ class EventResource extends JsonResource
         'slug' => $book->slug,
         'coverImage' => MediaUrl::fromPath($book->cover_image),
       ])->values()->all()),
+      'coverImages' => $this->whenLoaded('books', fn () => $this->books
+        ->map(fn ($book) => MediaUrl::fromPath($book->cover_image))
+        ->filter()
+        ->values()
+        ->all()),
     ];
   }
 }
