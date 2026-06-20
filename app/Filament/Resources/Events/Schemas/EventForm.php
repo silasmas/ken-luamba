@@ -4,7 +4,6 @@ namespace App\Filament\Resources\Events\Schemas;
 
 use App\Enums\EventType;
 use App\Enums\InvitationDispatchChannel;
-use App\Models\Book;
 use App\Models\Event;
 use App\Filament\Support\AdminFormLayout;
 use App\Filament\Support\InvitationPlaceholderHelper;
@@ -53,16 +52,16 @@ class EventForm
               )->all())
               ->required()
               ->default(EventType::BookLaunch->value),
-            Select::make('associated_book_ids')
+            Select::make('books')
               ->label('Livres associés')
-              ->options(fn (): array => Book::query()
-                ->published()
-                ->orderBy('title')
-                ->pluck('title', 'id')
-                ->all())
+              ->relationship(
+                'books',
+                'title',
+                fn ($query) => $query->published()->orderBy('books.title'),
+              )
               ->multiple()
               ->searchable()
-              ->dehydrated(false)
+              ->preload()
               ->helperText('Seuls les livres publiés sont proposés. Seule cette sélection est affichée sur la page d\'invitation.'),
             DateTimePicker::make('starts_at')
               ->label('Date de début')
