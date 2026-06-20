@@ -21,7 +21,6 @@ use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\HtmlString;
 use Illuminate\Support\Js;
 use Livewire\Component;
 use RuntimeException;
@@ -955,19 +954,21 @@ class InvitationAdminActions
       return;
     }
 
-    $items = collect($links)->map(function (array $link, int $index): string {
-      $label = e($link['guestName'] ?? ('Conversation '.($index + 1)));
-      $url = e($link['url']);
+    $actions = collect($links)->map(function (array $link, int $index): Action {
+      $guestName = $link['guestName'] ?? ('Conversation '.($index + 1));
+      $url = $link['url'];
 
-      return '<li style="margin:.45rem 0"><a href="'.$url.'" target="_blank" rel="noopener noreferrer" style="color:#2563eb;text-decoration:underline;font-weight:600">'.$label.'</a></li>';
-    })->join('');
+      return Action::make('whatsappLink'.$index)
+        ->label($guestName)
+        ->url($url, shouldOpenInNewTab: true)
+        ->link()
+        ->color('success');
+    })->all();
 
     Notification::make()
       ->title(count($links).' conversation(s) WhatsApp prête(s)')
-      ->body(new HtmlString(
-        '<p style="margin:0 0 .6rem">Cliquez sur chaque nom pour ouvrir WhatsApp. Les onglets automatiques sont souvent bloés par le navigateur.</p>'.
-        '<ul style="margin:0;padding-left:1.15rem;max-height:240px;overflow:auto">'.$items.'</ul>'
-      ))
+      ->body('Cliquez sur chaque nom ci-dessous pour ouvrir WhatsApp dans un nouvel onglet.')
+      ->actions($actions)
       ->persistent()
       ->success()
       ->send();
