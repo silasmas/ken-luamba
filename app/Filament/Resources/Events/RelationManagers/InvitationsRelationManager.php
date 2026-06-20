@@ -70,6 +70,8 @@ class InvitationsRelationManager extends RelationManager
     return InvitationsTable::configure($table)
       ->headerActions([
         CreateAction::make(),
+        InvitationAdminActions::downloadGuestImportTemplate(),
+        InvitationAdminActions::importGuestsFromExcel(fn () => $this->getOwnerRecord()),
         InvitationAdminActions::scheduleSendForEvent(fn () => $this->getOwnerRecord()),
         ActionGroup::make([
           InvitationAdminActions::sendAllForEvent(
@@ -84,7 +86,10 @@ class InvitationsRelationManager extends RelationManager
             InvitationDispatchChannel::Whatsapp,
             fn () => $this->getOwnerRecord()->invitations()->whereNotNull('phone')->get(),
           ),
-        ])->label('Envoyer à tous'),
-      ]);
+        ])
+          ->label('Envoyer à tous')
+          ->icon(\Filament\Support\Icons\Heroicon::OutlinedPaperAirplane),
+      ])
+      ->description('Cochez plusieurs invités puis utilisez « Envoyer par WhatsApp » dans les actions groupées, ou « Envoyer WhatsApp à tous » pour tout le monde.');
   }
 }

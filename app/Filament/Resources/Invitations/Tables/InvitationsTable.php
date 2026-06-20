@@ -9,6 +9,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 
 class InvitationsTable
@@ -46,6 +47,12 @@ class InvitationsTable
             default => 'gray',
           })
           ->formatStateUsing(fn ($state) => $state?->label()),
+        TextColumn::make('guest_message')
+          ->label('Commentaire')
+          ->limit(40)
+          ->tooltip(fn (?string $state): ?string => filled($state) ? $state : null)
+          ->placeholder('—')
+          ->toggleable(),
         TextColumn::make('email_sent_at')
           ->label('Email')
           ->dateTime('d/m/Y H:i')
@@ -76,8 +83,16 @@ class InvitationsTable
           ->options(collect(InvitationRsvpStatus::cases())->mapWithKeys(
             fn (InvitationRsvpStatus $status) => [$status->value => $status->label()],
           )->all()),
+        TernaryFilter::make('has_response')
+          ->label('A répondu')
+          ->nullable()
+          ->queries(
+            true: fn ($query) => $query->whereNotNull('responded_at'),
+            false: fn ($query) => $query->whereNull('responded_at'),
+          ),
       ])
       ->recordActions([
+        InvitationAdminActions::viewRsvpResponse(),
         InvitationAdminActions::sendEmail(),
         InvitationAdminActions::openWhatsapp(),
         InvitationAdminActions::openSms(),

@@ -3,22 +3,28 @@
 namespace App\Filament\Support;
 
 use App\Enums\InvitationDispatchChannel;
+use App\Enums\InvitationRsvpStatus;
 use App\Models\Event;
 use App\Models\Invitation;
 use App\Services\Invitations\InvitationDispatchService;
+use App\Services\Invitations\InvitationGuestImportService;
 use App\Services\Invitations\InvitationMessageService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Js;
 use Livewire\Component;
 use RuntimeException;
 use BackedEnum;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Actions Filament pour l'envoi et le suivi des invitations.
@@ -117,6 +123,147 @@ class InvitationAdminActions
         ? 'Le SMS a été transmis à l\'API Kecel.'
         : 'Le message a été préparé dans votre application SMS.',
     );
+  }
+
+  /**
+   * Action de consultation de la réponse RSVP et du commentaire invité.
+   *
+   * @return Action Action Filament
+   */
+  public static function viewRsvpResponse(): Action
+  {
+    return Action::make('viewRsvpResponse')
+      ->label('Réponse')
+      ->icon(Heroicon::OutlinedChatBubbleBottomCenterText)
+      ->color(fn (Invitation $record): string => match ($record->rsvp_status) {
+        InvitationRsvpStatus::Attending => 'success',
+        InvitationRsvpStatus::NotAttending => 'danger',
+        default => 'gray',
+      })
+      ->visible(fn (Invitation $record): bool => $record->responded_at !== null)
+      ->modalHeading(fn (Invitation $record): string => 'Réponse de '.$record->full_name)
+      ->modalSubmitAction(false)
+      ->modalCancelActionLabel('Fermer')
+      ->modalWidth('lg')
+      ->form(fn (Invitation $record): array => [
+        Placeholder::make('rsvp_status')
+          ->label('Statut RSVP')
+          ->content($record->rsvp_status?->label() ?? '—'),
+        Placeholder::make('responded_at')
+          ->label('Répondu le')
+          ->content($record->responded_at?->format('d/m/Y H:i') ?? '—'),
+        Textarea::make('guest_message')
+          ->label('Commentaire de l\'invité')
+          ->default($record->guest_message ?: 'Aucun commentaire.')
+          ->disabled()
+          ->dehydrated(false)
+          ->rows(5)
+          ->columnSpanFull(),
+      ]);
+  }
+
+  /**
+   * Télécharge le modèle Excel pour importer des invités.
+   *
+   * @return Action Action Filament
+   */
+  public static function downloadGuestImportTemplate(): Action
+  {
+    return Action::make('downloadGuestImportTemplate')
+      ->label('Modèle Excel')
+      ->icon(Heroicon::OutlinedDocumentArrowDown)
+      ->color('gray')
+      ->action(function (): StreamedResponse {
+        $path = app(InvitationGuestImportService::class)->generateTemplate();
+
+        return response()->streamDownload(function () use ($path): void {
+          readfile($path);
+          @unlink($path);
+        }, 'modele-invites.xlsx', [
+          'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+      });
+  }
+
+  /**
+   * Importe une liste d'invités depuis un fichier Excel pour un événement.
+   *
+   * @param callable(): Event $eventResolver Fournit l'événement cible
+   * @return Action Action Filament
+   */
+  public static function importGuestsFromExcel(callable $eventResolver): Action
+  {
+    return Action::make('importGuestsFromExcel')
+      ->label('Importer Excel')
+      ->icon(Heroicon::OutlinedArrowUpTray)
+      ->color('primary')
+      ->modalHeading('Importer des invités')
+      ->modalDescription('Téléchargez d\'abord le modèle Excel, remplissez-le, puis importez-le ici. Les doublons (même email ou téléphone) seront ignorés.')
+      ->modalSubmitActionLabel('Importer')
+      ->modalWidth('lg')
+      ->form([
+        FileUpload::make('file')
+          ->label('Fichier Excel (.xlsx)')
+          ->disk('local')
+          ->directory('invitation-imports')
+          ->visibility('private')
+          ->acceptedFileTypes([
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          ])
+          ->required()
+          ->maxSize(5120),
+      ])
+      ->action(function (array $data) use ($eventResolver): void {
+        $relativePath = $data['file'] ?? null;
+
+        if (! is_string($relativePath) || $relativePath === '') {
+          Notification::make()
+            ->title('Fichier manquant')
+            ->danger()
+            ->send();
+
+          return;
+        }
+
+        $diskPath = Storage::disk('local')->path($relativePath);
+
+        if (! is_file($diskPath)) {
+          Notification::make()
+            ->title('Impossible de lire le fichier importé')
+            ->danger()
+            ->send();
+
+          return;
+        }
+
+        try {
+          $result = app(InvitationGuestImportService::class)->import(
+            $eventResolver(),
+            $diskPath,
+          );
+        } catch (RuntimeException $exception) {
+          Notification::make()
+            ->title($exception->getMessage())
+            ->danger()
+            ->send();
+
+          return;
+        } finally {
+          Storage::disk('local')->delete($relativePath);
+        }
+
+        $body = $result['created'].' invité(s) ajouté(s), '.$result['skipped'].' ignoré(s).';
+
+        if ($result['errors'] !== []) {
+          $body .= ' Erreurs : '.implode(' ', array_slice($result['errors'], 0, 3));
+        }
+
+        Notification::make()
+          ->title('Import terminé')
+          ->body($body)
+          ->success()
+          ->send();
+      });
   }
 
   /**
