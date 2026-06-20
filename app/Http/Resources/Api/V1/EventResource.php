@@ -28,8 +28,9 @@ class EventResource extends JsonResource
       'typeLabel' => $this->type?->label(),
       'description' => $this->description,
       'welcomeMessage' => $this->welcome_message,
-      'startsAt' => $this->starts_at?->toIso8601String(),
-      'endsAt' => $this->ends_at?->toIso8601String(),
+      'startsAt' => $this->starts_at?->timezone(config('app.timezone'))->toIso8601String(),
+      'endsAt' => $this->ends_at?->timezone(config('app.timezone'))->toIso8601String(),
+      'displayTimezone' => config('app.timezone'),
       'location' => $this->location,
       'venueDetails' => $this->venue_details,
       'books' => $this->whenLoaded('books', fn () => $this->books->map(fn ($book) => [

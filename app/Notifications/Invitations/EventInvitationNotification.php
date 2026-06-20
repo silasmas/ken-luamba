@@ -9,6 +9,7 @@ use App\Services\Invitations\InvitationMessageService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Support\HtmlString;
 
 /**
  * Email d'invitation à un événement Ken Luamba.
@@ -58,25 +59,29 @@ class EventInvitationNotification extends Notification
       $this->messageId,
     );
 
-    $lines = array_values(array_filter(
-      explode("\n", $body),
-      fn (string $line): bool => trim($line) !== '',
-    ));
-
     $mail = (new MailMessage)
       ->subject($subject)
       ->greeting('Bonjour '.$this->invitation->full_name.',');
 
-    foreach ($lines as $index => $line) {
-      if ($index === 0 && str_starts_with($line, 'Bonjour')) {
-        continue;
-      }
+    if ($messageService->isRichContent($body) || str_contains($body, '<')) {
+      $mail->line(new HtmlString($body));
+    } else {
+      $lines = array_values(array_filter(
+        explode("\n", $body),
+        fn (string $line): bool => trim($line) !== '',
+      ));
 
-      if (str_contains($line, $invitationUrl)) {
-        continue;
-      }
+      foreach ($lines as $index => $line) {
+        if ($index === 0 && str_starts_with($line, 'Bonjour')) {
+          continue;
+        }
 
-      $mail->line($line);
+        if (str_contains($line, $invitationUrl)) {
+          continue;
+        }
+
+        $mail->line($line);
+      }
     }
 
     return $mail

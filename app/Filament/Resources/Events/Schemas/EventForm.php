@@ -7,11 +7,13 @@ use App\Enums\InvitationDispatchChannel;
 use App\Models\Event;
 use App\Filament\Support\AdminFormLayout;
 use App\Filament\Support\InvitationPlaceholderHelper;
+use App\Filament\Support\InvitationRichEditorHelper;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
+use Filament\Forms\Components\RichEditor;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -59,10 +61,13 @@ class EventForm
             DateTimePicker::make('starts_at')
               ->label('Date de début')
               ->required()
-              ->seconds(false),
+              ->seconds(false)
+              ->timezone(config('app.timezone'))
+              ->helperText('Heure affichée et enregistrée en fuseau '.config('app.timezone').'.'),
             DateTimePicker::make('ends_at')
               ->label('Date de fin')
-              ->seconds(false),
+              ->seconds(false)
+              ->timezone(config('app.timezone')),
             TextInput::make('location')
               ->label('Lieu')
               ->maxLength(255)
@@ -75,11 +80,11 @@ class EventForm
               ->label('Description')
               ->rows(4)
               ->columnSpanFull(),
-            Textarea::make('welcome_message')
-              ->label('Message d\'accueil (page invitation)')
-              ->rows(3)
-              ->columnSpanFull()
-              ->helperText('Affiché sur la page publique de réponse.'),
+            InvitationRichEditorHelper::configure(
+              RichEditor::make('welcome_message')
+                ->label('Message d\'accueil (page invitation)')
+                ->columnSpanFull(),
+            ),
             Toggle::make('is_published')
               ->label('Publié')
               ->default(true),
@@ -114,11 +119,12 @@ class EventForm
                   ->label('Objet email')
                   ->maxLength(255)
                   ->helperText('Utilisé uniquement pour les envois email.'),
-                Textarea::make('body')
-                  ->label('Contenu du message')
-                  ->required()
-                  ->rows(8)
-                  ->columnSpanFull(),
+                InvitationRichEditorHelper::configure(
+                  RichEditor::make('body')
+                    ->label('Contenu du message')
+                    ->required()
+                    ->columnSpanFull(),
+                ),
               ])
               ->columns(2)
               ->collapsible()
@@ -139,6 +145,7 @@ class EventForm
             DateTimePicker::make('invitation_auto_send_at')
               ->label('Date et heure d\'envoi')
               ->seconds(false)
+              ->timezone(config('app.timezone'))
               ->visible(fn (callable $get): bool => (bool) $get('invitation_auto_send_enabled'))
               ->helperText('Les invités éligibles recevront le rappel à cette date.'),
             Select::make('invitation_auto_send_channel')

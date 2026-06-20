@@ -5,6 +5,7 @@ namespace App\Services\Invitations;
 use App\Enums\InvitationDispatchChannel;
 use App\Models\Event;
 use App\Models\Invitation;
+use Filament\Forms\Components\RichEditor\RichContentRenderer;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -226,7 +227,13 @@ class InvitationMessageService
         && $this->messageSupportsChannel($template, $channel)
         && filled($template['body'] ?? null)
       ) {
-        return $this->render((string) $template['body'], $invitation);
+        $rawBody = (string) $template['body'];
+
+        if ($channel === InvitationDispatchChannel::Email && $this->isRichContent($rawBody)) {
+          return $this->renderHtml($rawBody, $invitation);
+        }
+
+        return $this->renderPlainText($rawBody, $invitation);
       }
     }
 
@@ -261,17 +268,99 @@ class InvitationMessageService
   }
 
   /**
-   * Remplace les variables dynamiques dans un modèle de texte.
+   * Remplace les variables dynamiques dans un modèle de texte (compatibilité).
    *
    * @param string $template Texte contenant des variables
    * @param Invitation $invitation Invitation source des données invité
-   * @return string Texte rendu
+   * @return string Texte rendu en clair
    */
   public function render(string $template, Invitation $invitation): string
   {
-    $replacements = $this->placeholders($invitation);
+    return $this->renderPlainText($template, $invitation);
+  }
 
-    return str_replace(array_keys($replacements), array_values($replacements), $template);
+  /**
+   * Indique si le contenu provient de l'éditeur riche Filament.
+   *
+   * @param string $content Contenu brut
+   * @return bool True si HTML ou document TipTap JSON
+   */
+  public function isRichContent(string $content): bool
+  {
+    $trimmed = trim($content);
+
+    if ($trimmed === '') {
+      return false;
+    }
+
+    if (str_starts_with($trimmed, '{') && str_contains($trimmed, '"type"')) {
+      return true;
+    }
+
+    return str_contains($content, '<');
+  }
+
+  /**
+   * Rend un modèle en texte brut (SMS, WhatsApp, sujets email).
+   *
+   * @param string $template Contenu du modèle
+   * @param Invitation $invitation Invitation source
+   * @return string Texte sans balises HTML
+   */
+  public function renderPlainText(string $template, Invitation $invitation): string
+  {
+    if ($this->isRichContent($template)) {
+      return RichContentRenderer::make($template)
+        ->mergeTags($this->mergeTagValues($invitation))
+        ->toText();
+    }
+
+    return str_replace(
+      array_keys($this->placeholders($invitation)),
+      array_values($this->placeholders($invitation)),
+      $template,
+    );
+  }
+
+  /**
+   * Rend un modèle en HTML sécurisé (emails et page publique).
+   *
+   * @param string $template Contenu du modèle
+   * @param Invitation $invitation Invitation source
+   * @return string HTML sanitisé
+   */
+  public function renderHtml(string $template, Invitation $invitation): string
+  {
+    if ($this->isRichContent($template)) {
+      return RichContentRenderer::make($template)
+        ->mergeTags($this->mergeTagValues($invitation))
+        ->toHtml();
+    }
+
+    $rendered = str_replace(
+      array_keys($this->placeholders($invitation)),
+      array_values($this->placeholders($invitation)),
+      $template,
+    );
+
+    return nl2br(e($rendered));
+  }
+
+  /**
+   * Retourne les valeurs de merge tags pour l'éditeur riche Filament.
+   *
+   * @param Invitation $invitation Invitation source
+   * @return array<string, string> Identifiants sans accolades => valeur
+   */
+  public function mergeTagValues(Invitation $invitation): array
+  {
+    $values = [];
+
+    foreach ($this->placeholders($invitation) as $token => $value) {
+      $values[trim($token, '{}')] = $value;
+    }
+
+    return $values;
   }
 
   /**
@@ -301,7 +390,7 @@ class InvitationMessageService
       '{event_location}' => (string) ($event?->location ?? ''),
       '{event_venue_details}' => (string) ($event?->venue_details ?? ''),
       '{event_description}' => (string) ($event?->description ?? ''),
-      '{event_welcome_message}' => (string) ($event?->welcome_message ?? ''),
+      '{event_welcome_message}' => trim(strip_tags((string) ($event?->welcome_message ?? ''))),
       '{event_books}' => $event?->books?->pluck('title')->filter()->implode(', ') ?? '',
       '{invitation_link}' => app(InvitationLinkService::class)->publicUrl($invitation),
       '{rsvp_status}' => (string) ($invitation->rsvp_status?->label() ?? ''),
