@@ -6,10 +6,13 @@ use App\Enums\InvitationRsvpStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\V1\InvitationResource;
 use App\Models\Invitation;
+use App\Services\Invitations\InvitationOgImageService;
 use App\Services\Invitations\InvitationRsvpService;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 
 /**
@@ -37,6 +40,38 @@ class InvitationController extends Controller
     }
 
     return new InvitationResource($invitation);
+  }
+
+  /**
+   * Sert l'image PNG d'aperçu social (WhatsApp, Facebook) pour une invitation.
+   *
+   * @param string $token Token d'invitation
+   * @param InvitationOgImageService $ogImageService Générateur d'image OG
+   * @return Response Image PNG ou 404
+   */
+  public function shareImage(string $token, InvitationOgImageService $ogImageService): Response
+  {
+    $invitation = Invitation::query()
+      ->with(['event.books'])
+      ->where('token', $token)
+      ->first();
+
+    if ($invitation === null || $invitation->event === null || ! $invitation->event->is_published) {
+      abort(404);
+    }
+
+    $event = $invitation->event;
+    $cachePath = 'invitation-og/'.$event->id.'-'.($event->updated_at?->timestamp ?? 0).'.png';
+    $disk = Storage::disk('public');
+
+    if (! $disk->exists($cachePath)) {
+      $disk->put($cachePath, $ogImageService->generatePng($event));
+    }
+
+    return response()->file($disk->path($cachePath), [
+      'Content-Type' => 'image/png',
+      'Cache-Control' => 'public, max-age=86400',
+    ]);
   }
 
   /**

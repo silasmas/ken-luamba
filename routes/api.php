@@ -36,6 +36,7 @@ Route::prefix('v1')->group(function (): void {
   Route::get('/shipping/config', [ShippingController::class, 'config']);
   Route::post('/shipping/quote', [ShippingController::class, 'quote']);
   Route::get('/payments/mobile-providers', [PaymentController::class, 'mobileProviders']);
+  Route::get('/invitations/{token}/share-image.png', [InvitationController::class, 'shareImage']);
   Route::get('/invitations/{token}', [InvitationController::class, 'show']);
   Route::post('/invitations/{token}/rsvp', [InvitationController::class, 'respond']);
 
