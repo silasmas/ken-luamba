@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Invitations\Tables;
 
+use App\Enums\InvitationGuestType;
 use App\Enums\InvitationRsvpStatus;
 use App\Filament\Support\InvitationAdminActions;
 use App\Models\Event;
@@ -39,6 +40,18 @@ class InvitationsTable
           ->toggleable(),
         TextColumn::make('phone')
           ->label('Téléphone')
+          ->toggleable(),
+        TextColumn::make('organization')
+          ->label('Type d\'invité')
+          ->badge()
+          ->formatStateUsing(fn (?string $state): ?string => InvitationGuestType::labelFor($state))
+          ->color(fn (?string $state): string => match (InvitationGuestType::tryFrom((string) $state)) {
+            InvitationGuestType::Vvip => 'warning',
+            InvitationGuestType::Vip => 'info',
+            InvitationGuestType::Other => 'gray',
+            default => 'gray',
+          })
+          ->placeholder('—')
           ->toggleable(),
         TextColumn::make('rsvp_status')
           ->label('RSVP')

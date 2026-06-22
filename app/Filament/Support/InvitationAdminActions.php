@@ -199,7 +199,7 @@ class InvitationAdminActions
       ->icon(Heroicon::OutlinedArrowUpTray)
       ->color('primary')
       ->modalHeading('Importer des invités')
-      ->modalDescription('Téléchargez d\'abord le modèle Excel, remplissez-le, puis importez-le ici. Les invités non enregistrés (doublons, données invalides, erreurs) seront listés avec le motif après l\'import.')
+      ->modalDescription('Téléchargez d\'abord le modèle Excel, remplissez-le, puis importez-le ici. Les invités non enregistrés seront listés dans la notification et un fichier Excel récapitulatif (avec les raisons) sera proposé au téléchargement.')
       ->modalSubmitActionLabel('Importer')
       ->modalWidth('lg')
       ->form([
@@ -214,7 +214,7 @@ class InvitationAdminActions
           ->required()
           ->maxSize(5120),
       ])
-      ->action(function (array $data) use ($eventResolver): void {
+      ->action(function (array $data) use ($eventResolver): ?StreamedResponse {
         $relativePath = $data['file'] ?? null;
 
         if (! is_string($relativePath) || $relativePath === '') {
@@ -223,7 +223,7 @@ class InvitationAdminActions
             ->danger()
             ->send();
 
-          return;
+          return null;
         }
 
         $diskPath = Storage::disk('local')->path($relativePath);
@@ -234,7 +234,7 @@ class InvitationAdminActions
             ->danger()
             ->send();
 
-          return;
+          return null;
         }
 
         try {
@@ -249,23 +249,45 @@ class InvitationAdminActions
             ->danger()
             ->send();
 
-          return;
+          return null;
         } finally {
           Storage::disk('local')->delete($relativePath);
         }
 
-        $notification = Notification::make()
-          ->title('Import terminé')
-          ->body($importService->formatImportSummary($result))
-          ->persistent();
+        if ($result['notRegistered'] === []) {
+          Notification::make()
+            ->title('Import terminé')
+            ->body($importService->formatImportSummary($result))
+            ->success()
+            ->send();
 
-        if ($result['notRegistered'] !== []) {
-          $notification->warning()->send();
-
-          return;
+          return null;
         }
 
-        $notification->success()->send();
+        $exportPath = $importService->generateNotRegisteredExport($result['notRegistered']);
+        $exportFilename = basename($exportPath);
+
+        session(['invitation_import_reject_file' => $exportFilename]);
+
+        Notification::make()
+          ->title('Import terminé')
+          ->body($importService->formatImportSummary($result))
+          ->warning()
+          ->persistent()
+          ->actions([
+            Action::make('downloadRejectedGuests')
+              ->label('Télécharger le rapport Excel')
+              ->button()
+              ->url(route('admin.invitation-import-rejects'))
+              ->openUrlInNewTab(),
+          ])
+          ->send();
+
+        return response()->streamDownload(function () use ($exportPath): void {
+          readfile($exportPath);
+        }, $exportFilename, [
+          'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
       });
   }
 

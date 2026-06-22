@@ -2,6 +2,7 @@
 
 namespace App\Services\Invitations;
 
+use App\Enums\InvitationGuestType;
 use App\Models\Event;
 use App\Models\Invitation;
 use OpenSpout\Common\Entity\Row;
@@ -23,7 +24,21 @@ class InvitationGuestImportService
     'Nom complet',
     'Email',
     'Téléphone / WhatsApp',
-    'Organisation',
+    'Type d\'invité (VIP, VVIP, Autre)',
+  ];
+
+  /**
+   * En-têtes du rapport Excel des invités non enregistrés.
+   *
+   * @var list<string>
+   */
+  private const NOT_REGISTERED_HEADERS = [
+    'Ligne',
+    'Nom complet',
+    'Email',
+    'Téléphone / WhatsApp',
+    'Type d\'invité',
+    'Raison (non enregistré)',
   ];
 
   /**
@@ -47,6 +62,11 @@ class InvitationGuestImportService
     'organisation' => 'organization',
     'organization' => 'organization',
     'org' => 'organization',
+    'type d\'invité' => 'organization',
+    'type d\'invité (vip, vvip, autre)' => 'organization',
+    'type invite' => 'organization',
+    'type invité' => 'organization',
+    'type' => 'organization',
   ];
 
   /**
@@ -72,7 +92,7 @@ class InvitationGuestImportService
       'Jean Mukendi',
       'jean@exemple.cd',
       '+243900000000',
-      'Église Exemple',
+      'VIP',
     ]));
     $writer->close();
 
@@ -88,7 +108,7 @@ class InvitationGuestImportService
    *   created: int,
    *   skipped: int,
    *   errors: list<string>,
-   *   notRegistered: list<array{row: int, fullName: string, email: string|null, phone: string|null, reason: string}>
+   *   notRegistered: list<array{row: int, fullName: string, email: string|null, phone: string|null, organization: string|null, reason: string}>
    * } Résultat de l'import
    */
   public function import(Event $event, string $filePath): array
@@ -118,7 +138,7 @@ class InvitationGuestImportService
           if ($columnMap === null) {
             $reason = 'En-têtes invalides. Utilisez le modèle Excel fourni.';
             $errors[] = 'Ligne 1 : '.$reason;
-            $notRegistered[] = $this->buildNotRegisteredEntry(1, '', null, null, $reason);
+            $notRegistered[] = $this->buildNotRegisteredEntry(1, '', null, null, null, $reason);
             break;
           }
 
@@ -130,6 +150,20 @@ class InvitationGuestImportService
         }
 
         $guest = $this->extractGuestData($values, $columnMap);
+        $guestTypeError = $this->resolveGuestTypeError($guest['organization_raw']);
+
+        if ($guestTypeError !== null) {
+          $errors[] = 'Ligne '.$rowNumber.' : '.$guestTypeError;
+          $notRegistered[] = $this->buildNotRegisteredEntry(
+            $rowNumber,
+            $guest['full_name'],
+            $guest['email'],
+            $guest['phone'],
+            $guest['organization_raw'],
+            $guestTypeError,
+          );
+          continue;
+        }
 
         if ($guest['full_name'] === '') {
           $reason = 'Le nom complet est obligatoire.';
@@ -139,6 +173,7 @@ class InvitationGuestImportService
             '',
             $guest['email'],
             $guest['phone'],
+            $guest['organization'],
             $reason,
           );
           continue;
@@ -153,6 +188,7 @@ class InvitationGuestImportService
             $guest['full_name'],
             $guest['email'],
             $guest['phone'],
+            $guest['organization'],
             $duplicateReason,
           );
           continue;
@@ -174,6 +210,7 @@ class InvitationGuestImportService
             $guest['full_name'],
             $guest['email'],
             $guest['phone'],
+            $guest['organization'],
             $reason,
           );
           continue;
@@ -196,13 +233,64 @@ class InvitationGuestImportService
   }
 
   /**
+   * Génère un fichier Excel listant les invités non enregistrés avec les raisons.
+   *
+   * @param list<array{row: int, fullName: string, email: string|null, phone: string|null, organization: string|null, reason: string}> $entries Invités rejetés
+   * @return string Chemin absolu du fichier généré
+   */
+  public function generateNotRegisteredExport(array $entries): string
+  {
+    if ($entries === []) {
+      throw new RuntimeException('Aucun invité non enregistré à exporter.');
+    }
+
+    $directory = storage_path('app/exports');
+
+    if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
+      throw new RuntimeException('Impossible de créer le dossier d\'export.');
+    }
+
+    $path = $directory.DIRECTORY_SEPARATOR.$this->notRegisteredExportFilename();
+
+    $writer = new Writer();
+    $writer->openToFile($path);
+    $writer->getCurrentSheet()->setName('Non enregistrés');
+    $writer->addRow(Row::fromValues(self::NOT_REGISTERED_HEADERS));
+
+    foreach ($entries as $entry) {
+      $writer->addRow(Row::fromValues([
+        (string) $entry['row'],
+        $entry['fullName'],
+        $entry['email'] ?? '',
+        $entry['phone'] ?? '',
+        $this->formatGuestTypeForExport($entry['organization'] ?? null),
+        $entry['reason'],
+      ]));
+    }
+
+    $writer->close();
+
+    return $path;
+  }
+
+  /**
+   * Retourne le nom du fichier Excel des invités non enregistrés.
+   *
+   * @return string Nom de fichier .xlsx
+   */
+  public function notRegisteredExportFilename(): string
+  {
+    return 'invites-non-enregistres-'.now()->format('Ymd-His').'.xlsx';
+  }
+
+  /**
    * Formate le résumé d'un import pour affichage dans l'admin Filament.
    *
    * @param array{
    *   created: int,
    *   skipped: int,
    *   errors: list<string>,
-   *   notRegistered: list<array{row: int, fullName: string, email: string|null, phone: string|null, reason: string}>
+   *   notRegistered: list<array{row: int, fullName: string, email: string|null, phone: string|null, organization: string|null, reason: string}>
    * } $result Résultat de l'import
    * @return string Texte lisible pour notification
    */
@@ -222,6 +310,9 @@ class InvitationGuestImportService
       $lines[] = '• Ligne '.$entry['row'].' — '.$this->formatGuestLabel($entry).' : '.$entry['reason'];
     }
 
+    $lines[] = '';
+    $lines[] = 'Un fichier Excel récapitulatif est disponible au téléchargement.';
+
     return implode("\n", $lines);
   }
 
@@ -232,14 +323,16 @@ class InvitationGuestImportService
    * @param string $fullName Nom complet
    * @param string|null $email Email
    * @param string|null $phone Téléphone
+   * @param string|null $organization Organisation
    * @param string $reason Motif du rejet
-   * @return array{row: int, fullName: string, email: string|null, phone: string|null, reason: string} Détail
+   * @return array{row: int, fullName: string, email: string|null, phone: string|null, organization: string|null, reason: string} Détail
    */
   private function buildNotRegisteredEntry(
     int $row,
     string $fullName,
     ?string $email,
     ?string $phone,
+    ?string $organization,
     string $reason,
   ): array {
     return [
@@ -247,6 +340,7 @@ class InvitationGuestImportService
       'fullName' => $fullName,
       'email' => $email,
       'phone' => $phone,
+      'organization' => $organization,
       'reason' => $reason,
     ];
   }
@@ -325,16 +419,62 @@ class InvitationGuestImportService
    *
    * @param list<string|null> $values Valeurs de la ligne
    * @param array<string, int> $columnMap Correspondance champ → index
-   * @return array{full_name: string, email: string|null, phone: string|null, organization: string|null} Données invité
+   * @return array{
+   *   full_name: string,
+   *   email: string|null,
+   *   phone: string|null,
+   *   organization: string|null,
+   *   organization_raw: string|null
+   * } Données invité
    */
   private function extractGuestData(array $values, array $columnMap): array
   {
+    $organizationRaw = $this->nullableValueAt($values, $columnMap, 'organization');
+
     return [
       'full_name' => $this->valueAt($values, $columnMap, 'full_name') ?? '',
       'email' => $this->nullableValueAt($values, $columnMap, 'email'),
       'phone' => $this->nullableValueAt($values, $columnMap, 'phone'),
-      'organization' => $this->nullableValueAt($values, $columnMap, 'organization'),
+      'organization_raw' => $organizationRaw,
+      'organization' => InvitationGuestType::normalizeImport($organizationRaw),
     ];
+  }
+
+  /**
+   * Retourne un message d'erreur si le type d'invité saisi est invalide.
+   *
+   * @param string|null $organizationRaw Valeur brute Excel
+   * @return string|null Message d'erreur ou null
+   */
+  private function resolveGuestTypeError(?string $organizationRaw): ?string
+  {
+    if ($organizationRaw === null || trim($organizationRaw) === '') {
+      return null;
+    }
+
+    if (InvitationGuestType::normalizeImport($organizationRaw) === null) {
+      return 'Type d\'invité invalide. Utilisez VIP, VVIP ou Autre.';
+    }
+
+    return null;
+  }
+
+  /**
+   * Formate un type d'invité pour l'export Excel.
+   *
+   * @param string|null $rawOrValue Valeur brute ou enum
+   * @return string Libellé affiché
+   */
+  private function formatGuestTypeForExport(?string $rawOrValue): string
+  {
+    if ($rawOrValue === null || trim($rawOrValue) === '') {
+      return '';
+    }
+
+    $normalized = InvitationGuestType::normalizeImport($rawOrValue)
+      ?? InvitationGuestType::tryFrom($rawOrValue)?->value;
+
+    return InvitationGuestType::labelFor($normalized) ?? $rawOrValue;
   }
 
   /**
@@ -416,7 +556,7 @@ class InvitationGuestImportService
     }
 
     if ($nameQuery->exists()) {
-      return 'Doublon : cet invité (nom et organisation) est déjà enregistré pour cet événement.';
+      return 'Doublon : cet invité (nom et type d\'invité) est déjà enregistré pour cet événement.';
     }
 
     return null;

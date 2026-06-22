@@ -6,6 +6,7 @@ use App\Enums\InvitationDispatchChannel;
 use App\Filament\Resources\Invitations\Tables\InvitationsTable;
 use App\Filament\Support\AdminFormLayout;
 use App\Filament\Support\InvitationAdminActions;
+use App\Filament\Support\InvitationGuestTypeField;
 use Filament\Actions\CreateAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -45,9 +46,7 @@ class InvitationsRelationManager extends RelationManager
               ->label('Téléphone / WhatsApp')
               ->tel()
               ->maxLength(30),
-            TextInput::make('organization')
-              ->label('Organisation')
-              ->maxLength(255),
+            InvitationGuestTypeField::make(),
             Textarea::make('admin_notes')
               ->label('Notes internes')
               ->rows(2)

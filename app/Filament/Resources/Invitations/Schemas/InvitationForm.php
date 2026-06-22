@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Invitations\Schemas;
 
 use App\Enums\InvitationRsvpStatus;
 use App\Filament\Support\AdminFormLayout;
+use App\Filament\Support\InvitationGuestTypeField;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -43,9 +44,7 @@ class InvitationForm
               ->label('Téléphone / WhatsApp')
               ->tel()
               ->maxLength(30),
-            TextInput::make('organization')
-              ->label('Organisation')
-              ->maxLength(255),
+            InvitationGuestTypeField::make(),
             Select::make('rsvp_status')
               ->label('Réponse RSVP')
               ->options(collect(InvitationRsvpStatus::cases())->mapWithKeys(
