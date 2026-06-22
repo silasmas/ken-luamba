@@ -84,7 +84,12 @@ class InvitationGuestImportService
    *
    * @param Event $event Événement cible
    * @param string $filePath Chemin absolu du fichier .xlsx
-   * @return array{created: int, skipped: int, errors: list<string>} Résultat de l'import
+   * @return array{
+   *   created: int,
+   *   skipped: int,
+   *   errors: list<string>,
+   *   notRegistered: list<array{row: int, fullName: string, email: string|null, phone: string|null, reason: string}>
+   * } Résultat de l'import
    */
   public function import(Event $event, string $filePath): array
   {
@@ -98,6 +103,7 @@ class InvitationGuestImportService
     $created = 0;
     $skipped = 0;
     $errors = [];
+    $notRegistered = [];
     $columnMap = null;
     $rowNumber = 0;
 
@@ -110,7 +116,9 @@ class InvitationGuestImportService
           $columnMap = $this->resolveColumnMap($values);
 
           if ($columnMap === null) {
-            $errors[] = 'Ligne 1 : en-têtes invalides. Utilisez le modèle Excel fourni.';
+            $reason = 'En-têtes invalides. Utilisez le modèle Excel fourni.';
+            $errors[] = 'Ligne 1 : '.$reason;
+            $notRegistered[] = $this->buildNotRegisteredEntry(1, '', null, null, $reason);
             break;
           }
 
@@ -124,22 +132,52 @@ class InvitationGuestImportService
         $guest = $this->extractGuestData($values, $columnMap);
 
         if ($guest['full_name'] === '') {
-          $errors[] = 'Ligne '.$rowNumber.' : le nom complet est obligatoire.';
+          $reason = 'Le nom complet est obligatoire.';
+          $errors[] = 'Ligne '.$rowNumber.' : '.$reason;
+          $notRegistered[] = $this->buildNotRegisteredEntry(
+            $rowNumber,
+            '',
+            $guest['email'],
+            $guest['phone'],
+            $reason,
+          );
           continue;
         }
 
-        if ($this->invitationAlreadyExists($event, $guest)) {
+        $duplicateReason = $this->resolveDuplicateReason($event, $guest);
+
+        if ($duplicateReason !== null) {
           $skipped++;
+          $notRegistered[] = $this->buildNotRegisteredEntry(
+            $rowNumber,
+            $guest['full_name'],
+            $guest['email'],
+            $guest['phone'],
+            $duplicateReason,
+          );
           continue;
         }
 
-        Invitation::query()->create([
-          'event_id' => $event->id,
-          'full_name' => $guest['full_name'],
-          'email' => $guest['email'],
-          'phone' => $guest['phone'],
-          'organization' => $guest['organization'],
-        ]);
+        try {
+          Invitation::query()->create([
+            'event_id' => $event->id,
+            'full_name' => $guest['full_name'],
+            'email' => $guest['email'],
+            'phone' => $guest['phone'],
+            'organization' => $guest['organization'],
+          ]);
+        } catch (\Throwable $exception) {
+          $reason = 'Erreur d\'enregistrement : '.$exception->getMessage();
+          $errors[] = 'Ligne '.$rowNumber.' : '.$reason;
+          $notRegistered[] = $this->buildNotRegisteredEntry(
+            $rowNumber,
+            $guest['full_name'],
+            $guest['email'],
+            $guest['phone'],
+            $reason,
+          );
+          continue;
+        }
 
         $created++;
       }
@@ -153,7 +191,85 @@ class InvitationGuestImportService
       'created' => $created,
       'skipped' => $skipped,
       'errors' => $errors,
+      'notRegistered' => $notRegistered,
     ];
+  }
+
+  /**
+   * Formate le résumé d'un import pour affichage dans l'admin Filament.
+   *
+   * @param array{
+   *   created: int,
+   *   skipped: int,
+   *   errors: list<string>,
+   *   notRegistered: list<array{row: int, fullName: string, email: string|null, phone: string|null, reason: string}>
+   * } $result Résultat de l'import
+   * @return string Texte lisible pour notification
+   */
+  public function formatImportSummary(array $result): string
+  {
+    $lines = [
+      $result['created'].' invité(s) ajouté(s).',
+    ];
+
+    if ($result['notRegistered'] === []) {
+      return implode("\n", $lines);
+    }
+
+    $lines[] = count($result['notRegistered']).' invité(s) non enregistré(s) :';
+
+    foreach ($result['notRegistered'] as $entry) {
+      $lines[] = '• Ligne '.$entry['row'].' — '.$this->formatGuestLabel($entry).' : '.$entry['reason'];
+    }
+
+    return implode("\n", $lines);
+  }
+
+  /**
+   * Construit une entrée détaillée pour un invité non enregistré.
+   *
+   * @param int $row Numéro de ligne Excel
+   * @param string $fullName Nom complet
+   * @param string|null $email Email
+   * @param string|null $phone Téléphone
+   * @param string $reason Motif du rejet
+   * @return array{row: int, fullName: string, email: string|null, phone: string|null, reason: string} Détail
+   */
+  private function buildNotRegisteredEntry(
+    int $row,
+    string $fullName,
+    ?string $email,
+    ?string $phone,
+    string $reason,
+  ): array {
+    return [
+      'row' => $row,
+      'fullName' => $fullName,
+      'email' => $email,
+      'phone' => $phone,
+      'reason' => $reason,
+    ];
+  }
+
+  /**
+   * Formate le libellé d'un invité pour les messages d'import.
+   *
+   * @param array{fullName: string, email: string|null, phone: string|null} $entry Données invité
+   * @return string Libellé compact
+   */
+  private function formatGuestLabel(array $entry): string
+  {
+    $name = filled($entry['fullName']) ? $entry['fullName'] : 'Invité sans nom';
+    $details = array_values(array_filter([
+      $entry['email'],
+      $entry['phone'],
+    ]));
+
+    if ($details === []) {
+      return $name;
+    }
+
+    return $name.' ('.implode(' — ', $details).')';
   }
 
   /**
@@ -273,31 +389,36 @@ class InvitationGuestImportService
   }
 
   /**
-   * Vérifie si un invité similaire existe déjà pour l'événement.
+   * Indique pourquoi un invité n'a pas pu être enregistré (doublon).
    *
    * @param Event $event Événement cible
    * @param array{full_name: string, email: string|null, phone: string|null, organization: string|null} $guest Données invité
-   * @return bool True si un doublon est détecté
+   * @return string|null Motif du doublon ou null si absent
    */
-  private function invitationAlreadyExists(Event $event, array $guest): bool
+  private function resolveDuplicateReason(Event $event, array $guest): ?string
   {
     $query = Invitation::query()->where('event_id', $event->id);
 
-    if ($guest['email'] !== null) {
-      return (clone $query)->where('email', $guest['email'])->exists();
+    if ($guest['email'] !== null && (clone $query)->where('email', $guest['email'])->exists()) {
+      return 'Doublon : cet email est déjà enregistré pour cet événement.';
     }
 
-    if ($guest['phone'] !== null) {
-      return (clone $query)->where('phone', $guest['phone'])->exists();
+    if ($guest['phone'] !== null && (clone $query)->where('phone', $guest['phone'])->exists()) {
+      return 'Doublon : ce téléphone est déjà enregistré pour cet événement.';
     }
 
-    return (clone $query)
-      ->where('full_name', $guest['full_name'])
-      ->when(
-        $guest['organization'] !== null,
-        fn ($builder) => $builder->where('organization', $guest['organization']),
-        fn ($builder) => $builder->whereNull('organization'),
-      )
-      ->exists();
+    $nameQuery = (clone $query)->where('full_name', $guest['full_name']);
+
+    if ($guest['organization'] !== null) {
+      $nameQuery->where('organization', $guest['organization']);
+    } else {
+      $nameQuery->whereNull('organization');
+    }
+
+    if ($nameQuery->exists()) {
+      return 'Doublon : cet invité (nom et organisation) est déjà enregistré pour cet événement.';
+    }
+
+    return null;
   }
 }

@@ -199,7 +199,7 @@ class InvitationAdminActions
       ->icon(Heroicon::OutlinedArrowUpTray)
       ->color('primary')
       ->modalHeading('Importer des invités')
-      ->modalDescription('Téléchargez d\'abord le modèle Excel, remplissez-le, puis importez-le ici. Les doublons (même email ou téléphone) seront ignorés.')
+      ->modalDescription('Téléchargez d\'abord le modèle Excel, remplissez-le, puis importez-le ici. Les invités non enregistrés (doublons, données invalides, erreurs) seront listés avec le motif après l\'import.')
       ->modalSubmitActionLabel('Importer')
       ->modalWidth('lg')
       ->form([
@@ -238,7 +238,8 @@ class InvitationAdminActions
         }
 
         try {
-          $result = app(InvitationGuestImportService::class)->import(
+          $importService = app(InvitationGuestImportService::class);
+          $result = $importService->import(
             $eventResolver(),
             $diskPath,
           );
@@ -253,17 +254,18 @@ class InvitationAdminActions
           Storage::disk('local')->delete($relativePath);
         }
 
-        $body = $result['created'].' invité(s) ajouté(s), '.$result['skipped'].' ignoré(s).';
+        $notification = Notification::make()
+          ->title('Import terminé')
+          ->body($importService->formatImportSummary($result))
+          ->persistent();
 
-        if ($result['errors'] !== []) {
-          $body .= ' Erreurs : '.implode(' ', array_slice($result['errors'], 0, 3));
+        if ($result['notRegistered'] !== []) {
+          $notification->warning()->send();
+
+          return;
         }
 
-        Notification::make()
-          ->title('Import terminé')
-          ->body($body)
-          ->success()
-          ->send();
+        $notification->success()->send();
       });
   }
 
