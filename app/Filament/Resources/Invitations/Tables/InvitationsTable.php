@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Invitations\Tables;
 use App\Enums\InvitationRsvpStatus;
 use App\Filament\Support\InvitationAdminActions;
 use App\Models\Event;
+use App\Models\Invitation;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -86,7 +87,34 @@ class InvitationsTable
       ->filters([
         SelectFilter::make('event_id')
           ->label('Événement')
-          ->relationship('event', 'title'),
+          ->relationship('event', 'title')
+          ->visible($eventContext === null),
+        SelectFilter::make('organization')
+          ->label('Type d\'invité')
+          ->options(fn (): array => self::guestTypeFilterOptions($eventContext))
+          ->searchable(),
+        TernaryFilter::make('has_email')
+          ->label('A un email')
+          ->nullable()
+          ->queries(
+            true: fn ($query) => $query->whereNotNull('email')->where('email', '!=', ''),
+            false: fn ($query) => $query->where(function ($builder): void {
+              $builder
+                ->whereNull('email')
+                ->orWhere('email', '');
+            }),
+          ),
+        TernaryFilter::make('has_phone')
+          ->label('A un téléphone')
+          ->nullable()
+          ->queries(
+            true: fn ($query) => $query->whereNotNull('phone')->where('phone', '!=', ''),
+            false: fn ($query) => $query->where(function ($builder): void {
+              $builder
+                ->whereNull('phone')
+                ->orWhere('phone', '');
+            }),
+          ),
         SelectFilter::make('rsvp_status')
           ->label('RSVP')
           ->options(collect(InvitationRsvpStatus::cases())->mapWithKeys(
@@ -115,5 +143,28 @@ class InvitationsTable
         ]),
       ])
       ->defaultSort('created_at', 'desc');
+  }
+
+  /**
+   * Retourne les types d'invités distincts pour le filtre du tableau.
+   *
+   * @param Event|null $eventContext Événement parent si le tableau est contextualisé
+   * @return array<string, string> Options valeur => libellé
+   */
+  private static function guestTypeFilterOptions(?Event $eventContext): array
+  {
+    $query = Invitation::query()
+      ->whereNotNull('organization')
+      ->where('organization', '!=', '');
+
+    if ($eventContext !== null) {
+      $query->where('event_id', $eventContext->id);
+    }
+
+    return $query
+      ->orderBy('organization')
+      ->distinct()
+      ->pluck('organization', 'organization')
+      ->all();
   }
 }
