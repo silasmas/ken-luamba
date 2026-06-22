@@ -3,7 +3,6 @@
 namespace App\Services\Invitations;
 
 use App\Enums\InvitationDispatchChannel;
-use App\Enums\InvitationGuestType;
 use App\Models\Event;
 use App\Models\Invitation;
 use Filament\Forms\Components\RichEditor\RichContentRenderer;
@@ -31,7 +30,7 @@ class InvitationMessageService
       '{guest_name}' => 'Nom complet de l\'invité.',
       '{guest_email}' => 'Adresse email de l\'invité.',
       '{guest_phone}' => 'Numéro de téléphone ou WhatsApp de l\'invité.',
-      '{guest_organization}' => 'Type d\'invité (VIP, VVIP ou Autre).',
+      '{guest_organization}' => 'Type d\'invité (texte libre : VIP, VVIP, Presse…).',
       '{event_title}' => 'Titre de l\'événement.',
       '{event_type}' => 'Type d\'événement (lancement, cérémonie, etc.).',
       '{event_date}' => 'Date et heure complètes de début (format long).',
@@ -382,7 +381,7 @@ class InvitationMessageService
       '{guest_name}' => $invitation->full_name,
       '{guest_email}' => (string) ($invitation->email ?? ''),
       '{guest_phone}' => (string) ($invitation->phone ?? ''),
-      '{guest_organization}' => InvitationGuestType::labelFor($invitation->organization) ?? '',
+      '{guest_organization}' => (string) ($invitation->organization ?? ''),
       '{event_title}' => (string) ($event?->title ?? ''),
       '{event_type}' => (string) ($event?->type?->label() ?? ''),
       '{event_date}' => $startsAt?->isoFormat('dddd D MMMM YYYY [à] HH[h]mm') ?? '',

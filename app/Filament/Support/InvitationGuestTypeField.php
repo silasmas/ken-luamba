@@ -2,28 +2,24 @@
 
 namespace App\Filament\Support;
 
-use App\Enums\InvitationGuestType;
-use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 
 /**
- * Champ Filament réutilisable pour le type d'invité (VIP, VVIP, Autre).
+ * Champ Filament réutilisable pour le type d'invité (texte libre).
  */
 class InvitationGuestTypeField
 {
   /**
-   * Retourne un select configuré pour le type d'invité.
+   * Retourne un champ texte pour saisir librement le type d'invité.
    *
-   * @return Select Champ Filament
+   * @return TextInput Champ Filament
    */
-  public static function make(): Select
+  public static function make(): TextInput
   {
-    return Select::make('organization')
+    return TextInput::make('organization')
       ->label('Type d\'invité')
-      ->options(collect(InvitationGuestType::cases())->mapWithKeys(
-        fn (InvitationGuestType $type) => [$type->value => $type->label()],
-      )->all())
-      ->native(false)
-      ->placeholder('Sélectionner un type')
-      ->helperText('VIP, VVIP ou Autre.');
+      ->maxLength(255)
+      ->placeholder('Ex. VIP, VVIP, Presse, Partenaire…')
+      ->helperText('Texte libre affiché dans le tableau et sur la page d\'invitation.');
   }
 }

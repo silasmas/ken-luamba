@@ -2,7 +2,6 @@
 
 namespace App\Http\Resources\Api\V1;
 
-use App\Enums\InvitationGuestType;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -22,9 +21,9 @@ class InvitationResource extends JsonResource
     return [
       'id' => $this->id,
       'fullName' => $this->full_name,
-      'organization' => InvitationGuestType::labelFor($this->organization),
+      'organization' => $this->organization,
       'guestType' => $this->organization,
-      'guestTypeLabel' => InvitationGuestType::labelFor($this->organization),
+      'guestTypeLabel' => $this->organization,
       'rsvpStatus' => $this->rsvp_status?->value,
       'rsvpStatusLabel' => $this->rsvp_status?->label(),
       'guestMessage' => $this->guest_message,

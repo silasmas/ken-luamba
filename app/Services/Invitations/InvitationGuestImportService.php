@@ -2,7 +2,6 @@
 
 namespace App\Services\Invitations;
 
-use App\Enums\InvitationGuestType;
 use App\Models\Event;
 use App\Models\Invitation;
 use OpenSpout\Common\Entity\Row;
@@ -24,7 +23,7 @@ class InvitationGuestImportService
     'Nom complet',
     'Email',
     'Téléphone / WhatsApp',
-    'Type d\'invité (VIP, VVIP, Autre)',
+    'Type d\'invité',
   ];
 
   /**
@@ -150,20 +149,6 @@ class InvitationGuestImportService
         }
 
         $guest = $this->extractGuestData($values, $columnMap);
-        $guestTypeError = $this->resolveGuestTypeError($guest['organization_raw']);
-
-        if ($guestTypeError !== null) {
-          $errors[] = 'Ligne '.$rowNumber.' : '.$guestTypeError;
-          $notRegistered[] = $this->buildNotRegisteredEntry(
-            $rowNumber,
-            $guest['full_name'],
-            $guest['email'],
-            $guest['phone'],
-            $guest['organization_raw'],
-            $guestTypeError,
-          );
-          continue;
-        }
 
         if ($guest['full_name'] === '') {
           $reason = 'Le nom complet est obligatoire.';
@@ -263,7 +248,7 @@ class InvitationGuestImportService
         $entry['fullName'],
         $entry['email'] ?? '',
         $entry['phone'] ?? '',
-        $this->formatGuestTypeForExport($entry['organization'] ?? null),
+        $entry['organization'] ?? '',
         $entry['reason'],
       ]));
     }
@@ -419,62 +404,16 @@ class InvitationGuestImportService
    *
    * @param list<string|null> $values Valeurs de la ligne
    * @param array<string, int> $columnMap Correspondance champ → index
-   * @return array{
-   *   full_name: string,
-   *   email: string|null,
-   *   phone: string|null,
-   *   organization: string|null,
-   *   organization_raw: string|null
-   * } Données invité
+   * @return array{full_name: string, email: string|null, phone: string|null, organization: string|null} Données invité
    */
   private function extractGuestData(array $values, array $columnMap): array
   {
-    $organizationRaw = $this->nullableValueAt($values, $columnMap, 'organization');
-
     return [
       'full_name' => $this->valueAt($values, $columnMap, 'full_name') ?? '',
       'email' => $this->nullableValueAt($values, $columnMap, 'email'),
       'phone' => $this->nullableValueAt($values, $columnMap, 'phone'),
-      'organization_raw' => $organizationRaw,
-      'organization' => InvitationGuestType::normalizeImport($organizationRaw),
+      'organization' => $this->nullableValueAt($values, $columnMap, 'organization'),
     ];
-  }
-
-  /**
-   * Retourne un message d'erreur si le type d'invité saisi est invalide.
-   *
-   * @param string|null $organizationRaw Valeur brute Excel
-   * @return string|null Message d'erreur ou null
-   */
-  private function resolveGuestTypeError(?string $organizationRaw): ?string
-  {
-    if ($organizationRaw === null || trim($organizationRaw) === '') {
-      return null;
-    }
-
-    if (InvitationGuestType::normalizeImport($organizationRaw) === null) {
-      return 'Type d\'invité invalide. Utilisez VIP, VVIP ou Autre.';
-    }
-
-    return null;
-  }
-
-  /**
-   * Formate un type d'invité pour l'export Excel.
-   *
-   * @param string|null $rawOrValue Valeur brute ou enum
-   * @return string Libellé affiché
-   */
-  private function formatGuestTypeForExport(?string $rawOrValue): string
-  {
-    if ($rawOrValue === null || trim($rawOrValue) === '') {
-      return '';
-    }
-
-    $normalized = InvitationGuestType::normalizeImport($rawOrValue)
-      ?? InvitationGuestType::tryFrom($rawOrValue)?->value;
-
-    return InvitationGuestType::labelFor($normalized) ?? $rawOrValue;
   }
 
   /**
