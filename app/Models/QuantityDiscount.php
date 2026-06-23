@@ -27,6 +27,7 @@ class QuantityDiscount extends Model
     'discount_value',
     'applies_to',
     'book_id',
+    'author_id',
     'stackable',
     'valid_from',
     'valid_until',
@@ -59,5 +60,15 @@ class QuantityDiscount extends Model
   public function book(): BelongsTo
   {
     return $this->belongsTo(Book::class);
+  }
+
+  /**
+   * Auteur ciblé si la remise exige sa collection complète.
+   *
+   * @return BelongsTo<Author, $this>
+   */
+  public function author(): BelongsTo
+  {
+    return $this->belongsTo(Author::class);
   }
 }

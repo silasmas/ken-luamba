@@ -40,6 +40,9 @@ class QuantityDiscountsTable
         TextColumn::make('book.title')
           ->label('Livre')
           ->placeholder('—'),
+        TextColumn::make('author.full_name')
+          ->label('Auteur')
+          ->placeholder('—'),
         IconColumn::make('is_active')
           ->label('Active')
           ->boolean(),

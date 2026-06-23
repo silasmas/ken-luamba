@@ -2,8 +2,10 @@
 
 namespace App\Services;
 
+use App\Enums\BookFormatType;
 use App\Enums\DiscountAppliesTo;
 use App\Enums\DiscountType;
+use App\Models\Book;
 use App\Models\Cart;
 use App\Models\QuantityDiscount;
 
@@ -26,10 +28,24 @@ class DiscountService
     ]);
 
     $physicalCount = $this->countPhysicalItems($cart);
+    $itemCount = $cart->items->sum('quantity');
+    $distinctPhysicalBookCount = $this->countDistinctPhysicalBooks($cart);
 
     $discount = QuantityDiscount::query()
       ->where('is_active', true)
-      ->where('min_quantity', '<=', max($physicalCount, $cart->items->sum('quantity')))
+      ->where(function ($query) use ($physicalCount, $itemCount, $distinctPhysicalBookCount): void {
+        $query
+          ->where(function ($authorQuery) use ($distinctPhysicalBookCount): void {
+            $authorQuery
+              ->where('applies_to', DiscountAppliesTo::AuthorCompleteSet->value)
+              ->where('min_quantity', '<=', $distinctPhysicalBookCount);
+          })
+          ->orWhere(function ($defaultQuery) use ($physicalCount, $itemCount): void {
+            $defaultQuery
+              ->where('applies_to', '!=', DiscountAppliesTo::AuthorCompleteSet->value)
+              ->where('min_quantity', '<=', max($physicalCount, $itemCount));
+          });
+      })
       ->where(function ($query): void {
         $query->whereNull('valid_from')->orWhere('valid_from', '<=', now());
       })
@@ -65,6 +81,38 @@ class DiscountService
   }
 
   /**
+   * Retourne les livres physiques publiés requis pour une collection complète.
+   *
+   * @param string $authorId Identifiant de l'auteur
+   * @return list<string> Identifiants des livres requis
+   */
+  public function requiredAuthorBookIds(string $authorId): array
+  {
+    return Book::query()
+      ->published()
+      ->where('author_id', $authorId)
+      ->whereHas('formats', function ($query): void {
+        $query->whereIn('type', [
+          BookFormatType::Hardcover->value,
+          BookFormatType::Paperback->value,
+        ]);
+      })
+      ->pluck('id')
+      ->all();
+  }
+
+  /**
+   * Compte les titres physiques publiés d'un auteur éligibles à la remise collection.
+   *
+   * @param string $authorId Identifiant de l'auteur
+   * @return int Nombre de titres requis
+   */
+  public function requiredAuthorBookCount(string $authorId): int
+  {
+    return count($this->requiredAuthorBookIds($authorId));
+  }
+
+  /**
    * Compte les livres physiques dans le panier.
    *
    * @param Cart $cart Panier cible
@@ -78,6 +126,21 @@ class DiscountService
   }
 
   /**
+   * Compte les titres physiques distincts présents dans le panier.
+   *
+   * @param Cart $cart Panier cible
+   * @return int Nombre de livres différents
+   */
+  private function countDistinctPhysicalBooks(Cart $cart): int
+  {
+    return $cart->items
+      ->filter(fn ($item) => ! $item->bookFormat->type->isDigital())
+      ->pluck('bookFormat.book_id')
+      ->unique()
+      ->count();
+  }
+
+  /**
    * Vérifie si une règle de remise s'applique au panier.
    *
    * @param QuantityDiscount $rule Règle à tester
@@ -87,14 +150,54 @@ class DiscountService
    */
   private function ruleApplies(QuantityDiscount $rule, Cart $cart, int $physicalCount): bool
   {
+    if ($rule->applies_to === DiscountAppliesTo::AuthorCompleteSet) {
+      return $this->authorCompleteSetApplies($rule, $cart);
+    }
+
     $quantityBase = match ($rule->applies_to) {
       DiscountAppliesTo::PhysicalOnly => $physicalCount,
       DiscountAppliesTo::SpecificBook => $cart->items
         ->filter(fn ($item) => $item->bookFormat->book_id === $rule->book_id)
         ->sum('quantity'),
       DiscountAppliesTo::AllBooks => $cart->items->sum('quantity'),
+      default => 0,
     };
 
     return $quantityBase >= $rule->min_quantity;
+  }
+
+  /**
+   * Vérifie si le panier contient au moins un exemplaire de chaque livre physique de l'auteur.
+   *
+   * @param QuantityDiscount $rule Règle collection complète
+   * @param Cart $cart Panier courant
+   * @return bool True si la collection est complète
+   */
+  private function authorCompleteSetApplies(QuantityDiscount $rule, Cart $cart): bool
+  {
+    if ($rule->author_id === null) {
+      return false;
+    }
+
+    $requiredBookIds = $this->requiredAuthorBookIds($rule->author_id);
+
+    if ($requiredBookIds === []) {
+      return false;
+    }
+
+    $cartBookIds = $cart->items
+      ->filter(fn ($item) => ! $item->bookFormat->type->isDigital() && $item->quantity >= 1)
+      ->map(fn ($item) => $item->bookFormat->book_id)
+      ->unique()
+      ->values()
+      ->all();
+
+    foreach ($requiredBookIds as $bookId) {
+      if (! in_array($bookId, $cartBookIds, true)) {
+        return false;
+      }
+    }
+
+    return true;
   }
 }

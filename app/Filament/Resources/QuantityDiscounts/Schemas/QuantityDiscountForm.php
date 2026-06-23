@@ -5,7 +5,9 @@ namespace App\Filament\Resources\QuantityDiscounts\Schemas;
 use App\Enums\DiscountAppliesTo;
 use App\Enums\DiscountType;
 use App\Filament\Support\AdminFormLayout;
+use App\Services\DiscountService;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -34,10 +36,33 @@ class QuantityDiscountForm
               ->helperText('Libellé interne (ex. Pack 3 livres -10%).'),
             TextInput::make('min_quantity')
               ->label('Quantité minimale')
-              ->required()
+              ->required(fn (callable $get): bool => $get('applies_to') !== DiscountAppliesTo::AuthorCompleteSet->value)
               ->numeric()
               ->minValue(2)
+              ->default(2)
+              ->hidden(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::AuthorCompleteSet->value)
+              ->dehydrated(fn (callable $get): bool => $get('applies_to') !== DiscountAppliesTo::AuthorCompleteSet->value)
               ->helperText('Nombre minimum d\'articles pour déclencher la remise.'),
+            Placeholder::make('author_complete_set_notice')
+              ->label('Condition collection complète')
+              ->content('La remise s\'applique uniquement si le panier contient au moins 1 exemplaire physique de chaque livre publié de l\'auteur sélectionné.')
+              ->visible(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::AuthorCompleteSet->value),
+            Placeholder::make('author_required_books_count')
+              ->label('Titres requis')
+              ->content(function (callable $get): string {
+                $authorId = $get('author_id');
+
+                if (! $authorId) {
+                  return 'Sélectionnez un auteur pour voir le nombre de titres requis.';
+                }
+
+                $count = app(DiscountService::class)->requiredAuthorBookCount((string) $authorId);
+
+                return $count > 0
+                  ? "{$count} livre(s) physique(s) publié(s) de cet auteur."
+                  : 'Aucun livre physique publié trouvé pour cet auteur.';
+              })
+              ->visible(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::AuthorCompleteSet->value),
             Select::make('discount_type')
               ->label('Type de remise')
               ->options(collect(DiscountType::cases())->mapWithKeys(
@@ -66,7 +91,7 @@ class QuantityDiscountForm
               ->required()
               ->live()
               ->native(false)
-              ->helperText('Tous les livres, physiques seulement ou un livre précis.'),
+              ->helperText('Tous les livres, physiques seulement, un livre précis ou la collection complète d\'un auteur.'),
             Select::make('book_id')
               ->label('Livre ciblé')
               ->relationship('book', 'title')
@@ -74,6 +99,15 @@ class QuantityDiscountForm
               ->preload()
               ->visible(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::SpecificBook->value)
               ->helperText('Obligatoire si la remise cible un livre spécifique.'),
+            Select::make('author_id')
+              ->label('Auteur ciblé')
+              ->relationship('author', 'full_name')
+              ->searchable()
+              ->preload()
+              ->required(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::AuthorCompleteSet->value)
+              ->visible(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::AuthorCompleteSet->value)
+              ->live()
+              ->helperText('La remise exige au moins 1 exemplaire physique de chaque livre publié de cet auteur.'),
             Toggle::make('stackable')
               ->label('Cumulable avec d\'autres promos')
               ->helperText('Autorise la combinaison avec d\'autres remises.'),
