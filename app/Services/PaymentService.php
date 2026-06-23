@@ -84,12 +84,6 @@ class PaymentService
     }
 
     if ($channel === PaymentChannel::MobileMoney) {
-      if ($order->currency !== 'CDF') {
-        throw ValidationException::withMessages([
-          'payment' => ['Le Mobile Money est disponible uniquement pour les commandes en CDF. Utilisez la carte bancaire pour les commandes en USD.'],
-        ]);
-      }
-
       if ($phone === null || $providerCode === null) {
         throw ValidationException::withMessages([
           'phone' => ['Sélectionnez un opérateur et saisissez votre numéro Mobile Money.'],
