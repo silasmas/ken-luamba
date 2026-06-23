@@ -574,7 +574,7 @@ class InvitationMessageService
       '{event_description}' => (string) ($event?->description ?? 'Description de l\'événement'),
       '{event_welcome_message}' => trim(strip_tags((string) ($event?->welcome_message ?? ''))),
       '{event_books}' => $event?->books?->pluck('title')->filter()->implode(', ') ?: 'Livre 1, Livre 2',
-      '{invitation_link}' => rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/invitation/exemple-token',
+      '{invitation_link}' => rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/invitation/abc12XY9z0',
       '{rsvp_status}' => 'En attente',
     ];
   }

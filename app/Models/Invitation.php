@@ -6,7 +6,7 @@ use App\Enums\InvitationRsvpStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Str;
+use App\Services\Invitations\InvitationTokenGenerator;
 
 /**
  * Modèle représentant une invitation individuelle à un événement.
@@ -59,7 +59,7 @@ class Invitation extends Model
   {
     static::creating(function (Invitation $invitation): void {
       if ($invitation->token === null || $invitation->token === '') {
-        $invitation->token = Str::random(48);
+        $invitation->token = app(InvitationTokenGenerator::class)->generateUnique();
       }
     });
   }
