@@ -114,7 +114,7 @@ class InvitationAdminActions
           self::selectedMessageId($data),
         );
 
-        if ($result['mode'] === 'manual' && filled($result['url'])) {
+        if ($result['mode'] === 'manual' && filled($result['url']) && ! app()->environment('production')) {
           self::openUrlInNewTab($action, $result['url']);
         }
       },
@@ -382,7 +382,7 @@ class InvitationAdminActions
       successLabel: 'invitation(s) traitée(s) par SMS',
       eventContext: $eventContext,
       afterBulk: function (array $result, Action $action): void {
-        if ($result['urls'] !== []) {
+        if ($result['urls'] !== [] && ! app()->environment('production')) {
           self::openUrlsInNewTabs($action, $result['urls']);
         }
       },
@@ -483,7 +483,7 @@ class InvitationAdminActions
         $messageId = self::selectedMessageId($data);
         $result = app(InvitationDispatchService::class)->sendBulk($invitations, $channel, $messageId);
 
-        if ($channel === InvitationDispatchChannel::Sms && $result['urls'] !== []) {
+        if ($channel === InvitationDispatchChannel::Sms && $result['urls'] !== [] && ! app()->environment('production')) {
           self::openUrlsInNewTabs($action, $result['urls']);
         }
 
@@ -749,6 +749,15 @@ class InvitationAdminActions
     }
 
     if ($channel === InvitationDispatchChannel::Sms) {
+      if (! app(InvitationDispatchService::class)->usesKecelSms()) {
+        $fields[] = Placeholder::make('sms_api_warning')
+          ->label('Configuration SMS')
+          ->content(app()->environment('production')
+            ? 'L\'API Kecel n\'est pas active sur ce serveur. Les SMS ne partiront pas tant que SMS_DRIVER, SMS_TOKEN et SMS_FROM ne sont pas configurés dans le .env.'
+            : 'Mode développement : sans API Kecel, le navigateur ouvrira l\'application SMS locale.')
+          ->columnSpanFull();
+      }
+
       $fields[] = Placeholder::make('sms_preview')
         ->label('Aperçu SMS et consommation')
         ->content(function (callable $get) use ($record): \Illuminate\Support\HtmlString {

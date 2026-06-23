@@ -95,6 +95,14 @@ class InvitationDispatchService
       throw new RuntimeException('Numéro de téléphone invalide ou absent.');
     }
 
+    if (! $this->kecelSmsService->isEnabled()) {
+      if (app()->environment('production')) {
+        throw new RuntimeException(
+          'Envoi SMS API non configuré. Définissez SMS_DRIVER=keccel, SMS_TOKEN et SMS_FROM dans le .env du serveur, puis exécutez php artisan config:cache.',
+        );
+      }
+    }
+
     $body = $this->messageService->resolveBody(
       $invitation,
       InvitationDispatchChannel::Sms,

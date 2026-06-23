@@ -37,4 +37,26 @@ class InvitationTokenGenerator
 
     return $token;
   }
+
+  /**
+   * Remplace un token trop long par un token court (économie SMS).
+   *
+   * @param Invitation $invitation Invitation à mettre à jour si nécessaire
+   * @return void
+   */
+  public function ensureShortToken(Invitation $invitation): void
+  {
+    $targetLength = $this->length();
+    $currentToken = (string) $invitation->token;
+
+    if ($currentToken === '' || strlen($currentToken) <= $targetLength) {
+      return;
+    }
+
+    $invitation->update([
+      'token' => $this->generateUnique(),
+    ]);
+
+    $invitation->refresh();
+  }
 }

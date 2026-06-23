@@ -12,7 +12,7 @@ return [
   |
   */
 
-  'driver' => env('SMS_DRIVER', 'manual'),
+  'driver' => env('SMS_DRIVER', env('SMS_TOKEN') ? 'keccel' : 'manual'),
 
   'token' => env('SMS_TOKEN'),
 

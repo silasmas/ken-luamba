@@ -28,6 +28,8 @@ class InvitationLinkService
    */
   public function publicUrl(Invitation $invitation): string
   {
+    app(InvitationTokenGenerator::class)->ensureShortToken($invitation);
+
     $frontendUrl = rtrim((string) config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3001')), '/');
 
     return $frontendUrl.'/invitation/'.$invitation->token;
