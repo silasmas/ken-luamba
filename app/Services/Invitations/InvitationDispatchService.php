@@ -109,6 +109,12 @@ class InvitationDispatchService
       $messageId,
     );
 
+    if (trim($body) === '') {
+      throw new RuntimeException(
+        'Le texte du SMS est vide. Ouvrez l\'événement → section « Messages d\'invitation », vérifiez que le modèle a le canal SMS coché et un contenu rédigé.',
+      );
+    }
+
     if ($this->kecelSmsService->isEnabled()) {
       $result = $this->kecelSmsService->send($phone, $body);
 

@@ -22,9 +22,16 @@ class KecelSmsService
     $token = (string) config('sms.token');
     $from = (string) config('sms.from');
     $url = (string) config('sms.url');
+    $message = trim($message);
 
     if ($token === '' || $from === '') {
       throw new RuntimeException('Configuration SMS incomplète (SMS_TOKEN ou SMS_FROM manquant).');
+    }
+
+    if ($message === '') {
+      throw new RuntimeException(
+        'Le texte du SMS est vide. Éditez l\'événement → Messages d\'invitation : cochez le canal SMS et rédigez le contenu du modèle.',
+      );
     }
 
     $payload = [
@@ -34,17 +41,41 @@ class KecelSmsService
       'message' => $message,
     ];
 
-    $response = Http::timeout(30)
-      ->asForm()
-      ->post($url, $payload);
+    $response = $this->dispatchSendRequest($url, $payload);
+    $raw = trim($response->body());
+    $result = $this->parseResponse($raw, $response->status());
 
-    if (! $response->successful() && $response->status() === 405) {
-      $response = Http::timeout(30)->get($url, $payload);
+    if ($this->isMissingMessageError($raw)) {
+      $payload['msg'] = $message;
+      $response = $this->dispatchSendRequest($url, $payload);
+      $raw = trim($response->body());
+      $result = $this->parseResponse($raw, $response->status());
     }
 
-    $raw = trim($response->body());
+    return $result;
+  }
 
-    return $this->parseResponse($raw, $response->status());
+  /**
+   * Envoie la requête HTTP vers l'API Kecel (GET, format attendu par message.asp).
+   *
+   * @param string $url URL de l'API
+   * @param array<string, string> $payload Paramètres token, from, to, message
+   * @return \Illuminate\Http\Client\Response Réponse HTTP
+   */
+  private function dispatchSendRequest(string $url, array $payload): \Illuminate\Http\Client\Response
+  {
+    return Http::timeout(30)->get($url, $payload);
+  }
+
+  /**
+   * Indique si Kecel signale l'absence du paramètre message.
+   *
+   * @param string $raw Réponse brute
+   * @return bool True si le paramètre message manque
+   */
+  private function isMissingMessageError(string $raw): bool
+  {
+    return stripos($raw, 'missing message') !== false;
   }
 
   /**
