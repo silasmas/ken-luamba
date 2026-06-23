@@ -28,7 +28,7 @@ class InvitationRichEditorHelper
         ['mergeTags'],
         ['undo', 'redo'],
       ])
-      ->helperText('Utilisez le panneau « Variables » pour insérer des badges dynamiques. La mise en forme est conservée sur la page publique et dans les emails.');
+      ->helperText('Utilisez le panneau « Variables » ou copiez-collez les badges ci-dessus ({guest_name}, {event_date_short}, …). L\'aperçu SMS remplace toutes les variables avant envoi.');
   }
 
   /**

@@ -136,7 +136,7 @@ class EventForm
                   ->label('Aperçu SMS et consommation')
                   ->content(function (callable $get, ?Event $record): \Illuminate\Support\HtmlString {
                     return InvitationSmsPreviewHelper::previewRawBodyHtml(
-                      is_string($get('body')) ? $get('body') : null,
+                      $get('body'),
                       $record,
                     );
                   })

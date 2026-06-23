@@ -227,7 +227,7 @@ class InvitationMessageService
         && $this->messageSupportsChannel($template, $channel)
         && filled($template['body'] ?? null)
       ) {
-        $rawBody = (string) $template['body'];
+        $rawBody = $this->normalizeTemplateContent($template['body'] ?? '');
 
         if ($channel === InvitationDispatchChannel::Email && $this->isRichContent($rawBody)) {
           return $this->renderHtml($rawBody, $invitation);
@@ -269,7 +269,7 @@ class InvitationMessageService
         && $this->messageSupportsChannel($template, InvitationDispatchChannel::Sms)
         && filled($template['body'] ?? null)
       ) {
-        return $this->previewRawTemplateBody((string) $template['body'], $event);
+        return $this->previewRawTemplateBody($template['body'] ?? '', $event);
       }
     }
 
@@ -277,30 +277,28 @@ class InvitationMessageService
     $first = $templates[0] ?? null;
 
     if ($first !== null && filled($first['body'] ?? null)) {
-      return $this->previewRawTemplateBody((string) $first['body'], $event);
+      return $this->previewRawTemplateBody($first['body'] ?? '', $event);
     }
 
-    return $this->formatForSms($this->renderSampleText('Bonjour {guest_name}, vous êtes invité(e) à {event_title}.', $event));
+    return $this->formatForSms($this->applyPlaceholderTokens(
+      'Bonjour {guest_name}, vous êtes invité(e) à {event_title}.',
+      $this->samplePlaceholderTokens($event),
+    ));
   }
 
   /**
    * Prévisualise un corps brut de modèle SMS avec des données exemple.
    *
-   * @param string $template Contenu brut du modèle
+   * @param mixed $template Contenu du modèle (texte, HTML ou JSON TipTap)
    * @param Event|null $event Événement source
    * @return string Message SMS rendu
    */
-  public function previewRawTemplateBody(string $template, ?Event $event): string
+  public function previewRawTemplateBody(mixed $template, ?Event $event): string
   {
-    if ($this->isRichContent($template)) {
-      $text = RichContentRenderer::make($template)
-        ->mergeTags($this->sampleMergeTagValues($event))
-        ->toText();
+    $tokens = $this->samplePlaceholderTokens($event);
+    $plain = $this->renderPlainFromTemplate($template, $tokens, $this->sampleMergeTagValues($event));
 
-      return $this->formatForSms(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-    }
-
-    return $this->formatForSms($this->renderSampleText($template, $event));
+    return $this->formatForSms($plain);
   }
 
   /**
@@ -372,20 +370,10 @@ class InvitationMessageService
    */
   public function renderPlainText(string $template, Invitation $invitation): string
   {
-    $template = $this->normalizeTemplateTokens($template);
-
-    if ($this->isRichContent($template)) {
-      $text = RichContentRenderer::make($template)
-        ->mergeTags($this->mergeTagValues($invitation))
-        ->toText();
-
-      return html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    }
-
-    return str_replace(
-      array_keys($this->placeholders($invitation)),
-      array_values($this->placeholders($invitation)),
+    return $this->renderPlainFromTemplate(
       $template,
+      $this->placeholders($invitation),
+      $this->mergeTagValues($invitation),
     );
   }
 
@@ -398,19 +386,21 @@ class InvitationMessageService
    */
   public function renderHtml(string $template, Invitation $invitation): string
   {
+    $template = $this->normalizeTemplateContent($template);
+    $template = $this->normalizeTemplateTokens($template);
+    $tokens = $this->placeholders($invitation);
+
     if ($this->isRichContent($template)) {
-      return RichContentRenderer::make($template)
+      $workingTemplate = $this->isTipTapDocument($template)
+        ? $template
+        : $this->applyPlaceholderTokens($template, $tokens);
+
+      return RichContentRenderer::make($workingTemplate)
         ->mergeTags($this->mergeTagValues($invitation))
         ->toHtml();
     }
 
-    $rendered = str_replace(
-      array_keys($this->placeholders($invitation)),
-      array_values($this->placeholders($invitation)),
-      $template,
-    );
-
-    return nl2br(e($rendered));
+    return nl2br(e($this->applyPlaceholderTokens($template, $tokens)));
   }
 
   /**
@@ -502,6 +492,86 @@ class InvitationMessageService
   }
 
   /**
+   * Rend un modèle en texte brut en remplaçant toutes les variables dynamiques.
+   *
+   * @param mixed $template Contenu du modèle
+   * @param array<string, string> $tokens Variables => valeurs
+   * @param array<string, string> $mergeTags Merge tags Filament (sans accolades)
+   * @return string Texte final sans balises
+   */
+  private function renderPlainFromTemplate(
+    mixed $template,
+    array $tokens,
+    array $mergeTags,
+  ): string {
+    $template = $this->normalizeTemplateContent($template);
+    $template = $this->normalizeTemplateTokens($template);
+
+    if ($this->isRichContent($template)) {
+      $workingTemplate = $this->isTipTapDocument($template)
+        ? $template
+        : $this->applyPlaceholderTokens($template, $tokens);
+
+      $text = RichContentRenderer::make($workingTemplate)
+        ->mergeTags($mergeTags)
+        ->toText();
+      $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+      return $this->applyPlaceholderTokens($text, $tokens);
+    }
+
+    return $this->applyPlaceholderTokens($template, $tokens);
+  }
+
+  /**
+   * Indique si le contenu est un document TipTap JSON (Filament RichEditor).
+   *
+   * @param string $content Contenu brut
+   * @return bool True si JSON TipTap
+   */
+  private function isTipTapDocument(string $content): bool
+  {
+    $trimmed = trim($content);
+
+    return str_starts_with($trimmed, '{') && str_contains($trimmed, '"type"');
+  }
+
+  /**
+   * Normalise le contenu brut d'un modèle (string HTML/JSON ou document TipTap).
+   *
+   * @param mixed $content Contenu enregistré dans le formulaire
+   * @return string Contenu exploitable par le moteur de rendu
+   */
+  public function normalizeTemplateContent(mixed $content): string
+  {
+    if (is_array($content)) {
+      $encoded = json_encode($content, JSON_UNESCAPED_UNICODE);
+
+      return is_string($encoded) ? $encoded : '';
+    }
+
+    if (! is_string($content)) {
+      return '';
+    }
+
+    return $content;
+  }
+
+  /**
+   * Remplace les variables dynamiques dans un modèle déjà normalisé.
+   *
+   * @param string $template Contenu du modèle
+   * @param array<string, string> $tokens Variables => valeurs
+   * @return string Texte avec variables remplacées
+   */
+  private function applyPlaceholderTokens(string $template, array $tokens): string
+  {
+    $template = $this->normalizeTemplateTokens($template);
+
+    return str_replace(array_keys($tokens), array_values($tokens), $template);
+  }
+
+  /**
    * Normalise les variables mal saisies (ex. {{ {guest_name} }}).
    *
    * @param string $template Contenu brut
@@ -512,6 +582,17 @@ class InvitationMessageService
     $normalized = preg_replace('/\{\{\s*\{([^}]+)\}\s*\}\}/', '{$1}', $template) ?? $template;
 
     return preg_replace('/\{\{\s*([^}\s]+)\s*\}\}/', '{$1}', $normalized) ?? $normalized;
+  }
+
+  /**
+   * Indique si des variables dynamiques n'ont pas été remplacées.
+   *
+   * @param string $text Message rendu
+   * @return bool True si des tokens {variable} subsistent
+   */
+  public function containsUnresolvedPlaceholders(string $text): bool
+  {
+    return preg_match('/\{[a-z_]+\}/', $text) === 1;
   }
 
   /**
@@ -542,13 +623,7 @@ class InvitationMessageService
    */
   private function renderSampleText(string $template, ?Event $event): string
   {
-    $template = $this->normalizeTemplateTokens($template);
-
-    return str_replace(
-      array_keys($this->samplePlaceholderTokens($event)),
-      array_values($this->samplePlaceholderTokens($event)),
-      $template,
-    );
+    return $this->applyPlaceholderTokens($template, $this->samplePlaceholderTokens($event));
   }
 
   /**

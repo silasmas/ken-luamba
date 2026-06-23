@@ -46,16 +46,23 @@ class InvitationSmsPreviewHelper
   /**
    * Génère l'aperçu HTML à partir d'un corps brut (éditeur événement).
    *
-   * @param string|null $body Contenu du modèle
+   * @param mixed $body Contenu du modèle
    * @param Event|null $event Événement source
    * @return HtmlString Markup Filament
    */
-  public static function previewRawBodyHtml(?string $body, ?Event $event): HtmlString
+  public static function previewRawBodyHtml(mixed $body, ?Event $event): HtmlString
   {
     $messageService = app(InvitationMessageService::class);
     $analyzer = app(SmsMessageAnalyzer::class);
     $rendered = $messageService->previewRawTemplateBody($body ?? '', $event);
+    $analysis = $analyzer->analyze($rendered);
 
-    return $analyzer->formatPreviewHtml($rendered, $analyzer->analyze($rendered));
+    if ($messageService->containsUnresolvedPlaceholders($rendered)) {
+      $analysis['warning'] = trim(
+        ($analysis['warning'] ?? '').' Certaines variables n\'ont pas été remplacées : vérifiez l\'orthographe ({guest_name}, {event_date_short}, …).',
+      );
+    }
+
+    return $analyzer->formatPreviewHtml($rendered, $analysis);
   }
 }
