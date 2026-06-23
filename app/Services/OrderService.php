@@ -9,6 +9,7 @@ use App\Models\Cart;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Models\ShippingSetting;
 use App\Models\User;
 use App\Enums\PaymentStatus;
 use Illuminate\Http\Request;
@@ -74,6 +75,12 @@ class OrderService
     if ($hasPhysical && $fulfillmentType === null) {
       throw ValidationException::withMessages([
         'fulfillmentType' => ['Choisissez livraison ou retrait.'],
+      ]);
+    }
+
+    if ($fulfillmentType === FulfillmentType::Delivery && ! ShippingSetting::instance()->is_active) {
+      throw ValidationException::withMessages([
+        'fulfillmentType' => ['La livraison à domicile est temporairement indisponible. Choisissez le retrait sur place.'],
       ]);
     }
 
