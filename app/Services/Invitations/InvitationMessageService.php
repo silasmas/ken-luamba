@@ -233,11 +233,74 @@ class InvitationMessageService
           return $this->renderHtml($rawBody, $invitation);
         }
 
-        return $this->renderPlainText($rawBody, $invitation);
+        $plain = $this->renderPlainText($rawBody, $invitation);
+
+        return $channel === InvitationDispatchChannel::Sms
+          ? $this->formatForSms($plain)
+          : $plain;
       }
     }
 
-    return $this->buildDefaultMessageBody($invitation);
+    $default = $this->buildDefaultMessageBody($invitation);
+
+    return $channel === InvitationDispatchChannel::Sms
+      ? $this->formatForSms($default)
+      : $default;
+  }
+
+  /**
+   * Prévisualise un modèle SMS enregistré sur un événement.
+   *
+   * @param Event|null $event Événement source
+   * @param string|null $messageId Identifiant du modèle
+   * @return string Message SMS rendu avec données exemple
+   */
+  public function previewTemplateBody(?Event $event, ?string $messageId = null): string
+  {
+    if ($event === null) {
+      return '';
+    }
+
+    if ($messageId !== null) {
+      $template = $this->findTemplate($event, $messageId);
+
+      if (
+        $template !== null
+        && $this->messageSupportsChannel($template, InvitationDispatchChannel::Sms)
+        && filled($template['body'] ?? null)
+      ) {
+        return $this->previewRawTemplateBody((string) $template['body'], $event);
+      }
+    }
+
+    $templates = $this->templatesForChannel($event, InvitationDispatchChannel::Sms);
+    $first = $templates[0] ?? null;
+
+    if ($first !== null && filled($first['body'] ?? null)) {
+      return $this->previewRawTemplateBody((string) $first['body'], $event);
+    }
+
+    return $this->formatForSms($this->renderSampleText('Bonjour {guest_name}, vous êtes invité(e) à {event_title}.', $event));
+  }
+
+  /**
+   * Prévisualise un corps brut de modèle SMS avec des données exemple.
+   *
+   * @param string $template Contenu brut du modèle
+   * @param Event|null $event Événement source
+   * @return string Message SMS rendu
+   */
+  public function previewRawTemplateBody(string $template, ?Event $event): string
+  {
+    if ($this->isRichContent($template)) {
+      $text = RichContentRenderer::make($template)
+        ->mergeTags($this->sampleMergeTagValues($event))
+        ->toText();
+
+      return $this->formatForSms(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+    }
+
+    return $this->formatForSms($this->renderSampleText($template, $event));
   }
 
   /**
@@ -309,6 +372,8 @@ class InvitationMessageService
    */
   public function renderPlainText(string $template, Invitation $invitation): string
   {
+    $template = $this->normalizeTemplateTokens($template);
+
     if ($this->isRichContent($template)) {
       $text = RichContentRenderer::make($template)
         ->mergeTags($this->mergeTagValues($invitation))
@@ -434,5 +499,100 @@ class InvitationMessageService
   private function buildDefaultMessageBody(Invitation $invitation): string
   {
     return app(InvitationLinkService::class)->defaultMessageBody($invitation);
+  }
+
+  /**
+   * Normalise les variables mal saisies (ex. {{ {guest_name} }}).
+   *
+   * @param string $template Contenu brut
+   * @return string Modèle normalisé
+   */
+  private function normalizeTemplateTokens(string $template): string
+  {
+    $normalized = preg_replace('/\{\{\s*\{([^}]+)\}\s*\}\}/', '{$1}', $template) ?? $template;
+
+    return preg_replace('/\{\{\s*([^}\s]+)\s*\}\}/', '{$1}', $normalized) ?? $normalized;
+  }
+
+  /**
+   * Adapte un texte SMS (supprime le gras Markdown, compresse les sauts de ligne).
+   *
+   * @param string $text Message rendu
+   * @return string Texte SMS optimisé
+   */
+  private function formatForSms(string $text): string
+  {
+    $text = preg_replace('/\*([^*\n]+)\*/', '$1', $text) ?? $text;
+    $text = preg_replace("/[ \t]+\n/", "\n", $text) ?? $text;
+    $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
+
+    return trim($text);
+  }
+
+  /**
+   * Remplace les variables d'un modèle avec des valeurs exemple pour l'aperçu admin.
+   *
+   * @param string $template Contenu du modèle
+   * @param Event|null $event Événement source
+   * @return string Texte rendu
+   */
+  private function renderSampleText(string $template, ?Event $event): string
+  {
+    $template = $this->normalizeTemplateTokens($template);
+
+    return str_replace(
+      array_keys($this->samplePlaceholderTokens($event)),
+      array_values($this->samplePlaceholderTokens($event)),
+      $template,
+    );
+  }
+
+  /**
+   * Retourne des valeurs exemple pour l'aperçu admin.
+   *
+   * @param Event|null $event Événement source
+   * @return array<string, string> Variables => valeurs
+   */
+  private function samplePlaceholderTokens(?Event $event): array
+  {
+    $startsAt = $event?->starts_at instanceof Carbon
+      ? $event->starts_at->timezone(config('app.timezone'))->locale('fr')
+      : null;
+
+    return [
+      '{guest_name}' => 'Jean Dupont',
+      '{guest_email}' => 'invite@exemple.com',
+      '{guest_phone}' => '+243 812 345 678',
+      '{guest_organization}' => 'VIP',
+      '{event_title}' => (string) ($event?->title ?? 'Cérémonie de lancement'),
+      '{event_type}' => (string) ($event?->type?->label() ?? 'Lancement'),
+      '{event_date}' => $startsAt?->isoFormat('dddd D MMMM YYYY [à] HH[h]mm') ?? 'samedi 27 juin 2026 à 18h00',
+      '{event_date_short}' => $startsAt?->isoFormat('D MMMM YYYY') ?? '27 juin 2026',
+      '{event_time}' => $startsAt?->isoFormat('HH[h]mm') ?? '18h00',
+      '{event_location}' => (string) ($event?->location ?? 'Kinshasa'),
+      '{event_venue_details}' => (string) ($event?->venue_details ?? 'Salle principale'),
+      '{event_description}' => (string) ($event?->description ?? 'Description de l\'événement'),
+      '{event_welcome_message}' => trim(strip_tags((string) ($event?->welcome_message ?? ''))),
+      '{event_books}' => $event?->books?->pluck('title')->filter()->implode(', ') ?: 'Livre 1, Livre 2',
+      '{invitation_link}' => rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/invitation/exemple-token',
+      '{rsvp_status}' => 'En attente',
+    ];
+  }
+
+  /**
+   * Retourne les merge tags exemple pour l'éditeur riche (aperçu admin).
+   *
+   * @param Event|null $event Événement source
+   * @return array<string, string> Identifiants sans accolades => valeur
+   */
+  private function sampleMergeTagValues(?Event $event): array
+  {
+    $values = [];
+
+    foreach ($this->samplePlaceholderTokens($event) as $token => $value) {
+      $values[trim($token, '{}')] = $value;
+    }
+
+    return $values;
   }
 }

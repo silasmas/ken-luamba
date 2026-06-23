@@ -8,6 +8,7 @@ use App\Models\Event;
 use App\Filament\Support\AdminFormLayout;
 use App\Filament\Support\InvitationPlaceholderHelper;
 use App\Filament\Support\InvitationRichEditorHelper;
+use App\Filament\Support\InvitationSmsPreviewHelper;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Hidden;
@@ -98,7 +99,7 @@ class EventForm
         ),
         AdminFormLayout::section(
           'Messages d\'invitation',
-          'Créez plusieurs modèles réutilisables pour les envois email, SMS et WhatsApp.',
+          'Créez plusieurs modèles réutilisables pour les envois email, SMS et WhatsApp. Pour les SMS, consultez l\'aperçu : 160 caractères (GSM) ou 70 caractères (accents) par SMS.',
           [
             Placeholder::make('invitation_variables')
               ->label('Variables disponibles')
@@ -128,8 +129,23 @@ class EventForm
                   RichEditor::make('body')
                     ->label('Contenu du message')
                     ->required()
+                    ->live(debounce: 500)
                     ->columnSpanFull(),
                 ),
+                Placeholder::make('sms_template_preview')
+                  ->label('Aperçu SMS et consommation')
+                  ->content(function (callable $get, ?Event $record): \Illuminate\Support\HtmlString {
+                    return InvitationSmsPreviewHelper::previewRawBodyHtml(
+                      is_string($get('body')) ? $get('body') : null,
+                      $record,
+                    );
+                  })
+                  ->visible(fn (callable $get): bool => in_array(
+                    InvitationDispatchChannel::Sms->value,
+                    $get('channels') ?? [],
+                    true,
+                  ))
+                  ->columnSpanFull(),
               ])
               ->columns(2)
               ->collapsible()

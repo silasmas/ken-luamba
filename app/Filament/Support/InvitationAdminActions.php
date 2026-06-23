@@ -9,6 +9,7 @@ use App\Models\Invitation;
 use App\Services\Invitations\InvitationDispatchService;
 use App\Services\Invitations\InvitationGuestImportService;
 use App\Services\Invitations\InvitationMessageService;
+use App\Filament\Support\InvitationSmsPreviewHelper;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -490,10 +491,18 @@ class InvitationAdminActions
           self::notifyWhatsappLinks($result['whatsappLinks'] ?? []);
         }
 
-        Notification::make()
-          ->title($result['sent'].' envoi(s) réussi(s), '.$result['failed'].' échec(s)')
-          ->success()
-          ->send();
+        $notification = Notification::make()
+          ->title($result['sent'].' envoi(s) réussi(s), '.$result['failed'].' échec(s)');
+
+        if ($result['failed'] > 0 && $result['sent'] === 0) {
+          $notification->danger();
+        } elseif ($result['failed'] > 0) {
+          $notification->warning();
+        } else {
+          $notification->success();
+        }
+
+        $notification->send();
       });
   }
 
@@ -700,10 +709,18 @@ class InvitationAdminActions
           $afterBulk($result, $action);
         }
 
-        Notification::make()
-          ->title($result['sent'].' '.$successLabel.' ('.$result['failed'].' échec(s))')
-          ->success()
-          ->send();
+        $notification = Notification::make()
+          ->title($result['sent'].' '.$successLabel.' ('.$result['failed'].' échec(s))');
+
+        if ($result['failed'] > 0 && $result['sent'] === 0) {
+          $notification->danger();
+        } elseif ($result['failed'] > 0) {
+          $notification->warning();
+        } else {
+          $notification->success();
+        }
+
+        $notification->send();
       });
   }
 
@@ -727,7 +744,21 @@ class InvitationAdminActions
         ->label('Modèle de message')
         ->options($options)
         ->required()
+        ->live()
         ->native(false);
+    }
+
+    if ($channel === InvitationDispatchChannel::Sms) {
+      $fields[] = Placeholder::make('sms_preview')
+        ->label('Aperçu SMS et consommation')
+        ->content(function (callable $get) use ($record): \Illuminate\Support\HtmlString {
+          return InvitationSmsPreviewHelper::previewHtml(
+            $record->event,
+            self::selectedMessageId(['message_id' => $get('message_id')]),
+            $record,
+          );
+        })
+        ->columnSpanFull();
     }
 
     return $fields;

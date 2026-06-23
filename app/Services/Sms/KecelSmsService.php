@@ -2,30 +2,8 @@
 
 namespace App\Services\Sms;
 
-use App\Models\AdminAppearanceSetting;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
-
-/**
- * Résultat d'un envoi SMS via Kecel.
- */
-class KecelSmsResult
-{
-  /**
-   * Initialise le résultat d'envoi.
-   *
-   * @param bool $success Indique si l'envoi est accepté
-   * @param string $rawResponse Réponse brute de l'API
-   * @param string|null $reference Référence fournie par Kecel
-   * @param string|null $message Message d'état
-   */
-  public function __construct(
-    public readonly bool $success,
-    public readonly string $rawResponse,
-    public readonly ?string $reference = null,
-    public readonly ?string $message = null,
-  ) {}
-}
 
 /**
  * Client SMS Kecel (paramètres dans config/sms.php et .env).
@@ -49,17 +27,24 @@ class KecelSmsService
       throw new RuntimeException('Configuration SMS incomplète (SMS_TOKEN ou SMS_FROM manquant).');
     }
 
+    $payload = [
+      'token' => $token,
+      'from' => $from,
+      'to' => $phone,
+      'message' => $message,
+    ];
+
     $response = Http::timeout(30)
-      ->get($url, [
-        'token' => $token,
-        'from' => $from,
-        'to' => $phone,
-        'message' => $message,
-      ]);
+      ->asForm()
+      ->post($url, $payload);
+
+    if (! $response->successful() && $response->status() === 405) {
+      $response = Http::timeout(30)->get($url, $payload);
+    }
 
     $raw = trim($response->body());
 
-    return $this->parseResponse($raw);
+    return $this->parseResponse($raw, $response->status());
   }
 
   /**
@@ -107,24 +92,76 @@ class KecelSmsService
   }
 
   /**
-   * Analyse la réponse texte de l'API Kecel.
+   * Analyse la réponse texte ou JSON de l'API Kecel.
    *
    * @param string $raw Réponse brute
+   * @param int $httpStatus Code HTTP
    * @return KecelSmsResult Résultat interprété
    */
-  private function parseResponse(string $raw): KecelSmsResult
+  private function parseResponse(string $raw, int $httpStatus): KecelSmsResult
   {
+    if ($httpStatus >= 400) {
+      return new KecelSmsResult(
+        success: false,
+        rawResponse: $raw,
+        reference: null,
+        message: $raw !== '' ? $raw : 'HTTP '.$httpStatus,
+      );
+    }
+
+    if ($raw === '') {
+      return new KecelSmsResult(
+        success: true,
+        rawResponse: $raw,
+        reference: null,
+        message: 'HTTP '.$httpStatus,
+      );
+    }
+
+    $decoded = json_decode($raw, true);
+
+    if (is_array($decoded)) {
+      $status = strtoupper((string) ($decoded['status'] ?? $decoded['code'] ?? ''));
+      $reference = isset($decoded['reference']) ? (string) $decoded['reference'] : null;
+      $message = isset($decoded['message']) ? (string) $decoded['message'] : $raw;
+      $success = in_array($status, ['ACCEPTED', 'OK', 'SUCCESS', 'SENT', '0'], true)
+        || ($status !== '' && ! $this->looksLikeFailure($raw));
+
+      return new KecelSmsResult(
+        success: $success,
+        rawResponse: $raw,
+        reference: $reference,
+        message: $message,
+      );
+    }
+
     $parts = array_map('trim', explode(',', $raw));
     $status = strtoupper($parts[0] ?? '');
     $reference = $parts[1] ?? null;
-    $message = $parts[2] ?? null;
+    $message = $parts[2] ?? $raw;
+
+    $success = in_array($status, ['ACCEPTED', 'OK', 'SUCCESS', 'SENT', 'DELIVERED'], true)
+      || $status === '0'
+      || (preg_match('/^\d{4,}$/', $status) === 1 && ! $this->looksLikeFailure($raw))
+      || (! $this->looksLikeFailure($raw) && $httpStatus >= 200 && $httpStatus < 300);
 
     return new KecelSmsResult(
-      success: in_array($status, ['ACCEPTED', 'OK', 'SUCCESS'], true),
+      success: $success,
       rawResponse: $raw,
       reference: $reference,
       message: $message,
     );
+  }
+
+  /**
+   * Détecte une réponse d'échec explicite renvoyée par Kecel.
+   *
+   * @param string $raw Réponse brute
+   * @return bool True si la réponse indique un échec
+   */
+  private function looksLikeFailure(string $raw): bool
+  {
+    return preg_match('/\b(error|fail|failed|invalid|rejected|refused|denied|insufficient|unauthorized)\b/i', $raw) === 1;
   }
 
   /**
