@@ -11,4 +11,11 @@ return [
   |
   */
   'token_length' => (int) env('INVITATION_TOKEN_LENGTH', 10),
+
+  /*
+  |--------------------------------------------------------------------------
+  | Chemin public court pour les liens d'invitation (economie SMS)
+  |--------------------------------------------------------------------------
+  */
+  'public_path' => env('INVITATION_PUBLIC_PATH', 'i'),
 ];

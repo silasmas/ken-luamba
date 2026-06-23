@@ -2,6 +2,8 @@
 
 namespace App\Services\Sms;
 
+use App\Models\AdminAppearanceSetting;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use RuntimeException;
 
@@ -10,6 +12,11 @@ use RuntimeException;
  */
 class KecelSmsService
 {
+  /**
+   * Taille maximale estimée de l'URL GET avant bascule POST (évite troncature proxy/serveur).
+   */
+  private const MAX_GET_URL_LENGTH = 1800;
+
   /**
    * Envoie un SMS via l'API Kecel.
    *
@@ -41,30 +48,57 @@ class KecelSmsService
       'message' => $message,
     ];
 
-    $response = $this->dispatchSendRequest($url, $payload);
+    $useGet = $this->estimatedQueryUrlLength($url, $payload) <= self::MAX_GET_URL_LENGTH;
+    $response = $useGet
+      ? $this->getMessage($url, $payload)
+      : $this->postFormMessage($url, $payload);
+
     $raw = trim($response->body());
-    $result = $this->parseResponse($raw, $response->status());
 
     if ($this->isMissingMessageError($raw)) {
-      $payload['msg'] = $message;
-      $response = $this->dispatchSendRequest($url, $payload);
+      $response = $useGet
+        ? $this->postFormMessage($url, $payload)
+        : $this->getMessage($url, $payload);
       $raw = trim($response->body());
-      $result = $this->parseResponse($raw, $response->status());
     }
 
-    return $result;
+    return $this->parseResponse($raw, $response->status());
   }
 
   /**
-   * Envoie la requête HTTP vers l'API Kecel (GET, format attendu par message.asp).
+   * Estime la longueur totale d'une URL GET avec query string.
+   *
+   * @param string $url URL de base
+   * @param array<string, string> $payload Paramètres query
+   * @return int Longueur estimée en octets
+   */
+  private function estimatedQueryUrlLength(string $url, array $payload): int
+  {
+    return strlen($url) + 1 + strlen(http_build_query($payload));
+  }
+
+  /**
+   * Envoie un SMS court via GET (format attendu par message.asp).
    *
    * @param string $url URL de l'API
-   * @param array<string, string> $payload Paramètres token, from, to, message
-   * @return \Illuminate\Http\Client\Response Réponse HTTP
+   * @param array<string, string> $payload Paramètres complets incluant message
+   * @return Response Réponse HTTP
    */
-  private function dispatchSendRequest(string $url, array $payload): \Illuminate\Http\Client\Response
+  private function getMessage(string $url, array $payload): Response
   {
     return Http::timeout(30)->get($url, $payload);
+  }
+
+  /**
+   * Envoie un SMS via POST form-urlencoded (texte complet sans limite d'URL).
+   *
+   * @param string $url URL de l'API
+   * @param array<string, string> $payload Paramètres complets incluant message
+   * @return Response Réponse HTTP
+   */
+  private function postFormMessage(string $url, array $payload): Response
+  {
+    return Http::timeout(30)->asForm()->post($url, $payload);
   }
 
   /**

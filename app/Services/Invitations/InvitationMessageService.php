@@ -515,16 +515,20 @@ class InvitationMessageService
   }
 
   /**
-   * Adapte un texte SMS (supprime le gras Markdown, compresse les sauts de ligne).
+   * Adapte un texte SMS (GSM-7, sans markdown, texte compact).
    *
    * @param string $text Message rendu
    * @return string Texte SMS optimisé
    */
   private function formatForSms(string $text): string
   {
+    $text = strip_tags($text);
+    $text = html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     $text = preg_replace('/\*([^*\n]+)\*/', '$1', $text) ?? $text;
-    $text = preg_replace("/[ \t]+\n/", "\n", $text) ?? $text;
-    $text = preg_replace("/\n{3,}/", "\n\n", $text) ?? $text;
+    $text = preg_replace('/\*+/', '', $text) ?? $text;
+    $text = Str::transliterate($text);
+    $text = preg_replace("/\s*\n\s*/", ' ', $text) ?? $text;
+    $text = preg_replace("/[ \t]+/", ' ', $text) ?? $text;
 
     return trim($text);
   }
@@ -574,7 +578,7 @@ class InvitationMessageService
       '{event_description}' => (string) ($event?->description ?? 'Description de l\'événement'),
       '{event_welcome_message}' => trim(strip_tags((string) ($event?->welcome_message ?? ''))),
       '{event_books}' => $event?->books?->pluck('title')->filter()->implode(', ') ?: 'Livre 1, Livre 2',
-      '{invitation_link}' => rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/invitation/abc12XY9z0',
+      '{invitation_link}' => rtrim((string) env('FRONTEND_URL', config('app.url')), '/').'/'.trim((string) config('invitations.public_path', 'i'), '/').'/abc12XY9z0',
       '{rsvp_status}' => 'En attente',
     ];
   }
