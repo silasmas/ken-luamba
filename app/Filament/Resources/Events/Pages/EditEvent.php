@@ -2,10 +2,13 @@
 
 namespace App\Filament\Resources\Events\Pages;
 
+use App\Filament\Pages\InvitationStats;
 use App\Filament\Resources\Events\EventResource;
 use App\Filament\Support\InvitationAdminActions;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Resources\Pages\EditRecord;
+use Filament\Support\Icons\Heroicon;
 
 class EditEvent extends EditRecord
 {
@@ -26,6 +29,14 @@ class EditEvent extends EditRecord
   protected function getHeaderActions(): array
   {
     return [
+      Action::make('invitationStats')
+        ->label('Statistiques')
+        ->icon(Heroicon::OutlinedChartBarSquare)
+        ->url(fn (): string => InvitationStats::getUrl([
+          'filters' => [
+            'eventId' => $this->getRecord()->getKey(),
+          ],
+        ])),
       InvitationAdminActions::scheduleSendForEvent(fn () => $this->getRecord()),
       DeleteAction::make(),
     ];

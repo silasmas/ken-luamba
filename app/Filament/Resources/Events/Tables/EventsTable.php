@@ -2,9 +2,12 @@
 
 namespace App\Filament\Resources\Events\Tables;
 
+use App\Filament\Pages\InvitationStats;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
@@ -44,6 +47,18 @@ class EventsTable
         TextColumn::make('invitations_count')
           ->label('Invités')
           ->counts('invitations'),
+        TextColumn::make('attending_count')
+          ->label('Présents')
+          ->numeric()
+          ->color('success'),
+        TextColumn::make('not_attending_count')
+          ->label('Absents')
+          ->numeric()
+          ->color('danger'),
+        TextColumn::make('pending_count')
+          ->label('En attente')
+          ->numeric()
+          ->color('warning'),
         IconColumn::make('is_published')
           ->label('Publié')
           ->boolean(),
@@ -53,6 +68,14 @@ class EventsTable
           ->label('Publié'),
       ])
       ->recordActions([
+        Action::make('stats')
+          ->label('Statistiques')
+          ->icon(Heroicon::OutlinedChartBarSquare)
+          ->url(fn ($record): string => InvitationStats::getUrl([
+            'filters' => [
+              'eventId' => $record->getKey(),
+            ],
+          ])),
         EditAction::make(),
       ])
       ->toolbarActions([
