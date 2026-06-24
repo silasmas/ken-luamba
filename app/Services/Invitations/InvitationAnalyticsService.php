@@ -6,6 +6,7 @@ use App\Enums\InvitationRsvpStatus;
 use App\Models\Event;
 use App\Models\Invitation;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
 /**
  * Agrège les statistiques d'invitations et de réponses RSVP pour l'admin.
@@ -209,6 +210,25 @@ class InvitationAnalyticsService
       'attending' => $attendingSeries,
       'notAttending' => $notAttendingSeries,
     ];
+  }
+
+  /**
+   * Retourne les invitations ayant répondu (présent ou absent).
+   *
+   * @param string|null $eventId Identifiant d'événement ou null
+   * @return Collection<int, Invitation> Invitations avec réponse RSVP
+   */
+  public function respondedInvitations(?string $eventId): Collection
+  {
+    return $this->invitationQuery($eventId)
+      ->with(['event:id,title,starts_at'])
+      ->whereIn('rsvp_status', [
+        InvitationRsvpStatus::Attending,
+        InvitationRsvpStatus::NotAttending,
+      ])
+      ->orderByDesc('responded_at')
+      ->orderBy('full_name')
+      ->get();
   }
 
   /**

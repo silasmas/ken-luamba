@@ -8,8 +8,12 @@ use App\Filament\Widgets\InvitationRsvpStatusChart;
 use App\Filament\Widgets\InvitationSentByChannelChart;
 use App\Filament\Widgets\InvitationStatsByEventChart;
 use App\Models\Event;
+use App\Services\Invitations\InvitationAnalyticsService;
+use App\Services\Invitations\InvitationRsvpExportService;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
+use Filament\Notifications\Notification;
 use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\EmbeddedSchema;
@@ -17,6 +21,7 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnitEnum;
 
 /**
@@ -71,7 +76,7 @@ class InvitationStats extends Page
     return $schema
       ->components([
         Section::make('Filtre par événement')
-          ->description('Choisissez un événement pour le détail, ou laissez vide pour une vue globale.')
+          ->description('Choisissez un événement pour le détail, ou laissez vide pour une vue globale. Les exports Excel et PDF reprennent ce filtre.')
           ->schema([
             Select::make('eventId')
               ->label('Événement')
@@ -156,5 +161,78 @@ class InvitationStats extends Page
       'md' => 2,
       'xl' => 2,
     ];
+  }
+
+  /**
+   * Actions d'en-tête : export Excel et PDF des réponses RSVP.
+   *
+   * @return array<int, Action> Actions disponibles
+   */
+  protected function getHeaderActions(): array
+  {
+    return [
+      Action::make('exportRsvpExcel')
+        ->label('Exporter Excel')
+        ->icon(Heroicon::OutlinedArrowDownTray)
+        ->color('success')
+        ->action(function (): StreamedResponse {
+          $this->ensureRespondedInvitationsExist();
+
+          $path = app(InvitationRsvpExportService::class)->exportExcel($this->filters);
+
+          return $this->streamExportDownload($path);
+        }),
+      Action::make('exportRsvpPdf')
+        ->label('Exporter PDF')
+        ->icon(Heroicon::OutlinedDocumentArrowDown)
+        ->color('gray')
+        ->action(function (): StreamedResponse {
+          $this->ensureRespondedInvitationsExist();
+
+          $path = app(InvitationRsvpExportService::class)->exportPdf($this->filters);
+
+          return $this->streamExportDownload($path);
+        }),
+    ];
+  }
+
+  /**
+   * Vérifie qu'au moins une réponse RSVP existe avant export.
+   *
+   * @return void
+   */
+  private function ensureRespondedInvitationsExist(): void
+  {
+    $eventId = app(InvitationAnalyticsService::class)->resolveEventId($this->filters);
+    $count = app(InvitationAnalyticsService::class)->respondedInvitations($eventId)->count();
+
+    if ($count === 0) {
+      Notification::make()
+        ->title('Aucune réponse à exporter')
+        ->body('Aucun invité n\'a encore répondu présent ou absent pour ce filtre.')
+        ->warning()
+        ->send();
+
+      $this->halt();
+    }
+  }
+
+  /**
+   * Envoie le fichier généré au navigateur puis le supprime.
+   *
+   * @param string $path Chemin absolu du fichier
+   * @return StreamedResponse Téléchargement streamé
+   */
+  private function streamExportDownload(string $path): StreamedResponse
+  {
+    return response()->streamDownload(function () use ($path): void {
+      readfile($path);
+      @unlink($path);
+    }, basename($path), [
+      'Content-Type' => match (pathinfo($path, PATHINFO_EXTENSION)) {
+        'pdf' => 'application/pdf',
+        default => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      },
+    ]);
   }
 }
