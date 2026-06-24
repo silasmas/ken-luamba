@@ -127,6 +127,41 @@ class InvitationsTable
             true: fn ($query) => $query->whereNotNull('responded_at'),
             false: fn ($query) => $query->whereNull('responded_at'),
           ),
+        TernaryFilter::make('email_sent')
+          ->label('Email envoyé')
+          ->nullable()
+          ->queries(
+            true: fn ($query) => $query->whereNotNull('email_sent_at'),
+            false: fn ($query) => $query->whereNull('email_sent_at'),
+          ),
+        TernaryFilter::make('sms_sent')
+          ->label('SMS envoyé')
+          ->nullable()
+          ->queries(
+            true: fn ($query) => $query->whereNotNull('sms_sent_at'),
+            false: fn ($query) => $query->whereNull('sms_sent_at'),
+          ),
+        TernaryFilter::make('whatsapp_sent')
+          ->label('WhatsApp envoyé')
+          ->nullable()
+          ->queries(
+            true: fn ($query) => $query->whereNotNull('whatsapp_sent_at'),
+            false: fn ($query) => $query->whereNull('whatsapp_sent_at'),
+          ),
+        TernaryFilter::make('any_invitation_sent')
+          ->label('Invitation envoyée (au moins un canal)')
+          ->nullable()
+          ->queries(
+            true: fn ($query) => $query->where(function ($builder): void {
+              $builder
+                ->whereNotNull('email_sent_at')
+                ->orWhereNotNull('sms_sent_at')
+                ->orWhereNotNull('whatsapp_sent_at');
+            }),
+            false: fn ($query) => $query->whereNull('email_sent_at')
+              ->whereNull('sms_sent_at')
+              ->whereNull('whatsapp_sent_at'),
+          ),
       ])
       ->recordActions([
         InvitationAdminActions::viewRsvpResponse(),

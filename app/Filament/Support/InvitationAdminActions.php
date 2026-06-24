@@ -7,7 +7,9 @@ use App\Enums\InvitationRsvpStatus;
 use App\Models\Event;
 use App\Models\Invitation;
 use App\Services\Invitations\InvitationDispatchService;
+use App\Services\Invitations\InvitationGuestExportService;
 use App\Services\Invitations\InvitationGuestImportService;
+use App\Services\Invitations\InvitationLinkService;
 use App\Services\Invitations\InvitationMessageService;
 use App\Filament\Support\InvitationSmsPreviewHelper;
 use Filament\Actions\Action;
@@ -300,10 +302,12 @@ class InvitationAdminActions
   public static function copyLink(): Action
   {
     return Action::make('copyLink')
-      ->label('Lien')
+      ->label('Copier lien')
       ->icon(Heroicon::OutlinedLink)
+      ->tooltip('Copie le lien court (/i/token) utilisé dans les SMS et WhatsApp')
       ->action(function (Invitation $record, Action $action): void {
-        $url = app(InvitationDispatchService::class)->publicUrl($record);
+        $linkService = app(InvitationLinkService::class);
+        $url = $linkService->publicUrl($record);
         $livewire = $action->getLivewire();
 
         if ($livewire instanceof Component) {
@@ -311,8 +315,8 @@ class InvitationAdminActions
         }
 
         Notification::make()
-          ->title('Lien copié')
-          ->body('Le lien d\'invitation a été copié dans le presse-papiers.')
+          ->title('Lien court copié')
+          ->body($url)
           ->success()
           ->send();
       });
@@ -341,7 +345,42 @@ class InvitationAdminActions
       };
     }
 
+    array_unshift($actions, self::bulkExportSelectedExcel());
+
     return $actions;
+  }
+
+  /**
+   * Exporte les invités sélectionnés en Excel avec token et lien court.
+   *
+   * @return BulkAction Action groupée
+   */
+  public static function bulkExportSelectedExcel(): BulkAction
+  {
+    return BulkAction::make('bulkExportSelectedExcel')
+      ->label('Exporter la sélection (Excel)')
+      ->icon(Heroicon::OutlinedArrowDownTray)
+      ->color('success')
+      ->deselectRecordsAfterCompletion()
+      ->action(function (Collection $records): ?StreamedResponse {
+        if ($records->isEmpty()) {
+          Notification::make()
+            ->title('Aucun invité sélectionné')
+            ->warning()
+            ->send();
+
+          return null;
+        }
+
+        $path = app(InvitationGuestExportService::class)->exportSelection($records);
+
+        return response()->streamDownload(function () use ($path): void {
+          readfile($path);
+          @unlink($path);
+        }, basename($path), [
+          'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+      });
   }
 
   /**

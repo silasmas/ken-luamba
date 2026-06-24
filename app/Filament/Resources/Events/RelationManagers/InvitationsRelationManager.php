@@ -82,6 +82,6 @@ class InvitationsRelationManager extends RelationManager
             ->get(),
         ),
       ])
-      ->description('Cochez plusieurs invités puis cliquez « Envoyer par WhatsApp » : une notification listera les liens à ouvrir un par un.');
+      ->description('Filtrez par canal d\'envoi (email, SMS, WhatsApp), cochez des invités puis « Exporter la sélection (Excel) » pour obtenir token et lien court par ligne.');
   }
 }

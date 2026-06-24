@@ -30,10 +30,21 @@ class InvitationLinkService
   {
     app(InvitationTokenGenerator::class)->ensureShortToken($invitation);
 
-    $frontendUrl = rtrim((string) config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3001')), '/');
-    $publicPath = trim((string) config('invitations.public_path', 'invitation'), '/');
+    return $this->buildPublicUrl((string) $invitation->token);
+  }
 
-    return $frontendUrl.'/'.$publicPath.'/'.$invitation->token;
+  /**
+   * Construit l'URL publique courte à partir d'un token.
+   *
+   * @param string $token Token d'invitation
+   * @return string URL frontend (ex. https://kenluamba.com/i/abc12XY9z0)
+   */
+  public function buildPublicUrl(string $token): string
+  {
+    $frontendUrl = rtrim((string) config('app.frontend_url', env('FRONTEND_URL', 'http://localhost:3001')), '/');
+    $publicPath = trim((string) config('invitations.public_path', 'i'), '/');
+
+    return $frontendUrl.'/'.$publicPath.'/'.trim($token, '/');
   }
 
   /**
