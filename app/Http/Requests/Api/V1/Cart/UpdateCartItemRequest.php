@@ -27,7 +27,21 @@ class UpdateCartItemRequest extends FormRequest
   public function rules(): array
   {
     return [
-      'quantity' => ['required', 'integer', 'min:1', 'max:99'],
+      'quantity' => ['required', 'integer', 'min:1'],
+    ];
+  }
+
+  /**
+   * Messages de validation en français pour l'API panier.
+   *
+   * @return array<string, string> Messages personnalisés
+   */
+  public function messages(): array
+  {
+    return [
+      'quantity.required' => 'Indiquez une quantité.',
+      'quantity.integer' => 'La quantité doit être un nombre entier.',
+      'quantity.min' => 'La quantité minimale est de 1 exemplaire.',
     ];
   }
 }

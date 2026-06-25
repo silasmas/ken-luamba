@@ -145,14 +145,19 @@ class CartService
     $item = $cart->items()->where('book_format_id', $format->id)->first();
 
     if ($item !== null) {
+      $newQuantity = $item->quantity + $quantity;
+      $this->assertQuantityWithinStock($format, $newQuantity);
+
       $item->update([
-        'quantity' => $item->quantity + $quantity,
+        'quantity' => $newQuantity,
         'unit_price' => $period->price,
         'pricing_period_id' => $period->id,
       ]);
 
       return $item->fresh(['bookFormat.book', 'pricingPeriod']);
     }
+
+    $this->assertQuantityWithinStock($format, $quantity);
 
     return $cart->items()->create([
       'book_format_id' => $format->id,
@@ -173,6 +178,7 @@ class CartService
   public function updateItem(Cart $cart, string $itemId, int $quantity): CartItem
   {
     $item = $this->findCartItem($cart, $itemId);
+    $item->loadMissing('bookFormat.book');
 
     if ($quantity <= 0) {
       $item->delete();
@@ -181,6 +187,8 @@ class CartService
         'quantity' => ['Quantité invalide. Utilisez la suppression pour retirer un article.'],
       ]);
     }
+
+    $this->assertQuantityWithinStock($item->bookFormat, $quantity);
 
     $period = $this->pricingService->getCurrentPeriod($item->bookFormat);
 
@@ -347,5 +355,46 @@ class CartService
     }
 
     return $item;
+  }
+
+  /**
+   * Vérifie que la quantité demandée ne dépasse pas le stock du format.
+   *
+   * @param BookFormat $format Format concerné
+   * @param int $quantity Quantité souhaitée
+   * @return void
+   */
+  private function assertQuantityWithinStock(BookFormat $format, int $quantity): void
+  {
+    $format->loadMissing('book');
+    $max = $format->maxOrderQuantity();
+    $bookTitle = $format->book?->title ?? 'ce livre';
+    $formatLabel = $format->type->label();
+
+    if ($format->type->isDigital()) {
+      if ($quantity > $max) {
+        throw ValidationException::withMessages([
+          'quantity' => ["La quantité maximale pour ce format numérique est de {$max}."],
+        ]);
+      }
+
+      return;
+    }
+
+    if ($max <= 0) {
+      throw ValidationException::withMessages([
+        'quantity' => ["« {$bookTitle} » ({$formatLabel}) est momentanément en rupture de stock."],
+      ]);
+    }
+
+    if ($quantity > $max) {
+      $stockLabel = $max === 1
+        ? '1 exemplaire disponible'
+        : "{$max} exemplaires disponibles";
+
+      throw ValidationException::withMessages([
+        'quantity' => ["Stock insuffisant pour « {$bookTitle} » ({$formatLabel}) : {$stockLabel}."],
+      ]);
+    }
   }
 }

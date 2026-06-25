@@ -87,6 +87,20 @@ class BookFormat extends Model
   }
 
   /**
+   * Retourne la quantité maximale commandable pour ce format.
+   *
+   * @return int Plafond selon le stock physique ou 99 pour le numérique
+   */
+  public function maxOrderQuantity(): int
+  {
+    if ($this->type->isDigital()) {
+      return 99;
+    }
+
+    return max(0, (int) ($this->stock_quantity ?? 0));
+  }
+
+  /**
    * Retourne la limite de téléchargements effective pour ce format.
    *
    * @return int Nombre maximum de téléchargements

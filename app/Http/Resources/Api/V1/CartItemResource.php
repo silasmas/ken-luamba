@@ -38,6 +38,10 @@ class CartItemResource extends JsonResource
         'typeLabel' => $this->bookFormat?->type->label(),
         'sku' => $this->bookFormat?->sku,
         'isDigital' => $this->bookFormat?->type->isDigital(),
+        'stockQuantity' => $this->bookFormat?->type->isDigital()
+          ? null
+          : $this->bookFormat?->stock_quantity,
+        'maxQuantity' => $this->bookFormat?->maxOrderQuantity(),
       ],
       'pricingPeriod' => [
         'id' => $this->pricingPeriod?->id,
