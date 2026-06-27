@@ -5,6 +5,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Http\Request;
+use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -29,4 +30,17 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*'),
         );
+
+        $exceptions->render(function (MethodNotAllowedHttpException $exception, Request $request) {
+            if (
+                $request->isMethod('GET')
+                && preg_match('#^livewire-[a-f0-9]+/update$#', $request->path()) === 1
+            ) {
+                return redirect()
+                    ->to('/admin')
+                    ->with('status', 'Session admin rafraîchie. Reprenez votre action depuis le menu.');
+            }
+
+            return null;
+        });
     })->create();

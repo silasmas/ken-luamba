@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Payments\Tables;
 
 use App\Enums\PaymentChannel;
 use App\Enums\PaymentStatus;
+use App\Support\OrderAdminFormatter;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -27,6 +28,17 @@ class PaymentsTable
           ->label('Commande')
           ->searchable()
           ->sortable(),
+        TextColumn::make('order.user.full_name')
+          ->label('Client')
+          ->searchable()
+          ->sortable()
+          ->description(fn ($record): string => OrderAdminFormatter::clientContact($record->order)),
+        TextColumn::make('order_items')
+          ->label('Livres commandés')
+          ->state(fn ($record): string => $record->order
+            ? OrderAdminFormatter::itemsSummary($record->order)
+            : '—')
+          ->wrap(),
         TextColumn::make('provider_reference')
           ->label('Réf. FlexPay')
           ->searchable(),

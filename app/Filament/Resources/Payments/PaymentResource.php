@@ -12,6 +12,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class PaymentResource extends Resource
@@ -48,6 +49,16 @@ class PaymentResource extends Resource
   public static function table(Table $table): Table
   {
     return PaymentsTable::configure($table);
+  }
+
+  /**
+   * Précharge commande, client et articles pour l'affichage enrichi.
+   *
+   * @return Builder<Payment> Requête optimisée
+   */
+  public static function getEloquentQuery(): Builder
+  {
+    return parent::getEloquentQuery()->with(['order.user', 'order.items']);
   }
 
   public static function getRelations(): array

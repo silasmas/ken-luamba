@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Orders\Tables;
 
 use App\Enums\OrderStatus;
+use App\Support\OrderAdminFormatter;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -29,7 +30,15 @@ class OrdersTable
         TextColumn::make('user.full_name')
           ->label('Client')
           ->searchable()
-          ->sortable(),
+          ->sortable()
+          ->description(fn ($record): string => OrderAdminFormatter::clientContact($record)),
+        TextColumn::make('items_summary')
+          ->label('Articles')
+          ->state(fn ($record): string => OrderAdminFormatter::itemsSummary($record))
+          ->wrap()
+          ->searchable(query: function ($query, string $search): void {
+            $query->whereHas('items', fn ($items) => $items->where('book_title', 'like', "%{$search}%"));
+          }),
         TextColumn::make('status')
           ->label('Statut')
           ->badge()
