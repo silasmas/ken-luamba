@@ -40,9 +40,17 @@ class DiscountService
               ->where('applies_to', DiscountAppliesTo::AuthorCompleteSet->value)
               ->where('min_quantity', '<=', $distinctPhysicalBookCount);
           })
+          ->orWhere(function ($distinctQuery) use ($distinctPhysicalBookCount): void {
+            $distinctQuery
+              ->where('applies_to', DiscountAppliesTo::DistinctPhysicalBooks->value)
+              ->where('min_quantity', '<=', $distinctPhysicalBookCount);
+          })
           ->orWhere(function ($defaultQuery) use ($physicalCount, $itemCount): void {
             $defaultQuery
-              ->where('applies_to', '!=', DiscountAppliesTo::AuthorCompleteSet->value)
+              ->whereNotIn('applies_to', [
+                DiscountAppliesTo::AuthorCompleteSet->value,
+                DiscountAppliesTo::DistinctPhysicalBooks->value,
+              ])
               ->where('min_quantity', '<=', max($physicalCount, $itemCount));
           });
       })
@@ -156,6 +164,7 @@ class DiscountService
 
     $quantityBase = match ($rule->applies_to) {
       DiscountAppliesTo::PhysicalOnly => $physicalCount,
+      DiscountAppliesTo::DistinctPhysicalBooks => $this->countDistinctPhysicalBooks($cart),
       DiscountAppliesTo::SpecificBook => $cart->items
         ->filter(fn ($item) => $item->bookFormat->book_id === $rule->book_id)
         ->sum('quantity'),

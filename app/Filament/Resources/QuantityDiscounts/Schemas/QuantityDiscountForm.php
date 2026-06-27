@@ -43,6 +43,10 @@ class QuantityDiscountForm
               ->hidden(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::AuthorCompleteSet->value)
               ->dehydrated(fn (callable $get): bool => $get('applies_to') !== DiscountAppliesTo::AuthorCompleteSet->value)
               ->helperText('Nombre minimum d\'articles pour déclencher la remise.'),
+            Placeholder::make('distinct_physical_books_notice')
+              ->label('Comptage par titres distincts')
+              ->content('Chaque livre physique compte une seule fois, même si plusieurs exemplaires du même titre sont dans le panier. Ex. : 4 titres différents avec 1 exemplaire chacun déclenche une remise à 4, mais 4 exemplaires du même livre ne la déclenche pas.')
+              ->visible(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::DistinctPhysicalBooks->value),
             Placeholder::make('author_complete_set_notice')
               ->label('Condition collection complète')
               ->content('La remise s\'applique uniquement si le panier contient au moins 1 exemplaire physique de chaque livre publié de l\'auteur sélectionné.')
@@ -91,7 +95,7 @@ class QuantityDiscountForm
               ->required()
               ->live()
               ->native(false)
-              ->helperText('Tous les livres, physiques seulement, un livre précis ou la collection complète d\'un auteur.'),
+              ->helperText('Tous les livres, physiques (quantité ou titres distincts), un livre précis ou la collection complète d\'un auteur.'),
             Select::make('book_id')
               ->label('Livre ciblé')
               ->relationship('book', 'title')
