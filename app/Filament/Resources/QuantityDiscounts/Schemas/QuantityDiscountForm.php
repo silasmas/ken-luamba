@@ -42,7 +42,23 @@ class QuantityDiscountForm
               ->default(2)
               ->hidden(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::AuthorCompleteSet->value)
               ->dehydrated(fn (callable $get): bool => $get('applies_to') !== DiscountAppliesTo::AuthorCompleteSet->value)
-              ->helperText('Nombre minimum d\'articles pour déclencher la remise.'),
+              ->helperText(function (callable $get): string {
+                return match ($get('applies_to')) {
+                  DiscountAppliesTo::DistinctPhysicalBooks->value => 'Nombre minimum de titres physiques différents (ex. 4 = pack de 4 livres distincts).',
+                  DiscountAppliesTo::PhysicalOnly->value => 'Nombre minimum d\'exemplaires physiques au total (ex. 4 = 4 brochés, même titre possible).',
+                  DiscountAppliesTo::AllBooks->value => 'Nombre minimum d\'articles au total, y compris ebooks et audio.',
+                  DiscountAppliesTo::SpecificBook->value => 'Nombre minimum d\'exemplaires du livre ciblé.',
+                  default => 'Nombre minimum d\'articles pour déclencher la remise.',
+                };
+              }),
+            Placeholder::make('quantity_total_notice')
+              ->label('Comptage par quantité')
+              ->content('La remise se déclenche dès que le nombre total d\'exemplaires atteint le seuil, y compris plusieurs copies du même livre.')
+              ->visible(fn (callable $get): bool => in_array($get('applies_to'), [
+                DiscountAppliesTo::PhysicalOnly->value,
+                DiscountAppliesTo::AllBooks->value,
+                DiscountAppliesTo::SpecificBook->value,
+              ], true)),
             Placeholder::make('distinct_physical_books_notice')
               ->label('Comptage par titres distincts')
               ->content('Chaque livre physique compte une seule fois, même si plusieurs exemplaires du même titre sont dans le panier. Ex. : 4 titres différents avec 1 exemplaire chacun déclenche une remise à 4, mais 4 exemplaires du même livre ne la déclenche pas.')

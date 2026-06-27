@@ -4,6 +4,7 @@ namespace App\Filament\Resources\QuantityDiscounts\Tables;
 
 use App\Enums\DiscountAppliesTo;
 use App\Enums\DiscountType;
+use App\Models\QuantityDiscount;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -35,8 +36,13 @@ class QuantityDiscountsTable
         TextColumn::make('discount_value')
           ->label('Valeur'),
         TextColumn::make('applies_to')
-          ->label('Portée')
-          ->formatStateUsing(fn (DiscountAppliesTo $state): string => $state->label()),
+          ->label('Mode de comptage')
+          ->formatStateUsing(fn (DiscountAppliesTo $state): string => $state->label())
+          ->description(fn (QuantityDiscount $record): ?string => match ($record->applies_to) {
+            DiscountAppliesTo::DistinctPhysicalBooks => "Seuil : {$record->min_quantity} titre(s) distinct(s)",
+            DiscountAppliesTo::AuthorCompleteSet => 'Collection complète auteur',
+            default => "Seuil : {$record->min_quantity} exemplaire(s)",
+          }),
         TextColumn::make('book.title')
           ->label('Livre')
           ->placeholder('—'),
