@@ -3,6 +3,7 @@
 namespace App\Services\Invitations;
 
 use App\Models\Invitation;
+use App\Support\ContactLinkHelper;
 use Illuminate\Database\Eloquent\Collection;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
@@ -91,7 +92,7 @@ class InvitationGuestExportService
     return [
       (string) $invitation->full_name,
       (string) ($invitation->email ?? ''),
-      (string) ($invitation->phone ?? ''),
+      ContactLinkHelper::digits($invitation->phone),
       (string) ($invitation->organization ?? ''),
       (string) ($invitation->event?->title ?? ''),
       (string) $invitation->token,
