@@ -38,10 +38,12 @@ class InvitationPhoneLookupExportService
     $writer->addRow(Row::fromValues([
       'Numéro saisi',
       'Numéro normalisé',
-      'Statut',
+      'Correspondance',
+      'Statut RSVP',
       'Nom invité',
       'Email',
       'Événement',
+      'Lien invitation',
     ]));
 
     foreach ($rows as $row) {
@@ -49,9 +51,11 @@ class InvitationPhoneLookupExportService
         (string) ($row['input'] ?? ''),
         (string) ($row['normalized'] ?? ''),
         (string) ($row['statusLabel'] ?? ''),
+        (string) ($row['rsvpStatusLabel'] ?? ''),
         (string) ($row['fullName'] ?? ''),
         (string) ($row['email'] ?? ''),
         (string) ($row['eventTitle'] ?? ''),
+        (string) ($row['invitationLink'] ?? ''),
       ]));
     }
 

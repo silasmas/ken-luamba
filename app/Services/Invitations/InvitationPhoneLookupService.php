@@ -2,6 +2,7 @@
 
 namespace App\Services\Invitations;
 
+use App\Enums\InvitationRsvpStatus;
 use App\Models\Event;
 use App\Models\Invitation;
 use App\Support\ContactLinkHelper;
@@ -12,6 +13,15 @@ use Illuminate\Support\Collection;
  */
 class InvitationPhoneLookupService
 {
+  /**
+   * Initialise le service avec le générateur de liens publics.
+   *
+   * @param InvitationLinkService $linkService Service de liens d'invitation
+   */
+  public function __construct(
+    private readonly InvitationLinkService $linkService,
+  ) {}
+
   /**
    * Extrait les numéros d'un texte collé (lignes, virgules, point-virgules).
    *
@@ -47,7 +57,10 @@ class InvitationPhoneLookupService
    *     fullName: string|null,
    *     email: string|null,
    *     eventTitle: string|null,
-   *     statusLabel: string
+   *     statusLabel: string,
+   *     rsvpStatus: string|null,
+   *     rsvpStatusLabel: string|null,
+   *     invitationLink: string|null
    *   }>,
    *   stats: array{total: int, matched: int, unmatched: int}
    * }
@@ -75,6 +88,9 @@ class InvitationPhoneLookupService
         'email' => $invitation?->email,
         'eventTitle' => $invitation?->event?->title,
         'statusLabel' => $isMatched ? 'Correspondance trouvée' : 'Nom non trouvé',
+        'rsvpStatus' => $invitation?->rsvp_status?->value,
+        'rsvpStatusLabel' => $invitation?->rsvp_status?->label(),
+        'invitationLink' => $invitation !== null ? $this->linkService->publicUrl($invitation) : null,
       ];
     }
 
@@ -91,19 +107,49 @@ class InvitationPhoneLookupService
   }
 
   /**
-   * Filtre les lignes analysées selon le statut de correspondance.
+   * Filtre les lignes analysées selon le statut RSVP ou la correspondance.
    *
    * @param list<array<string, mixed>> $rows Lignes analysées
-   * @param string $filter all|matched|unmatched
+   * @param string $statusFilter all|unmatched|pending|attending|not_attending
    * @return list<array<string, mixed>> Lignes filtrées
    */
-  public function filterRows(array $rows, string $filter): array
+  public function filterRows(array $rows, string $statusFilter): array
   {
-    return match ($filter) {
-      'matched' => array_values(array_filter($rows, fn (array $row): bool => (bool) $row['matched'])),
-      'unmatched' => array_values(array_filter($rows, fn (array $row): bool => ! (bool) $row['matched'])),
+    return match ($statusFilter) {
+      'unmatched' => array_values(array_filter(
+        $rows,
+        fn (array $row): bool => ! (bool) $row['matched'],
+      )),
+      'pending' => array_values(array_filter(
+        $rows,
+        fn (array $row): bool => ($row['rsvpStatus'] ?? null) === InvitationRsvpStatus::Pending->value,
+      )),
+      'attending' => array_values(array_filter(
+        $rows,
+        fn (array $row): bool => ($row['rsvpStatus'] ?? null) === InvitationRsvpStatus::Attending->value,
+      )),
+      'not_attending' => array_values(array_filter(
+        $rows,
+        fn (array $row): bool => ($row['rsvpStatus'] ?? null) === InvitationRsvpStatus::NotAttending->value,
+      )),
       default => $rows,
     };
+  }
+
+  /**
+   * Options de filtre par statut RSVP affichées dans l'admin.
+   *
+   * @return array<string, string> value => libellé
+   */
+  public function statusFilterOptions(): array
+  {
+    return [
+      'all' => 'Tous les statuts',
+      'unmatched' => 'Nom non trouvé',
+      InvitationRsvpStatus::Pending->value => InvitationRsvpStatus::Pending->label(),
+      InvitationRsvpStatus::Attending->value => InvitationRsvpStatus::Attending->label(),
+      InvitationRsvpStatus::NotAttending->value => InvitationRsvpStatus::NotAttending->label(),
+    ];
   }
 
   /**

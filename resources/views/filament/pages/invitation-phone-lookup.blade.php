@@ -65,16 +65,16 @@
       <section class="rounded-xl border border-gray-200 p-5 dark:border-gray-700">
         <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h2 class="text-lg font-semibold text-gray-950 dark:text-white">Résultats</h2>
-          <div class="flex items-center gap-2">
-            <label for="matchFilter" class="text-sm text-gray-600 dark:text-gray-400">Filtrer</label>
+          <div class="flex flex-wrap items-center gap-2">
+            <label for="statusFilter" class="text-sm text-gray-600 dark:text-gray-400">Statut</label>
             <select
-              id="matchFilter"
-              wire:model.live="matchFilter"
+              id="statusFilter"
+              wire:model.live="statusFilter"
               class="rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 dark:border-gray-600 dark:bg-gray-900 dark:text-gray-100"
             >
-              <option value="all">Tous</option>
-              <option value="matched">Correspondance trouvée</option>
-              <option value="unmatched">Nom non trouvé</option>
+              @foreach ($this->statusFilterOptions as $value => $label)
+                <option value="{{ $value }}">{{ $label }}</option>
+              @endforeach
             </select>
           </div>
         </div>
@@ -85,10 +85,12 @@
               <tr>
                 <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Numéro saisi</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Normalisé</th>
-                <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Statut</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Correspondance</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Statut RSVP</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Nom invité</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Email</th>
                 <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Événement</th>
+                <th class="px-3 py-2 text-left font-medium text-gray-600 dark:text-gray-300">Lien invitation</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -109,13 +111,41 @@
                       </span>
                     @endif
                   </td>
+                  <td class="px-3 py-2">
+                    @if ($row['rsvpStatusLabel'])
+                      <span @class([
+                        'inline-flex rounded-full px-2 py-0.5 text-xs font-medium',
+                        'bg-warning-100 text-warning-800 dark:bg-warning-900/40 dark:text-warning-200' => ($row['rsvpStatus'] ?? '') === 'pending',
+                        'bg-success-100 text-success-800 dark:bg-success-900/40 dark:text-success-200' => ($row['rsvpStatus'] ?? '') === 'attending',
+                        'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200' => ($row['rsvpStatus'] ?? '') === 'not_attending',
+                      ])>
+                        {{ $row['rsvpStatusLabel'] }}
+                      </span>
+                    @else
+                      <span class="text-gray-400">—</span>
+                    @endif
+                  </td>
                   <td class="px-3 py-2 text-gray-900 dark:text-gray-100">{{ $row['fullName'] ?: '—' }}</td>
                   <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ $row['email'] ?: '—' }}</td>
                   <td class="px-3 py-2 text-gray-700 dark:text-gray-300">{{ $row['eventTitle'] ?: '—' }}</td>
+                  <td class="px-3 py-2">
+                    @if ($row['invitationLink'])
+                      <a
+                        href="{{ $row['invitationLink'] }}"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        class="break-all text-primary-600 hover:underline dark:text-primary-400"
+                      >
+                        {{ $row['invitationLink'] }}
+                      </a>
+                    @else
+                      <span class="text-gray-400">—</span>
+                    @endif
+                  </td>
                 </tr>
               @empty
                 <tr>
-                  <td colspan="6" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">
+                  <td colspan="8" class="px-3 py-6 text-center text-gray-500 dark:text-gray-400">
                     Aucune ligne pour ce filtre.
                   </td>
                 </tr>

@@ -35,7 +35,7 @@ class InvitationPhoneLookup extends Page
 
   public ?string $eventId = null;
 
-  public string $matchFilter = 'all';
+  public string $statusFilter = 'all';
 
   /** @var list<array<string, mixed>> */
   public array $results = [];
@@ -141,7 +141,17 @@ class InvitationPhoneLookup extends Page
    */
   public function getFilteredResultsProperty(): array
   {
-    return app(InvitationPhoneLookupService::class)->filterRows($this->results, $this->matchFilter);
+    return app(InvitationPhoneLookupService::class)->filterRows($this->results, $this->statusFilter);
+  }
+
+  /**
+   * Options de filtre par statut RSVP.
+   *
+   * @return array<string, string> value => libellé
+   */
+  public function getStatusFilterOptionsProperty(): array
+  {
+    return app(InvitationPhoneLookupService::class)->statusFilterOptions();
   }
 
   /**
