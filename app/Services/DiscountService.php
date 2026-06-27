@@ -30,10 +30,23 @@ class DiscountService
     $physicalCount = $this->countPhysicalItems($cart);
     $itemCount = $cart->items->sum('quantity');
     $distinctPhysicalBookCount = $this->countDistinctPhysicalBooks($cart);
+    $maxSingleTitleQuantity = $this->maxSinglePhysicalTitleQuantity($cart);
+
+    $specialModes = [
+      DiscountAppliesTo::AuthorCompleteSet->value,
+      DiscountAppliesTo::DistinctPhysicalBooks->value,
+      DiscountAppliesTo::SinglePhysicalTitle->value,
+    ];
 
     $discount = QuantityDiscount::query()
       ->where('is_active', true)
-      ->where(function ($query) use ($physicalCount, $itemCount, $distinctPhysicalBookCount): void {
+      ->where(function ($query) use (
+        $physicalCount,
+        $itemCount,
+        $distinctPhysicalBookCount,
+        $maxSingleTitleQuantity,
+        $specialModes,
+      ): void {
         $query
           ->where(function ($authorQuery) use ($distinctPhysicalBookCount): void {
             $authorQuery
@@ -45,12 +58,14 @@ class DiscountService
               ->where('applies_to', DiscountAppliesTo::DistinctPhysicalBooks->value)
               ->where('min_quantity', '<=', $distinctPhysicalBookCount);
           })
-          ->orWhere(function ($defaultQuery) use ($physicalCount, $itemCount): void {
+          ->orWhere(function ($singleTitleQuery) use ($maxSingleTitleQuantity): void {
+            $singleTitleQuery
+              ->where('applies_to', DiscountAppliesTo::SinglePhysicalTitle->value)
+              ->where('min_quantity', '<=', $maxSingleTitleQuantity);
+          })
+          ->orWhere(function ($defaultQuery) use ($physicalCount, $itemCount, $specialModes): void {
             $defaultQuery
-              ->whereNotIn('applies_to', [
-                DiscountAppliesTo::AuthorCompleteSet->value,
-                DiscountAppliesTo::DistinctPhysicalBooks->value,
-              ])
+              ->whereNotIn('applies_to', $specialModes)
               ->where('min_quantity', '<=', max($physicalCount, $itemCount));
           });
       })
@@ -149,6 +164,23 @@ class DiscountService
   }
 
   /**
+   * Retourne la plus grande quantité d'un même titre physique dans le panier.
+   *
+   * @param Cart $cart Panier cible
+   * @return int Quantité maximale sur un seul livre
+   */
+  private function maxSinglePhysicalTitleQuantity(Cart $cart): int
+  {
+    $max = $cart->items
+      ->filter(fn ($item) => ! $item->bookFormat->type->isDigital())
+      ->groupBy(fn ($item) => $item->bookFormat->book_id)
+      ->map(fn ($items) => $items->sum('quantity'))
+      ->max();
+
+    return (int) ($max ?? 0);
+  }
+
+  /**
    * Vérifie si une règle de remise s'applique au panier.
    *
    * @param QuantityDiscount $rule Règle à tester
@@ -164,6 +196,7 @@ class DiscountService
 
     $quantityBase = match ($rule->applies_to) {
       DiscountAppliesTo::PhysicalOnly => $physicalCount,
+      DiscountAppliesTo::SinglePhysicalTitle => $this->maxSinglePhysicalTitleQuantity($cart),
       DiscountAppliesTo::DistinctPhysicalBooks => $this->countDistinctPhysicalBooks($cart),
       DiscountAppliesTo::SpecificBook => $cart->items
         ->filter(fn ($item) => $item->bookFormat->book_id === $rule->book_id)

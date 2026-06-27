@@ -40,8 +40,10 @@ class QuantityDiscountsTable
           ->formatStateUsing(fn (DiscountAppliesTo $state): string => $state->label())
           ->description(fn (QuantityDiscount $record): ?string => match ($record->applies_to) {
             DiscountAppliesTo::DistinctPhysicalBooks => "Seuil : {$record->min_quantity} titre(s) distinct(s)",
+            DiscountAppliesTo::SinglePhysicalTitle => "Seuil : {$record->min_quantity} exemplaire(s) d'un même titre",
             DiscountAppliesTo::AuthorCompleteSet => 'Collection complète auteur',
-            default => "Seuil : {$record->min_quantity} exemplaire(s)",
+            DiscountAppliesTo::PhysicalOnly, DiscountAppliesTo::AllBooks => "Seuil : {$record->min_quantity} exemplaire(s) au total",
+            DiscountAppliesTo::SpecificBook => "Seuil : {$record->min_quantity}× « {$record->book?->title} »",
           }),
         TextColumn::make('book.title')
           ->label('Livre')

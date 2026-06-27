@@ -27,42 +27,47 @@ class QuantityDiscountForm
       ->components([
         AdminFormLayout::section(
           'Règle de remise',
-          'Définissez quand et comment la remise s\'applique.',
+          'Choisissez si la remise dépend du nombre d\'exemplaires d\'un même livre ou du nombre de titres différents.',
           [
             TextInput::make('name')
               ->label('Nom de la remise')
               ->required()
               ->maxLength(255)
-              ->helperText('Libellé interne (ex. Pack 3 livres -10%).'),
+              ->helperText('Libellé affiché au client (ex. Pack 4 livres -10%).'),
+            Select::make('applies_to')
+              ->label('Mode de déclenchement')
+              ->options(DiscountAppliesTo::adminSelectOptions())
+              ->required()
+              ->live()
+              ->native(false)
+              ->helperText('Les deux modes principaux : « livres différents » (pack) ou « même livre » (quantité sur un titre).'),
+            Placeholder::make('applies_to_example')
+              ->label('Comment ce mode compte le panier')
+              ->content(function (callable $get): string {
+                $value = $get('applies_to');
+                $case = DiscountAppliesTo::tryFrom((string) $value);
+
+                return $case?->adminExample() ?? 'Sélectionnez un mode de déclenchement.';
+              })
+              ->visible(fn (callable $get): bool => DiscountAppliesTo::tryFrom((string) $get('applies_to')) !== null),
             TextInput::make('min_quantity')
-              ->label('Quantité minimale')
+              ->label('Seuil (quantité minimale)')
               ->required(fn (callable $get): bool => $get('applies_to') !== DiscountAppliesTo::AuthorCompleteSet->value)
               ->numeric()
               ->minValue(2)
-              ->default(2)
+              ->default(4)
               ->hidden(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::AuthorCompleteSet->value)
               ->dehydrated(fn (callable $get): bool => $get('applies_to') !== DiscountAppliesTo::AuthorCompleteSet->value)
               ->helperText(function (callable $get): string {
                 return match ($get('applies_to')) {
-                  DiscountAppliesTo::DistinctPhysicalBooks->value => 'Nombre minimum de titres physiques différents (ex. 4 = pack de 4 livres distincts).',
-                  DiscountAppliesTo::PhysicalOnly->value => 'Nombre minimum d\'exemplaires physiques au total (ex. 4 = 4 brochés, même titre possible).',
-                  DiscountAppliesTo::AllBooks->value => 'Nombre minimum d\'articles au total, y compris ebooks et audio.',
-                  DiscountAppliesTo::SpecificBook->value => 'Nombre minimum d\'exemplaires du livre ciblé.',
-                  default => 'Nombre minimum d\'articles pour déclencher la remise.',
+                  DiscountAppliesTo::DistinctPhysicalBooks->value => 'Nombre de titres physiques différents requis (ex. 4 = pack de 4 livres distincts).',
+                  DiscountAppliesTo::SinglePhysicalTitle->value => 'Nombre d\'exemplaires requis sur un seul et même titre (ex. 4 = 4× le même livre).',
+                  DiscountAppliesTo::PhysicalOnly->value => 'Somme de tous les exemplaires physiques, titres mélangés possibles.',
+                  DiscountAppliesTo::AllBooks->value => 'Somme de tous les articles, y compris ebooks et audio.',
+                  DiscountAppliesTo::SpecificBook->value => 'Exemplaires requis du livre ciblé ci-dessous.',
+                  default => 'Seuil à atteindre pour déclencher la remise.',
                 };
               }),
-            Placeholder::make('quantity_total_notice')
-              ->label('Comptage par quantité')
-              ->content('La remise se déclenche dès que le nombre total d\'exemplaires atteint le seuil, y compris plusieurs copies du même livre.')
-              ->visible(fn (callable $get): bool => in_array($get('applies_to'), [
-                DiscountAppliesTo::PhysicalOnly->value,
-                DiscountAppliesTo::AllBooks->value,
-                DiscountAppliesTo::SpecificBook->value,
-              ], true)),
-            Placeholder::make('distinct_physical_books_notice')
-              ->label('Comptage par titres distincts')
-              ->content('Chaque livre physique compte une seule fois, même si plusieurs exemplaires du même titre sont dans le panier. Ex. : 4 titres différents avec 1 exemplaire chacun déclenche une remise à 4, mais 4 exemplaires du même livre ne la déclenche pas.')
-              ->visible(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::DistinctPhysicalBooks->value),
             Placeholder::make('author_complete_set_notice')
               ->label('Condition collection complète')
               ->content('La remise s\'applique uniquement si le panier contient au moins 1 exemplaire physique de chaque livre publié de l\'auteur sélectionné.')
@@ -73,7 +78,7 @@ class QuantityDiscountForm
                 $authorId = $get('author_id');
 
                 if (! $authorId) {
-                  return 'Sélectionnez un auteur pour voir le nombre de titres requis.';
+                  return 'Sélectionnez un auteur dans la section suivante pour voir le nombre de titres requis.';
                 }
 
                 $count = app(DiscountService::class)->requiredAuthorBookCount((string) $authorId);
@@ -100,25 +105,16 @@ class QuantityDiscountForm
           ],
         ),
         AdminFormLayout::section(
-          'Périmètre & validité',
-          'Articles concernés et période d\'application.',
+          'Ciblage & validité',
+          'Livre ou auteur concerné, dates et activation.',
           [
-            Select::make('applies_to')
-              ->label('S\'applique à')
-              ->options(collect(DiscountAppliesTo::cases())->mapWithKeys(
-                fn (DiscountAppliesTo $scope): array => [$scope->value => $scope->label()]
-              )->all())
-              ->required()
-              ->live()
-              ->native(false)
-              ->helperText('Tous les livres, physiques (quantité ou titres distincts), un livre précis ou la collection complète d\'un auteur.'),
             Select::make('book_id')
               ->label('Livre ciblé')
               ->relationship('book', 'title')
               ->searchable()
               ->preload()
               ->visible(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::SpecificBook->value)
-              ->helperText('Obligatoire si la remise cible un livre spécifique.'),
+              ->helperText('Obligatoire : seul ce titre est pris en compte pour le seuil.'),
             Select::make('author_id')
               ->label('Auteur ciblé')
               ->relationship('author', 'full_name')
@@ -127,7 +123,7 @@ class QuantityDiscountForm
               ->required(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::AuthorCompleteSet->value)
               ->visible(fn (callable $get): bool => $get('applies_to') === DiscountAppliesTo::AuthorCompleteSet->value)
               ->live()
-              ->helperText('La remise exige au moins 1 exemplaire physique de chaque livre publié de cet auteur.'),
+              ->helperText('Collection complète : au moins 1 exemplaire physique de chaque livre publié.'),
             Toggle::make('stackable')
               ->label('Cumulable avec d\'autres promos')
               ->helperText('Autorise la combinaison avec d\'autres remises.'),
