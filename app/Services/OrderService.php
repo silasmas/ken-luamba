@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\ShippingSetting;
+use App\Models\ShopSetting;
 use App\Models\User;
 use App\Enums\PaymentStatus;
 use Illuminate\Http\Request;
@@ -134,6 +135,21 @@ class OrderService
       $shippingAddress = array_merge($shippingAddress, array_filter($shippingMeta));
     }
 
+    $shopSettings = ShopSetting::instance();
+    $extraContributionAmount = round((float) ($payload['extraContributionAmount'] ?? 0), 2);
+
+    if ($extraContributionAmount < 0) {
+      throw ValidationException::withMessages([
+        'extraContributionAmount' => ['Le montant de soutien doit être positif ou nul.'],
+      ]);
+    }
+
+    if (! $shopSettings->extra_contribution_enabled && $extraContributionAmount > 0) {
+      throw ValidationException::withMessages([
+        'extraContributionAmount' => ['La contribution volontaire n\'est pas disponible pour le moment.'],
+      ]);
+    }
+
     return DB::transaction(function () use (
       $user,
       $cart,
@@ -142,6 +158,7 @@ class OrderService
       $fulfillmentType,
       $shippingAmount,
       $shippingAddress,
+      $extraContributionAmount,
     ): Order {
       $order = Order::query()->create([
         'order_number' => $this->generateOrderNumber(),
@@ -153,7 +170,8 @@ class OrderService
         'subtotal' => $summary['subtotal'],
         'discount_amount' => $summary['discount']['amount'],
         'shipping_amount' => $shippingAmount,
-        'total' => $summary['total'] + $shippingAmount,
+        'extra_contribution_amount' => $extraContributionAmount,
+        'total' => $summary['total'] + $shippingAmount + $extraContributionAmount,
         'currency' => $summary['currency'],
         'notes' => $payload['notes'] ?? null,
       ]);

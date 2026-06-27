@@ -94,6 +94,11 @@ class OrderForm
               ->numeric()
               ->disabled()
               ->helperText('Calculé automatiquement selon les paramètres de livraison.'),
+            TextInput::make('extra_contribution_amount')
+              ->label('Contribution volontaire')
+              ->numeric()
+              ->disabled()
+              ->helperText('Montant libre ajouté par le client au-delà du total articles + livraison.'),
             TextInput::make('total')
               ->label('Total')
               ->numeric()

@@ -20,7 +20,22 @@ class ShopSetting extends Model
    */
   protected $fillable = [
     'currency',
+    'extra_contribution_enabled',
+    'extra_contribution_label',
+    'extra_contribution_help_text',
   ];
+
+  /**
+   * Casts des attributs du modèle.
+   *
+   * @return array<string, string>
+   */
+  protected function casts(): array
+  {
+    return [
+      'extra_contribution_enabled' => 'boolean',
+    ];
+  }
 
   /**
    * Retourne l'enregistrement unique des paramètres boutique.
@@ -31,7 +46,12 @@ class ShopSetting extends Model
   {
     return self::query()->firstOrCreate(
       [],
-      ['currency' => ShopCurrency::Cdf->value],
+      [
+        'currency' => ShopCurrency::Cdf->value,
+        'extra_contribution_enabled' => false,
+        'extra_contribution_label' => 'Soutien volontaire',
+        'extra_contribution_help_text' => 'Ajoutez un montant libre au-delà du total de votre commande pour soutenir le ministère.',
+      ],
     );
   }
 

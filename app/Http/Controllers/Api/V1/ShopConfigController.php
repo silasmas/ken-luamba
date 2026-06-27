@@ -19,12 +19,18 @@ class ShopConfigController extends Controller
    */
   public function __invoke(): JsonResponse
   {
-    $currency = ShopSetting::currencyCode();
+    $settings = ShopSetting::instance();
+    $currency = $settings->currency;
 
     return response()->json([
       'data' => [
         'currency' => $currency,
         'currencyLabel' => ShopCurrency::tryFrom($currency)?->label() ?? $currency,
+        'extraContribution' => [
+          'enabled' => (bool) $settings->extra_contribution_enabled,
+          'label' => $settings->extra_contribution_label,
+          'helpText' => $settings->extra_contribution_help_text,
+        ],
       ],
     ]);
   }

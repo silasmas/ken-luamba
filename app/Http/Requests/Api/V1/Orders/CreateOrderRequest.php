@@ -38,6 +38,7 @@ class CreateOrderRequest extends FormRequest
       'shippingAddress.country' => ['required_with:shippingAddress', 'string', 'size:2'],
       'shippingAddress.phone' => ['required_with:shippingAddress', 'string', 'max:20'],
       'notes' => ['nullable', 'string', 'max:1000'],
+      'extraContributionAmount' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
     ];
   }
 }
