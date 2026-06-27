@@ -31,11 +31,16 @@ class OrdersTable
           ->label('Client')
           ->searchable()
           ->sortable()
-          ->description(fn ($record): string => OrderAdminFormatter::clientContact($record)),
+          ->description(fn ($record): string => OrderAdminFormatter::clientContact($record))
+          ->toggleable(),
         TextColumn::make('items_summary')
           ->label('Articles')
-          ->state(fn ($record): string => OrderAdminFormatter::itemsSummary($record))
+          ->state(fn ($record) => OrderAdminFormatter::itemsSummaryHtml($record))
+          ->html()
           ->wrap()
+          ->tooltip(fn ($record): ?string => OrderAdminFormatter::itemsSummary($record) !== '—'
+            ? OrderAdminFormatter::itemsSummary($record)
+            : null)
           ->searchable(query: function ($query, string $search): void {
             $query->whereHas('items', fn ($items) => $items->where('book_title', 'like', "%{$search}%"));
           }),
@@ -48,22 +53,27 @@ class OrdersTable
             OrderStatus::PendingPayment => 'warning',
             OrderStatus::Cancelled, OrderStatus::Refunded => 'danger',
             default => 'gray',
-          }),
+          })
+          ->toggleable(),
         TextColumn::make('fulfillment_type')
           ->label('Réception')
-          ->formatStateUsing(fn ($state) => $state?->label() ?? '—'),
+          ->formatStateUsing(fn ($state) => $state?->label() ?? '—')
+          ->toggleable(),
         TextColumn::make('total')
           ->label('Total')
           ->money(fn ($record) => $record->currency)
-          ->sortable(),
+          ->sortable()
+          ->toggleable(),
         TextColumn::make('paid_at')
           ->label('Payée le')
           ->dateTime('d/m/Y H:i')
-          ->sortable(),
+          ->sortable()
+          ->toggleable(isToggledHiddenByDefault: true),
         TextColumn::make('created_at')
           ->label('Créée le')
           ->dateTime('d/m/Y H:i')
-          ->sortable(),
+          ->sortable()
+          ->toggleable(isToggledHiddenByDefault: true),
       ])
       ->defaultSort('created_at', 'desc')
       ->filters([

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use Illuminate\Support\HtmlString;
 
 /**
  * Formate les informations commande pour l'admin Filament.
@@ -18,10 +19,23 @@ class OrderAdminFormatter
    */
   public static function itemsSummary(Order $order): string
   {
+    $lines = self::itemsSummaryLines($order);
+
+    return $lines === [] ? '—' : implode(' · ', $lines);
+  }
+
+  /**
+   * Retourne une ligne par article commandé.
+   *
+   * @param Order $order Commande source
+   * @return list<string> Libellés article × quantité
+   */
+  public static function itemsSummaryLines(Order $order): array
+  {
     $order->loadMissing('items');
 
     if ($order->items->isEmpty()) {
-      return '—';
+      return [];
     }
 
     return $order->items
@@ -31,7 +45,40 @@ class OrderAdminFormatter
         $item->format_type->label(),
         $item->quantity,
       ))
-      ->implode(' · ');
+      ->values()
+      ->all();
+  }
+
+  /**
+   * Affiche les articles en HTML empilé pour le tableau Filament.
+   *
+   * @param Order $order Commande source
+   * @return HtmlString Markup une ligne par article
+   */
+  public static function itemsSummaryHtml(Order $order): HtmlString
+  {
+    $lines = self::itemsSummaryLines($order);
+
+    if ($lines === []) {
+      return new HtmlString('<span class="text-gray-400">—</span>');
+    }
+
+    $markup = collect($lines)
+      ->map(function (string $line): string {
+        if (! preg_match('/^(.+?) \((.+?)\) × (\d+)$/', $line, $matches)) {
+          return '<span class="block py-0.5 leading-snug">'.e($line).'</span>';
+        }
+
+        return sprintf(
+          '<span class="block py-0.5 leading-snug"><span class="font-medium text-gray-950 dark:text-white">%s</span> <span class="text-gray-500 dark:text-gray-400">(%s)</span> <span class="font-semibold">× %s</span></span>',
+          e($matches[1]),
+          e($matches[2]),
+          e($matches[3]),
+        );
+      })
+      ->implode('');
+
+    return new HtmlString($markup);
   }
 
   /**

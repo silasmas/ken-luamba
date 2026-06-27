@@ -11,6 +11,7 @@ use Filament\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class PaymentsTable
 {
@@ -32,23 +33,33 @@ class PaymentsTable
           ->label('Client')
           ->searchable()
           ->sortable()
-          ->description(fn ($record): string => OrderAdminFormatter::clientContact($record->order)),
+          ->description(fn ($record): string => $record->order
+            ? OrderAdminFormatter::clientContact($record->order)
+            : '—')
+          ->toggleable(),
         TextColumn::make('order_items')
           ->label('Livres commandés')
-          ->state(fn ($record): string => $record->order
+          ->state(fn ($record) => $record->order
+            ? OrderAdminFormatter::itemsSummaryHtml($record->order)
+            : new HtmlString('<span class="text-gray-400">—</span>'))
+          ->html()
+          ->wrap()
+          ->tooltip(fn ($record): ?string => $record->order && OrderAdminFormatter::itemsSummary($record->order) !== '—'
             ? OrderAdminFormatter::itemsSummary($record->order)
-            : '—')
-          ->wrap(),
+            : null),
         TextColumn::make('provider_reference')
           ->label('Réf. FlexPay')
-          ->searchable(),
+          ->searchable()
+          ->toggleable(isToggledHiddenByDefault: true),
         TextColumn::make('channel')
           ->label('Canal')
-          ->formatStateUsing(fn (?PaymentChannel $state) => $state?->label() ?? '—'),
+          ->formatStateUsing(fn (?PaymentChannel $state) => $state?->label() ?? '—')
+          ->toggleable(),
         TextColumn::make('amount')
           ->label('Montant')
           ->money(fn ($record) => $record->currency)
-          ->sortable(),
+          ->sortable()
+          ->toggleable(),
         TextColumn::make('status')
           ->label('Statut')
           ->badge()
@@ -58,17 +69,21 @@ class PaymentsTable
             PaymentStatus::Processing, PaymentStatus::Pending => 'warning',
             PaymentStatus::Failed, PaymentStatus::Cancelled => 'danger',
             default => 'gray',
-          }),
+          })
+          ->toggleable(),
         TextColumn::make('phone')
-          ->label('Téléphone'),
+          ->label('Téléphone')
+          ->toggleable(isToggledHiddenByDefault: true),
         TextColumn::make('paid_at')
           ->label('Payé le')
           ->dateTime('d/m/Y H:i')
-          ->sortable(),
+          ->sortable()
+          ->toggleable(isToggledHiddenByDefault: true),
         TextColumn::make('created_at')
           ->label('Créé le')
           ->dateTime('d/m/Y H:i')
-          ->sortable(),
+          ->sortable()
+          ->toggleable(isToggledHiddenByDefault: true),
       ])
       ->defaultSort('created_at', 'desc')
       ->filters([
