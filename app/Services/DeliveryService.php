@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\DeliveryStatus;
 use App\Enums\FulfillmentType;
 use App\Enums\OrderStatus;
+use App\Enums\PaymentStatus;
 use App\Enums\UserRole;
 use App\Models\Delivery;
 use App\Models\DeliveryProof;
@@ -356,5 +357,93 @@ class DeliveryService
   public function formatForCourier(Delivery $delivery): array
   {
     return (new \App\Http\Resources\Api\V1\CourierDeliveryResource($delivery))->resolve();
+  }
+
+  /**
+   * Marque une commande physique comme livre reçu depuis l'admin.
+   *
+   * @param Order $order Commande cible
+   * @return Order Commande mise à jour
+   */
+  public function markBooksReceivedByAdmin(Order $order): Order
+  {
+    if (! $order->hasPhysicalItems()) {
+      throw ValidationException::withMessages([
+        'order' => ['Cette commande ne contient pas de livre physique.'],
+      ]);
+    }
+
+    if (in_array($order->status, [OrderStatus::Cancelled, OrderStatus::Refunded, OrderStatus::PendingPayment], true)) {
+      throw ValidationException::withMessages([
+        'order' => ['Impossible de marquer comme reçu dans cet état de commande.'],
+      ]);
+    }
+
+    return DB::transaction(function () use ($order): Order {
+      $delivery = $order->delivery ?? $this->createForOrder($order);
+
+      if ($delivery === null) {
+        throw ValidationException::withMessages([
+          'order' => ['Livraison introuvable pour cette commande.'],
+        ]);
+      }
+
+      $deliveryStatus = $order->fulfillment_type === FulfillmentType::Pickup
+        ? DeliveryStatus::PickedUp
+        : DeliveryStatus::Delivered;
+
+      $delivery->update([
+        'status' => $deliveryStatus,
+        'delivered_at' => now(),
+      ]);
+
+      $order->update([
+        'status' => OrderStatus::Completed,
+        'completed_at' => now(),
+      ]);
+
+      return $order->fresh(['user', 'items', 'delivery', 'payment']);
+    });
+  }
+
+  /**
+   * Marque une commande physique comme livre non reçu depuis l'admin.
+   *
+   * @param Order $order Commande cible
+   * @return Order Commande mise à jour
+   */
+  public function markBooksNotReceivedByAdmin(Order $order): Order
+  {
+    if (! $order->hasPhysicalItems()) {
+      throw ValidationException::withMessages([
+        'order' => ['Cette commande ne contient pas de livre physique.'],
+      ]);
+    }
+
+    return DB::transaction(function () use ($order): Order {
+      $delivery = $order->delivery ?? $this->createForOrder($order);
+
+      if ($delivery !== null) {
+        $delivery->update([
+          'status' => DeliveryStatus::Pending,
+          'courier_id' => null,
+          'assigned_at' => null,
+          'delivered_at' => null,
+        ]);
+      }
+
+      $order->loadMissing('payment');
+
+      $nextStatus = $order->payment?->status === PaymentStatus::Completed
+        ? OrderStatus::Paid
+        : OrderStatus::Processing;
+
+      $order->update([
+        'status' => $nextStatus,
+        'completed_at' => null,
+      ]);
+
+      return $order->fresh(['user', 'items', 'delivery', 'payment']);
+    });
   }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Enums\DeliveryStatus;
+use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Support\HtmlString;
@@ -109,5 +111,45 @@ class OrderAdminFormatter
     }
 
     return $parts !== [] ? implode(' · ', $parts) : '—';
+  }
+
+  /**
+   * Indique si les livres physiques de la commande sont considérés comme reçus.
+   *
+   * @param Order $order Commande source
+   * @return bool True si réception confirmée
+   */
+  public static function isBooksReceived(Order $order): bool
+  {
+    if ($order->isDigitalOnly()) {
+      return false;
+    }
+
+    $order->loadMissing('delivery');
+
+    if ($order->status === OrderStatus::Completed) {
+      return true;
+    }
+
+    return in_array(
+      $order->delivery?->status,
+      [DeliveryStatus::Delivered, DeliveryStatus::PickedUp],
+      true,
+    );
+  }
+
+  /**
+   * Libellé admin du statut de réception des livres.
+   *
+   * @param Order $order Commande source
+   * @return string Libellé affiché dans Filament
+   */
+  public static function booksReceivedLabel(Order $order): string
+  {
+    if ($order->isDigitalOnly()) {
+      return 'Numérique';
+    }
+
+    return self::isBooksReceived($order) ? 'Reçu' : 'Non reçu';
   }
 }

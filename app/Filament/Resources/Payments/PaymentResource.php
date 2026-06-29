@@ -58,7 +58,7 @@ class PaymentResource extends Resource
    */
   public static function getEloquentQuery(): Builder
   {
-    return parent::getEloquentQuery()->with(['order.user', 'order.items']);
+    return parent::getEloquentQuery()->with(['order.user', 'order.items', 'order.delivery']);
   }
 
   public static function getRelations(): array

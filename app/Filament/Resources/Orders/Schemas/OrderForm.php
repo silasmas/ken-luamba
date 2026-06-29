@@ -5,8 +5,11 @@ namespace App\Filament\Resources\Orders\Schemas;
 use App\Enums\FulfillmentType;
 use App\Enums\OrderStatus;
 use App\Filament\Support\AdminFormLayout;
+use App\Models\Order;
+use App\Support\OrderAdminFormatter;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -99,6 +102,12 @@ class OrderForm
               ->numeric()
               ->disabled()
               ->helperText('Montant libre ajouté par le client au-delà du total articles + livraison.'),
+            Placeholder::make('books_received_status')
+              ->label('Livre reçu')
+              ->content(fn (?Order $record): string => $record
+                ? OrderAdminFormatter::booksReceivedLabel($record)
+                : '—')
+              ->visible(fn (?Order $record): bool => $record !== null && $record->hasPhysicalItems()),
             TextInput::make('total')
               ->label('Total')
               ->numeric()
