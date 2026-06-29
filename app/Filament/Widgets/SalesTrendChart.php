@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\ShopSetting;
+use App\Filament\Widgets\Concerns\UsesDashboardCurrency;
 use App\Services\Dashboard\DashboardAnalyticsService;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -13,6 +13,7 @@ use Filament\Widgets\Concerns\InteractsWithPageFilters;
 class SalesTrendChart extends ChartWidget
 {
   use InteractsWithPageFilters;
+  use UsesDashboardCurrency;
 
   protected static ?int $sort = 5;
 
@@ -36,6 +37,16 @@ class SalesTrendChart extends ChartWidget
   }
 
   /**
+   * Options Chart.js avec devise boutique active.
+   *
+   * @return array<string, mixed>|null Options Chart.js
+   */
+  protected function getOptions(): array|null
+  {
+    return $this->moneyChartOptions();
+  }
+
+  /**
    * Données du graphique des ventes.
    *
    * @return array<string, mixed> Dataset Chart.js
@@ -45,12 +56,14 @@ class SalesTrendChart extends ChartWidget
     $analytics = app(DashboardAnalyticsService::class);
     $period = $analytics->resolvePeriod($this->pageFilters);
     $series = $analytics->salesTrend($period['start'], $period['end']);
-    $currency = ShopSetting::currencyCode();
+    $currency = $this->dashboardCurrency();
+
+    $this->description = 'Chiffre d\'affaires journalier sur la période sélectionnée ('.$currency.').';
 
     return [
       'datasets' => [
         [
-          'label' => 'Chiffre d\'affaires ('.$currency.')',
+          'label' => 'Chiffre d\'affaires',
           'data' => $series['values'],
           'borderColor' => '#2563eb',
           'backgroundColor' => 'rgba(37, 99, 235, 0.15)',

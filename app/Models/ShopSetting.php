@@ -33,6 +33,7 @@ class ShopSetting extends Model
   protected function casts(): array
   {
     return [
+      'currency' => ShopCurrency::class,
       'extra_contribution_enabled' => 'boolean',
     ];
   }
@@ -62,6 +63,8 @@ class ShopSetting extends Model
    */
   public static function currencyCode(): string
   {
-    return self::instance()->currency;
+    $currency = self::instance()->currency;
+
+    return $currency instanceof ShopCurrency ? $currency->value : (string) $currency;
   }
 }

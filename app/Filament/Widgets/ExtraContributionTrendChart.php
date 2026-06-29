@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets;
 
-use App\Models\ShopSetting;
+use App\Filament\Widgets\Concerns\UsesDashboardCurrency;
 use App\Services\Dashboard\DashboardAnalyticsService;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -13,6 +13,7 @@ use Filament\Widgets\Concerns\InteractsWithPageFilters;
 class ExtraContributionTrendChart extends ChartWidget
 {
   use InteractsWithPageFilters;
+  use UsesDashboardCurrency;
 
   protected static ?int $sort = 6;
 
@@ -36,6 +37,16 @@ class ExtraContributionTrendChart extends ChartWidget
   }
 
   /**
+   * Options Chart.js avec devise boutique active.
+   *
+   * @return array<string, mixed>|null Options Chart.js
+   */
+  protected function getOptions(): array|null
+  {
+    return $this->moneyChartOptions();
+  }
+
+  /**
    * Données du graphique des soutiens volontaires.
    *
    * @return array<string, mixed> Dataset Chart.js
@@ -45,12 +56,14 @@ class ExtraContributionTrendChart extends ChartWidget
     $analytics = app(DashboardAnalyticsService::class);
     $period = $analytics->resolvePeriod($this->pageFilters);
     $series = $analytics->extraContributionTrend($period['start'], $period['end']);
-    $currency = ShopSetting::currencyCode();
+    $currency = $this->dashboardCurrency();
+
+    $this->description = 'Montants supplémentaires versés au-delà du prix attendu, par jour ('.$currency.').';
 
     return [
       'datasets' => [
         [
-          'label' => 'Soutiens volontaires ('.$currency.')',
+          'label' => 'Soutiens volontaires',
           'data' => $series['values'],
           'borderColor' => '#16a34a',
           'backgroundColor' => 'rgba(22, 163, 74, 0.35)',

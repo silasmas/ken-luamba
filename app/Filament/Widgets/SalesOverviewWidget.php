@@ -44,7 +44,7 @@ class SalesOverviewWidget extends StatsOverviewWidget
 
     return [
       Stat::make('Chiffre d\'affaires', $analytics->formatMoney($revenue))
-        ->description('Sur la période sélectionnée')
+        ->description('Sur la période sélectionnée ('.$analytics->shopCurrencyCode().')')
         ->descriptionIcon('heroicon-m-banknotes')
         ->color('success'),
       Stat::make('Commandes', (string) $ordersCount)

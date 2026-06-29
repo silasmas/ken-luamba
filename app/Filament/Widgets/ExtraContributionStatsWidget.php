@@ -46,7 +46,7 @@ class ExtraContributionStatsWidget extends StatsOverviewWidget
         ->descriptionIcon('heroicon-m-heart')
         ->color('success'),
       Stat::make('Total soutiens volontaires', $analytics->formatMoney($voluntaryTotal))
-        ->description('Montants au-delà du total attendu')
+        ->description('Montants au-delà du total attendu ('.$analytics->shopCurrencyCode().')')
         ->descriptionIcon('heroicon-m-gift')
         ->color('primary'),
     ];
