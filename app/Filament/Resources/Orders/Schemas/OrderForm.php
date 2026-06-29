@@ -108,6 +108,14 @@ class OrderForm
                 ? OrderAdminFormatter::booksReceivedLabel($record)
                 : '—')
               ->visible(fn (?Order $record): bool => $record !== null && $record->hasPhysicalItems()),
+            Placeholder::make('payment_mode_status')
+              ->label('Mode d\'achat')
+              ->content(fn (?Order $record): string => $record
+                ? OrderAdminFormatter::paymentModeLabel($record)
+                : '—')
+              ->helperText(fn (?Order $record): ?string => $record
+                ? OrderAdminFormatter::paymentModeDescription($record)
+                : null),
             TextInput::make('total')
               ->label('Total')
               ->numeric()

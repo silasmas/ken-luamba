@@ -179,6 +179,89 @@ class DashboardAnalyticsService
   }
 
   /**
+   * Commandes payées sans soutien volontaire sur la période.
+   *
+   * @param CarbonInterface $start Début de période
+   * @param CarbonInterface $end Fin de période
+   * @return int Nombre de commandes au prix normal
+   */
+  public function normalPurchaseOrdersInPeriod(CarbonInterface $start, CarbonInterface $end): int
+  {
+    return $this->paidOrdersInPeriodQuery($start, $end)
+      ->where(function ($query): void {
+        $query
+          ->whereNull('extra_contribution_amount')
+          ->orWhere('extra_contribution_amount', '<=', 0);
+      })
+      ->count();
+  }
+
+  /**
+   * Commandes payées avec un montant volontaire supplémentaire.
+   *
+   * @param CarbonInterface $start Début de période
+   * @param CarbonInterface $end Fin de période
+   * @return int Nombre de commandes avec soutien volontaire
+   */
+  public function voluntaryPurchaseOrdersInPeriod(CarbonInterface $start, CarbonInterface $end): int
+  {
+    return $this->paidOrdersInPeriodQuery($start, $end)
+      ->where('extra_contribution_amount', '>', 0)
+      ->count();
+  }
+
+  /**
+   * Somme des soutiens volontaires sur les commandes payées.
+   *
+   * @param CarbonInterface $start Début de période
+   * @param CarbonInterface $end Fin de période
+   * @return float Total des montants supplémentaires
+   */
+  public function extraContributionTotalInPeriod(CarbonInterface $start, CarbonInterface $end): float
+  {
+    return (float) $this->paidOrdersInPeriodQuery($start, $end)
+      ->where('extra_contribution_amount', '>', 0)
+      ->sum('extra_contribution_amount');
+  }
+
+  /**
+   * Série journalière des soutiens volontaires collectés.
+   *
+   * @param CarbonInterface $start Début de période
+   * @param CarbonInterface $end Fin de période
+   * @return array{labels: list<string>, values: list<float>} Labels et montants
+   */
+  public function extraContributionTrend(CarbonInterface $start, CarbonInterface $end): array
+  {
+    return $this->buildDailySeries(
+      $start,
+      $end,
+      Order::query()
+        ->selectRaw('DATE(created_at) as day, SUM(extra_contribution_amount) as aggregate')
+        ->whereIn('status', array_map(fn (OrderStatus $status): string => $status->value, $this->paidOrderStatuses()))
+        ->where('extra_contribution_amount', '>', 0)
+        ->whereBetween('created_at', [$start, $end])
+        ->groupBy('day')
+        ->orderBy('day')
+        ->pluck('aggregate', 'day'),
+    );
+  }
+
+  /**
+   * Requête de base des commandes payées sur une période.
+   *
+   * @param CarbonInterface $start Début de période
+   * @param CarbonInterface $end Fin de période
+   * @return \Illuminate\Database\Eloquent\Builder<Order> Requête filtrée
+   */
+  private function paidOrdersInPeriodQuery(CarbonInterface $start, CarbonInterface $end)
+  {
+    return Order::query()
+      ->whereIn('status', array_map(fn (OrderStatus $status): string => $status->value, $this->paidOrderStatuses()))
+      ->whereBetween('created_at', [$start, $end]);
+  }
+
+  /**
    * Commandes groupées par statut sur la période.
    *
    * @param CarbonInterface $start Début de période

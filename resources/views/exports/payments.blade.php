@@ -60,6 +60,8 @@
           <th>Statut</th>
           <th>Payé le</th>
           <th>Livre reçu</th>
+          <th>Mode d'achat</th>
+          <th>Soutien</th>
         </tr>
       </thead>
       <tbody>
@@ -76,6 +78,8 @@
             <td>{{ $row[9] }}</td>
             <td>{{ $row[10] }}</td>
             <td>{{ $row[11] }}</td>
+            <td>{{ $row[12] }}</td>
+            <td>{{ number_format((float) $row[13], 2, ',', ' ') }}</td>
           </tr>
         @endforeach
       </tbody>

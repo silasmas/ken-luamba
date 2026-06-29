@@ -58,6 +58,7 @@
           <th>Payée le</th>
           <th>Réception</th>
           <th>Livre reçu</th>
+          <th>Mode d'achat</th>
           <th>Total</th>
           <th>Devise</th>
         </tr>
@@ -74,8 +75,9 @@
             <td>{{ $row[6] }}</td>
             <td>{{ $row[7] }}</td>
             <td>{{ $row[8] }}</td>
-            <td>{{ number_format((float) $row[13], 2, ',', ' ') }}</td>
-            <td>{{ $row[14] }}</td>
+            <td>{{ $row[9] }}</td>
+            <td>{{ number_format((float) $row[15], 2, ',', ' ') }}</td>
+            <td>{{ $row[16] }}</td>
           </tr>
         @endforeach
       </tbody>

@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Services\DeliveryService;
 use App\Support\OrderAdminFormatter;
 use App\Support\OrderBooksReceivedQuery;
+use App\Support\OrderExtraContributionQuery;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -53,6 +54,19 @@ class OrdersTable
           ->searchable(query: function ($query, string $search): void {
             $query->whereHas('items', fn ($items) => $items->where('book_title', 'like', "%{$search}%"));
           }),
+        TextColumn::make('payment_mode')
+          ->label('Mode d\'achat')
+          ->state(fn ($record): string => OrderAdminFormatter::paymentModeLabel($record))
+          ->description(fn ($record): ?string => OrderAdminFormatter::paymentModeDescription($record))
+          ->badge()
+          ->color(fn ($record): string => OrderAdminFormatter::hasExtraContribution($record) ? 'success' : 'gray')
+          ->toggleable(),
+        TextColumn::make('extra_contribution_amount')
+          ->label('Soutien +')
+          ->money(fn ($record) => $record->currency)
+          ->sortable()
+          ->placeholder('—')
+          ->toggleable(isToggledHiddenByDefault: true),
         TextColumn::make('books_received')
           ->label('Livre reçu')
           ->state(fn ($record): string => OrderAdminFormatter::booksReceivedLabel($record))
@@ -131,6 +145,16 @@ class OrdersTable
             'na' => 'Numérique uniquement',
           ])
           ->query(fn (Builder $query, array $data): Builder => OrderBooksReceivedQuery::applyFilter(
+            $query,
+            $data['value'] ?? null,
+          )),
+        SelectFilter::make('payment_mode')
+          ->label('Mode d\'achat')
+          ->options([
+            'normal' => 'Prix normal',
+            'voluntary' => 'Prix volontaire',
+          ])
+          ->query(fn (Builder $query, array $data): Builder => OrderExtraContributionQuery::applyFilter(
             $query,
             $data['value'] ?? null,
           )),

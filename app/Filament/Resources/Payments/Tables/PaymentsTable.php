@@ -7,6 +7,7 @@ use App\Enums\PaymentStatus;
 use App\Models\User;
 use App\Support\OrderAdminFormatter;
 use App\Support\OrderBooksReceivedQuery;
+use App\Support\OrderExtraContributionQuery;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -50,6 +51,19 @@ class PaymentsTable
           ->tooltip(fn ($record): ?string => $record->order && OrderAdminFormatter::itemsSummary($record->order) !== '—'
             ? OrderAdminFormatter::itemsSummary($record->order)
             : null),
+        TextColumn::make('order.payment_mode')
+          ->label('Mode d\'achat')
+          ->state(fn ($record): string => $record->order
+            ? OrderAdminFormatter::paymentModeLabel($record->order)
+            : '—')
+          ->description(fn ($record): ?string => $record->order
+            ? OrderAdminFormatter::paymentModeDescription($record->order)
+            : null)
+          ->badge()
+          ->color(fn ($record): string => $record->order && OrderAdminFormatter::hasExtraContribution($record->order)
+            ? 'success'
+            : 'gray')
+          ->toggleable(),
         TextColumn::make('order.books_received')
           ->label('Livre reçu')
           ->state(fn ($record): string => $record->order
@@ -148,6 +162,22 @@ class PaymentsTable
             return $query->whereHas(
               'order',
               fn (Builder $order): Builder => OrderBooksReceivedQuery::applyFilter($order, $data['value']),
+            );
+          }),
+        SelectFilter::make('payment_mode')
+          ->label('Mode d\'achat')
+          ->options([
+            'normal' => 'Prix normal',
+            'voluntary' => 'Prix volontaire',
+          ])
+          ->query(function (Builder $query, array $data): Builder {
+            if (blank($data['value'] ?? null)) {
+              return $query;
+            }
+
+            return $query->whereHas(
+              'order',
+              fn (Builder $order): Builder => OrderExtraContributionQuery::applyFilter($order, $data['value']),
             );
           }),
       ])

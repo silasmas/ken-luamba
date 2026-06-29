@@ -46,6 +46,8 @@ class PaymentAdminExportService
       'Statut paiement',
       'Payé le',
       'Livre reçu',
+      'Mode d\'achat',
+      'Soutien volontaire',
       'Créé le',
     ]));
 
@@ -122,6 +124,8 @@ class PaymentAdminExportService
       (string) $payment->status->label(),
       $payment->paid_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '',
       $order ? OrderAdminFormatter::booksReceivedLabel($order) : '—',
+      $order ? OrderAdminFormatter::paymentModeLabel($order) : '—',
+      $order ? OrderAdminFormatter::extraContributionAmount($order) : 0,
       $payment->created_at?->timezone(config('app.timezone'))->format('d/m/Y H:i') ?? '',
     ];
   }

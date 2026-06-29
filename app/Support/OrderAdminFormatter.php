@@ -152,4 +152,69 @@ class OrderAdminFormatter
 
     return self::isBooksReceived($order) ? 'Reçu' : 'Non reçu';
   }
+
+  /**
+   * Montant de soutien volontaire ajouté par le client.
+   *
+   * @param Order $order Commande source
+   * @return float Montant supplémentaire (0 si aucun)
+   */
+  public static function extraContributionAmount(Order $order): float
+  {
+    return max(0, (float) ($order->extra_contribution_amount ?? 0));
+  }
+
+  /**
+   * Indique si le client a payé au-delà du montant attendu.
+   *
+   * @param Order $order Commande source
+   * @return bool True si un soutien volontaire est présent
+   */
+  public static function hasExtraContribution(Order $order): bool
+  {
+    return self::extraContributionAmount($order) > 0;
+  }
+
+  /**
+   * Total attendu sans le soutien volontaire.
+   *
+   * @param Order $order Commande source
+   * @return float Montant catalogue + livraison − remise
+   */
+  public static function expectedTotalAmount(Order $order): float
+  {
+    return max(0, (float) $order->total - self::extraContributionAmount($order));
+  }
+
+  /**
+   * Libellé du mode d'achat pour l'admin.
+   *
+   * @param Order $order Commande source
+   * @return string Prix normal ou prix volontaire
+   */
+  public static function paymentModeLabel(Order $order): string
+  {
+    return self::hasExtraContribution($order) ? 'Prix volontaire' : 'Prix normal';
+  }
+
+  /**
+   * Détail du montant attendu et du soutien volontaire.
+   *
+   * @param Order $order Commande source
+   * @return string|null Description courte ou null si achat normal
+   */
+  public static function paymentModeDescription(Order $order): ?string
+  {
+    if (! self::hasExtraContribution($order)) {
+      return null;
+    }
+
+    return sprintf(
+      'Attendu %s %s · Soutien +%s %s',
+      number_format(self::expectedTotalAmount($order), 0, ',', ' '),
+      $order->currency,
+      number_format(self::extraContributionAmount($order), 0, ',', ' '),
+      $order->currency,
+    );
+  }
 }
