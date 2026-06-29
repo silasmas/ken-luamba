@@ -45,7 +45,7 @@ class ExtraContributionStatsWidget extends StatsOverviewWidget
         ->description("{$voluntaryRate} % des commandes payées")
         ->descriptionIcon('heroicon-m-heart')
         ->color('success'),
-      Stat::make('Total soutiens volontaires', app(DashboardAnalyticsService::class)->formatMoney($voluntaryTotal))
+      Stat::make('Total soutiens volontaires', $analytics->formatMoney($voluntaryTotal))
         ->description('Montants au-delà du total attendu')
         ->descriptionIcon('heroicon-m-gift')
         ->color('primary'),
