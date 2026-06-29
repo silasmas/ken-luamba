@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\ShopSetting;
 use App\Services\Dashboard\DashboardAnalyticsService;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -44,11 +45,12 @@ class ExtraContributionTrendChart extends ChartWidget
     $analytics = app(DashboardAnalyticsService::class);
     $period = $analytics->resolvePeriod($this->pageFilters);
     $series = $analytics->extraContributionTrend($period['start'], $period['end']);
+    $currency = ShopSetting::currencyCode();
 
     return [
       'datasets' => [
         [
-          'label' => 'Soutiens volontaires (CDF)',
+          'label' => 'Soutiens volontaires ('.$currency.')',
           'data' => $series['values'],
           'borderColor' => '#16a34a',
           'backgroundColor' => 'rgba(22, 163, 74, 0.35)',

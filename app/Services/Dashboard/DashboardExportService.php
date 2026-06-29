@@ -2,6 +2,7 @@
 
 namespace App\Services\Dashboard;
 
+use App\Models\ShopSetting;
 use Carbon\CarbonInterface;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Writer;
@@ -32,6 +33,7 @@ class DashboardExportService
     $period = $this->analyticsService->resolvePeriod($filters);
     $start = $period['start'];
     $end = $period['end'];
+    $currency = ShopSetting::currencyCode();
 
     $directory = storage_path('app/exports');
 
@@ -47,7 +49,7 @@ class DashboardExportService
 
     $this->writeSummarySheet($writer, $start, $end);
     $this->writeKeyValueSheet($writer, 'Formats livres', $this->analyticsService->bookFormatsByType());
-    $this->writeTrendSheet($writer, 'Graphique ventes', 'Date', 'Chiffre affaires (CDF)', $this->analyticsService->salesTrend($start, $end));
+    $this->writeTrendSheet($writer, 'Graphique ventes', 'Date', 'Chiffre affaires ('.$currency.')', $this->analyticsService->salesTrend($start, $end));
     $this->writeTrendSheet($writer, 'Graphique clients', 'Date', 'Nouveaux clients', $this->analyticsService->clientsTrend($start, $end));
     $this->writeTrendSheet($writer, 'Graphique achats', 'Date', 'Quantité achetée', $this->analyticsService->purchasesTrend($start, $end));
     $this->writeKeyValueSheet($writer, 'Commandes par statut', $this->analyticsService->ordersByStatus($start, $end));
@@ -78,7 +80,7 @@ class DashboardExportService
       ['Nouveaux clients (période)', (string) $this->analyticsService->newClientsInPeriod($start, $end)],
       ['Livres (total)', (string) $this->analyticsService->totalBooks()],
       ['Livres publiés', (string) $this->analyticsService->publishedBooks()],
-      ['Chiffre d\'affaires (période)', number_format($this->analyticsService->revenueInPeriod($start, $end), 0, ',', ' ').' CDF'],
+      ['Chiffre d\'affaires (période)', $this->analyticsService->formatMoney($this->analyticsService->revenueInPeriod($start, $end))],
       ['Commandes (période)', (string) $this->analyticsService->ordersInPeriod($start, $end)],
       ['Achats / quantités (période)', (string) $this->analyticsService->purchasesInPeriod($start, $end)],
     ];

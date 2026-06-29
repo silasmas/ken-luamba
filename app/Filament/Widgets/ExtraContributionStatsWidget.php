@@ -3,7 +3,6 @@
 namespace App\Filament\Widgets;
 
 use App\Services\Dashboard\DashboardAnalyticsService;
-use App\Models\ShopSetting;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
@@ -36,7 +35,6 @@ class ExtraContributionStatsWidget extends StatsOverviewWidget
     $voluntaryRate = $paidTotal > 0
       ? round(($voluntaryCount / $paidTotal) * 100, 1)
       : 0.0;
-    $currency = ShopSetting::currencyCode();
 
     return [
       Stat::make('Achats au prix normal', (string) $normalCount)
@@ -47,7 +45,7 @@ class ExtraContributionStatsWidget extends StatsOverviewWidget
         ->description("{$voluntaryRate} % des commandes payées")
         ->descriptionIcon('heroicon-m-heart')
         ->color('success'),
-      Stat::make('Total soutiens volontaires', number_format($voluntaryTotal, 0, ',', ' ').' '.$currency)
+      Stat::make('Total soutiens volontaires', app(DashboardAnalyticsService::class)->formatMoney($voluntaryTotal))
         ->description('Montants au-delà du total attendu')
         ->descriptionIcon('heroicon-m-gift')
         ->color('primary'),

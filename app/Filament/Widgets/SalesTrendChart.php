@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\ShopSetting;
 use App\Services\Dashboard\DashboardAnalyticsService;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -44,11 +45,12 @@ class SalesTrendChart extends ChartWidget
     $analytics = app(DashboardAnalyticsService::class);
     $period = $analytics->resolvePeriod($this->pageFilters);
     $series = $analytics->salesTrend($period['start'], $period['end']);
+    $currency = ShopSetting::currencyCode();
 
     return [
       'datasets' => [
         [
-          'label' => 'Chiffre d\'affaires (CDF)',
+          'label' => 'Chiffre d\'affaires ('.$currency.')',
           'data' => $series['values'],
           'borderColor' => '#2563eb',
           'backgroundColor' => 'rgba(37, 99, 235, 0.15)',

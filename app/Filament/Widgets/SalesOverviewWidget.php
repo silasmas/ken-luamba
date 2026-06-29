@@ -43,7 +43,7 @@ class SalesOverviewWidget extends StatsOverviewWidget
       ->count();
 
     return [
-      Stat::make('Chiffre d\'affaires', number_format($revenue, 0, ',', ' ').' CDF')
+      Stat::make('Chiffre d\'affaires', $analytics->formatMoney($revenue))
         ->description('Sur la période sélectionnée')
         ->descriptionIcon('heroicon-m-banknotes')
         ->color('success'),

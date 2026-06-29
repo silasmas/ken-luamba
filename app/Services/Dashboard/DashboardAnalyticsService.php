@@ -9,6 +9,7 @@ use App\Models\Book;
 use App\Models\BookFormat;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\ShopSetting;
 use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
@@ -68,6 +69,30 @@ class DashboardAnalyticsService
     };
 
     return ['start' => $start, 'end' => $end];
+  }
+
+  /**
+   * Code devise active configurée pour la boutique.
+   *
+   * @return string CDF ou USD
+   */
+  public function shopCurrencyCode(): string
+  {
+    return ShopSetting::currencyCode();
+  }
+
+  /**
+   * Formate un montant avec la devise boutique active.
+   *
+   * @param float $amount Montant à afficher
+   * @return string Montant formaté avec devise
+   */
+  public function formatMoney(float $amount): string
+  {
+    $currency = $this->shopCurrencyCode();
+    $decimals = $currency === 'USD' ? 2 : 0;
+
+    return number_format($amount, $decimals, ',', ' ').' '.$currency;
   }
 
   /**
@@ -144,10 +169,7 @@ class DashboardAnalyticsService
    */
   public function revenueInPeriod(CarbonInterface $start, CarbonInterface $end): float
   {
-    return (float) Order::query()
-      ->whereIn('status', array_map(fn (OrderStatus $status): string => $status->value, $this->paidOrderStatuses()))
-      ->whereBetween('created_at', [$start, $end])
-      ->sum('total');
+    return (float) $this->paidOrdersInPeriodQuery($start, $end)->sum('total');
   }
 
   /**
@@ -236,11 +258,9 @@ class DashboardAnalyticsService
     return $this->buildDailySeries(
       $start,
       $end,
-      Order::query()
+      $this->paidOrdersInPeriodQuery($start, $end)
         ->selectRaw('DATE(created_at) as day, SUM(extra_contribution_amount) as aggregate')
-        ->whereIn('status', array_map(fn (OrderStatus $status): string => $status->value, $this->paidOrderStatuses()))
         ->where('extra_contribution_amount', '>', 0)
-        ->whereBetween('created_at', [$start, $end])
         ->groupBy('day')
         ->orderBy('day')
         ->pluck('aggregate', 'day'),
@@ -257,6 +277,7 @@ class DashboardAnalyticsService
   private function paidOrdersInPeriodQuery(CarbonInterface $start, CarbonInterface $end)
   {
     return Order::query()
+      ->where('currency', $this->shopCurrencyCode())
       ->whereIn('status', array_map(fn (OrderStatus $status): string => $status->value, $this->paidOrderStatuses()))
       ->whereBetween('created_at', [$start, $end]);
   }
@@ -298,10 +319,8 @@ class DashboardAnalyticsService
     return $this->buildDailySeries(
       $start,
       $end,
-      Order::query()
+      $this->paidOrdersInPeriodQuery($start, $end)
         ->selectRaw('DATE(created_at) as day, SUM(total) as aggregate')
-        ->whereIn('status', array_map(fn (OrderStatus $status): string => $status->value, $this->paidOrderStatuses()))
-        ->whereBetween('created_at', [$start, $end])
         ->groupBy('day')
         ->orderBy('day')
         ->pluck('aggregate', 'day'),
