@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\OrderAdminFormatter;
 use App\Support\OrderBooksReceivedQuery;
 use App\Support\OrderExtraContributionQuery;
+use App\Filament\Support\ResizableTableColumn;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -47,8 +48,8 @@ class PaymentsTable
             ? OrderAdminFormatter::itemsSummaryHtml($record->order)
             : new HtmlString('<span class="text-gray-400">—</span>'))
           ->html()
-          ->wrap()
-          ->extraCellAttributes(['class' => 'align-top'])
+          ->extraHeaderAttributes(ResizableTableColumn::attributes('order_items', '26rem')['header'])
+          ->extraCellAttributes(ResizableTableColumn::attributes('order_items', '26rem')['cell'])
           ->tooltip(fn ($record): ?string => $record->order && OrderAdminFormatter::itemsSummary($record->order) !== '—'
             ? OrderAdminFormatter::itemsSummary($record->order)
             : null),
@@ -67,19 +68,12 @@ class PaymentsTable
           ->toggleable(),
         TextColumn::make('order.books_received')
           ->label('Livre reçu')
-          ->state(fn ($record): string => $record->order
-            ? OrderAdminFormatter::booksReceivedLabel($record->order)
-            : '—')
-          ->description(fn ($record): ?string => $record->order
-            ? OrderAdminFormatter::booksPendingSummary($record->order)
-            : null)
-          ->badge()
-          ->color(fn ($record): string => match (true) {
-            $record->order && OrderAdminFormatter::isBooksReceived($record->order) => 'success',
-            $record->order && OrderAdminFormatter::isBooksPartiallyReceived($record->order) => 'info',
-            $record->order && ! $record->order->isDigitalOnly() => 'warning',
-            default => 'gray',
-          })
+          ->state(fn ($record) => $record->order
+            ? OrderAdminFormatter::booksReceivedCellHtml($record->order)
+            : new HtmlString('<span class="text-gray-400">—</span>'))
+          ->html()
+          ->extraHeaderAttributes(ResizableTableColumn::attributes('books_received', '16rem')['header'])
+          ->extraCellAttributes(ResizableTableColumn::attributes('books_received', '16rem')['cell'])
           ->toggleable(),
         TextColumn::make('provider_reference')
           ->label('Réf. FlexPay')

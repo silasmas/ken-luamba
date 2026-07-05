@@ -43,7 +43,7 @@ class OrderAdminFormatter
 
     return $order->items
       ->map(fn (OrderItem $item): string => sprintf(
-        "%s (%s)\n× %d",
+        '%s (%s) × %d',
         $item->book_title,
         $item->format_type->label(),
         $item->quantity,
@@ -69,10 +69,10 @@ class OrderAdminFormatter
     $markup = $order->items
       ->map(function (OrderItem $item): string {
         return sprintf(
-          '<div class="py-2 leading-snug">'
-          .'<div class="font-medium text-gray-950 dark:text-white">%s</div>'
-          .'<div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">%s</div>'
-          .'<div class="mt-1 text-sm font-semibold text-gray-700 dark:text-gray-200">× %d</div>'
+          '<div class="block whitespace-nowrap py-1.5 leading-snug">'
+          .'<span class="font-medium text-gray-950 dark:text-white">%s</span>'
+          .'<span class="text-gray-500 dark:text-gray-400"> (%s)</span>'
+          .'<span class="font-semibold text-gray-700 dark:text-gray-200"> × %d</span>'
           .'</div>',
           e($item->book_title),
           e($item->format_type->label()),
@@ -81,7 +81,9 @@ class OrderAdminFormatter
       })
       ->implode('');
 
-    return new HtmlString('<div class="min-w-[16rem] max-w-[22rem] divide-y divide-gray-100 dark:divide-white/10">'.$markup.'</div>');
+    return new HtmlString(
+      '<div class="kl-order-items divide-y divide-gray-100 dark:divide-white/10">'.$markup.'</div>',
+    );
   }
 
   /**
@@ -243,6 +245,25 @@ class OrderAdminFormatter
   }
 
   /**
+   * Retourne les titres des articles encore à remettre, un par entrée.
+   *
+   * @param Order $order Commande source
+   * @return list<string> Libellés empilables
+   */
+  public static function booksPendingLines(Order $order): array
+  {
+    if ($order->isDigitalOnly() || self::isBooksReceived($order)) {
+      return [];
+    }
+
+    return self::physicalItems($order)
+      ->filter(fn (OrderItem $item): bool => $item->received_at === null)
+      ->map(fn (OrderItem $item): string => sprintf('%s × %d', $item->book_title, $item->quantity))
+      ->values()
+      ->all();
+  }
+
+  /**
    * Détail des articles encore à remettre au client.
    *
    * @param Order $order Commande source
@@ -250,17 +271,52 @@ class OrderAdminFormatter
    */
   public static function booksPendingSummary(Order $order): ?string
   {
-    if ($order->isDigitalOnly() || self::isBooksReceived($order)) {
-      return null;
+    $lines = self::booksPendingLines($order);
+
+    return $lines === [] ? null : implode("\n", $lines);
+  }
+
+  /**
+   * Affiche le statut de réception et les articles en attente dans une cellule.
+   *
+   * @param Order $order Commande source
+   * @return HtmlString Markup badge + liste verticale
+   */
+  public static function booksReceivedCellHtml(Order $order): HtmlString
+  {
+    if ($order->isDigitalOnly()) {
+      return new HtmlString(
+        '<span class="inline-flex rounded-md bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600 dark:bg-white/10 dark:text-gray-300">Numérique</span>',
+      );
     }
 
-    $pending = self::physicalItems($order)
-      ->filter(fn (OrderItem $item): bool => $item->received_at === null)
-      ->map(fn (OrderItem $item): string => sprintf('%s × %d', $item->book_title, $item->quantity))
-      ->values()
-      ->all();
+    $label = self::booksReceivedLabel($order);
+    $badgeClass = match (true) {
+      self::isBooksReceived($order) => 'bg-success-50 text-success-700 ring-success-600/20 dark:bg-success-500/10 dark:text-success-400',
+      self::isBooksPartiallyReceived($order) => 'bg-info-50 text-info-700 ring-info-600/20 dark:bg-info-500/10 dark:text-info-400',
+      default => 'bg-warning-50 text-warning-700 ring-warning-600/20 dark:bg-warning-500/10 dark:text-warning-400',
+    };
 
-    return $pending === [] ? null : implode(' · ', $pending);
+    $pendingLines = self::booksPendingLines($order);
+    $pendingHtml = '';
+
+    if ($pendingLines !== []) {
+      $items = collect($pendingLines)
+        ->map(fn (string $line): string => '<li class="block leading-snug">'.e($line).'</li>')
+        ->implode('');
+
+      $pendingHtml = sprintf(
+        '<ul class="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">%s</ul>',
+        $items,
+      );
+    }
+
+    return new HtmlString(sprintf(
+      '<div class="kl-books-received"><span class="inline-flex rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset %s">%s</span>%s</div>',
+      $badgeClass,
+      e($label),
+      $pendingHtml,
+    ));
   }
 
   /**

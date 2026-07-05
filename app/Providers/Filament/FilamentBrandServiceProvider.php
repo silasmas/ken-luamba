@@ -28,5 +28,10 @@ class FilamentBrandServiceProvider extends ServiceProvider
         BLADE, ['css' => $css]);
       },
     );
+
+    FilamentView::registerRenderHook(
+      PanelsRenderHook::BODY_END,
+      fn (): string => view('filament.hooks.resizable-table-columns')->render(),
+    );
   }
 }

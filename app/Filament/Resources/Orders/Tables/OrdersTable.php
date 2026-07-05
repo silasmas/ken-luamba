@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Models\User;
 use App\Services\DeliveryService;
 use App\Filament\Support\OrderBooksReceivedAdminAction;
+use App\Filament\Support\ResizableTableColumn;
 use App\Support\OrderAdminFormatter;
 use App\Support\OrderBooksReceivedQuery;
 use App\Support\OrderExtraContributionQuery;
@@ -48,8 +49,8 @@ class OrdersTable
           ->label('Articles')
           ->state(fn ($record) => OrderAdminFormatter::itemsSummaryHtml($record))
           ->html()
-          ->wrap()
-          ->extraCellAttributes(['class' => 'align-top'])
+          ->extraHeaderAttributes(ResizableTableColumn::attributes('items_summary', '26rem')['header'])
+          ->extraCellAttributes(ResizableTableColumn::attributes('items_summary', '26rem')['cell'])
           ->tooltip(fn ($record): ?string => OrderAdminFormatter::itemsSummary($record) !== '—'
             ? OrderAdminFormatter::itemsSummary($record)
             : null)
@@ -71,15 +72,10 @@ class OrdersTable
           ->toggleable(isToggledHiddenByDefault: true),
         TextColumn::make('books_received')
           ->label('Livre reçu')
-          ->state(fn ($record): string => OrderAdminFormatter::booksReceivedLabel($record))
-          ->description(fn ($record): ?string => OrderAdminFormatter::booksPendingSummary($record))
-          ->badge()
-          ->color(fn ($record): string => match (true) {
-            OrderAdminFormatter::isBooksReceived($record) => 'success',
-            OrderAdminFormatter::isBooksPartiallyReceived($record) => 'info',
-            ! $record->isDigitalOnly() => 'warning',
-            default => 'gray',
-          })
+          ->state(fn ($record) => OrderAdminFormatter::booksReceivedCellHtml($record))
+          ->html()
+          ->extraHeaderAttributes(ResizableTableColumn::attributes('books_received', '16rem')['header'])
+          ->extraCellAttributes(ResizableTableColumn::attributes('books_received', '16rem')['cell'])
           ->toggleable(),
         TextColumn::make('status')
           ->label('Statut')
