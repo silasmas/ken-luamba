@@ -48,6 +48,7 @@ class PaymentsTable
             : new HtmlString('<span class="text-gray-400">—</span>'))
           ->html()
           ->wrap()
+          ->extraCellAttributes(['class' => 'align-top'])
           ->tooltip(fn ($record): ?string => $record->order && OrderAdminFormatter::itemsSummary($record->order) !== '—'
             ? OrderAdminFormatter::itemsSummary($record->order)
             : null),
@@ -69,12 +70,14 @@ class PaymentsTable
           ->state(fn ($record): string => $record->order
             ? OrderAdminFormatter::booksReceivedLabel($record->order)
             : '—')
+          ->description(fn ($record): ?string => $record->order
+            ? OrderAdminFormatter::booksPendingSummary($record->order)
+            : null)
           ->badge()
-          ->color(fn ($record): string => match ($record->order
-            ? OrderAdminFormatter::booksReceivedLabel($record->order)
-            : '—') {
-            'Reçu' => 'success',
-            'Non reçu' => 'warning',
+          ->color(fn ($record): string => match (true) {
+            $record->order && OrderAdminFormatter::isBooksReceived($record->order) => 'success',
+            $record->order && OrderAdminFormatter::isBooksPartiallyReceived($record->order) => 'info',
+            $record->order && ! $record->order->isDigitalOnly() => 'warning',
             default => 'gray',
           })
           ->toggleable(),
@@ -151,6 +154,7 @@ class PaymentsTable
           ->label('Livre reçu')
           ->options([
             'yes' => 'Reçu',
+            'partial' => 'Partiel',
             'no' => 'Non reçu',
             'na' => 'Numérique uniquement',
           ])

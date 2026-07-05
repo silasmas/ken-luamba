@@ -6,6 +6,7 @@ use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
+use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
 
 /**
@@ -23,14 +24,14 @@ class OrderAdminFormatter
   {
     $lines = self::itemsSummaryLines($order);
 
-    return $lines === [] ? '—' : implode(' · ', $lines);
+    return $lines === [] ? '—' : implode("\n", $lines);
   }
 
   /**
    * Retourne une ligne par article commandé.
    *
    * @param Order $order Commande source
-   * @return list<string> Libellés article × quantité
+   * @return list<string> Libellés article + quantité
    */
   public static function itemsSummaryLines(Order $order): array
   {
@@ -42,7 +43,7 @@ class OrderAdminFormatter
 
     return $order->items
       ->map(fn (OrderItem $item): string => sprintf(
-        '%s (%s) × %d',
+        "%s (%s)\n× %d",
         $item->book_title,
         $item->format_type->label(),
         $item->quantity,
@@ -59,28 +60,93 @@ class OrderAdminFormatter
    */
   public static function itemsSummaryHtml(Order $order): HtmlString
   {
-    $lines = self::itemsSummaryLines($order);
+    $order->loadMissing('items');
 
-    if ($lines === []) {
+    if ($order->items->isEmpty()) {
       return new HtmlString('<span class="text-gray-400">—</span>');
     }
 
-    $markup = collect($lines)
-      ->map(function (string $line): string {
-        if (! preg_match('/^(.+?) \((.+?)\) × (\d+)$/', $line, $matches)) {
-          return '<span class="block py-0.5 leading-snug">'.e($line).'</span>';
-        }
-
+    $markup = $order->items
+      ->map(function (OrderItem $item): string {
         return sprintf(
-          '<span class="block py-0.5 leading-snug"><span class="font-medium text-gray-950 dark:text-white">%s</span> <span class="text-gray-500 dark:text-gray-400">(%s)</span> <span class="font-semibold">× %s</span></span>',
-          e($matches[1]),
-          e($matches[2]),
-          e($matches[3]),
+          '<div class="py-2 leading-snug">'
+          .'<div class="font-medium text-gray-950 dark:text-white">%s</div>'
+          .'<div class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">%s</div>'
+          .'<div class="mt-1 text-sm font-semibold text-gray-700 dark:text-gray-200">× %d</div>'
+          .'</div>',
+          e($item->book_title),
+          e($item->format_type->label()),
+          $item->quantity,
         );
       })
       ->implode('');
 
-    return new HtmlString($markup);
+    return new HtmlString('<div class="min-w-[16rem] max-w-[22rem] divide-y divide-gray-100 dark:divide-white/10">'.$markup.'</div>');
+  }
+
+  /**
+   * Retourne les lignes physiques d'une commande.
+   *
+   * @param Order $order Commande source
+   * @return Collection<int, OrderItem> Articles reliés ou brochés
+   */
+  public static function physicalItems(Order $order): Collection
+  {
+    $order->loadMissing('items');
+
+    return $order->items->filter(fn (OrderItem $item): bool => $item->isPhysical())->values();
+  }
+
+  /**
+   * Compte les articles physiques reçus et le total attendu.
+   *
+   * @param Order $order Commande source
+   * @return array{received: int, total: int} Progression de réception
+   */
+  public static function booksReceivedCounts(Order $order): array
+  {
+    $physicalItems = self::physicalItems($order);
+    $total = $physicalItems->count();
+
+    if ($total === 0) {
+      return ['received' => 0, 'total' => 0];
+    }
+
+    if (self::usesLegacyFullReceipt($order)) {
+      return ['received' => $total, 'total' => $total];
+    }
+
+    $received = $physicalItems->filter(fn (OrderItem $item): bool => $item->received_at !== null)->count();
+
+    return ['received' => $received, 'total' => $total];
+  }
+
+  /**
+   * Indique si la commande repose sur l'ancien marquage global « tout reçu ».
+   *
+   * @param Order $order Commande source
+   * @return bool True si réception globale sans détail par article
+   */
+  public static function usesLegacyFullReceipt(Order $order): bool
+  {
+    if ($order->isDigitalOnly()) {
+      return false;
+    }
+
+    $order->loadMissing('delivery');
+
+    $isGloballyReceived = $order->status === OrderStatus::Completed
+      || in_array(
+        $order->delivery?->status,
+        [DeliveryStatus::Delivered, DeliveryStatus::PickedUp],
+        true,
+      );
+
+    if (! $isGloballyReceived) {
+      return false;
+    }
+
+    return self::physicalItems($order)->every(fn (OrderItem $item): bool => $item->received_at === null);
   }
 
   /**
@@ -114,10 +180,10 @@ class OrderAdminFormatter
   }
 
   /**
-   * Indique si les livres physiques de la commande sont considérés comme reçus.
+   * Indique si tous les livres physiques sont reçus.
    *
    * @param Order $order Commande source
-   * @return bool True si réception confirmée
+   * @return bool True si réception complète
    */
   public static function isBooksReceived(Order $order): bool
   {
@@ -125,17 +191,26 @@ class OrderAdminFormatter
       return false;
     }
 
-    $order->loadMissing('delivery');
+    $counts = self::booksReceivedCounts($order);
 
-    if ($order->status === OrderStatus::Completed) {
-      return true;
+    return $counts['total'] > 0 && $counts['received'] === $counts['total'];
+  }
+
+  /**
+   * Indique si au moins un article physique est reçu sans réception complète.
+   *
+   * @param Order $order Commande source
+   * @return bool True si réception partielle
+   */
+  public static function isBooksPartiallyReceived(Order $order): bool
+  {
+    if ($order->isDigitalOnly()) {
+      return false;
     }
 
-    return in_array(
-      $order->delivery?->status,
-      [DeliveryStatus::Delivered, DeliveryStatus::PickedUp],
-      true,
-    );
+    $counts = self::booksReceivedCounts($order);
+
+    return $counts['received'] > 0 && $counts['received'] < $counts['total'];
   }
 
   /**
@@ -150,7 +225,71 @@ class OrderAdminFormatter
       return 'Numérique';
     }
 
-    return self::isBooksReceived($order) ? 'Reçu' : 'Non reçu';
+    $counts = self::booksReceivedCounts($order);
+
+    if ($counts['total'] === 0) {
+      return '—';
+    }
+
+    if ($counts['received'] === $counts['total']) {
+      return 'Reçu';
+    }
+
+    if ($counts['received'] === 0) {
+      return 'Non reçu';
+    }
+
+    return sprintf('Partiel (%d/%d)', $counts['received'], $counts['total']);
+  }
+
+  /**
+   * Détail des articles encore à remettre au client.
+   *
+   * @param Order $order Commande source
+   * @return string|null Liste courte ou null si tout est reçu
+   */
+  public static function booksPendingSummary(Order $order): ?string
+  {
+    if ($order->isDigitalOnly() || self::isBooksReceived($order)) {
+      return null;
+    }
+
+    $pending = self::physicalItems($order)
+      ->filter(fn (OrderItem $item): bool => $item->received_at === null)
+      ->map(fn (OrderItem $item): string => sprintf('%s × %d', $item->book_title, $item->quantity))
+      ->values()
+      ->all();
+
+    return $pending === [] ? null : implode(' · ', $pending);
+  }
+
+  /**
+   * Libellé d'une ligne physique pour la modale de réception.
+   *
+   * @param OrderItem $item Ligne de commande
+   * @return string Libellé checkbox
+   */
+  public static function physicalItemReceiptLabel(OrderItem $item): string
+  {
+    return sprintf('%s (%s) × %d', $item->book_title, $item->format_type->label(), $item->quantity);
+  }
+
+  /**
+   * Identifiants des articles physiques déjà reçus.
+   *
+   * @param Order $order Commande source
+   * @return list<string> UUID des lignes cochées par défaut
+   */
+  public static function defaultReceivedItemIds(Order $order): array
+  {
+    if (self::usesLegacyFullReceipt($order)) {
+      return self::physicalItems($order)->pluck('id')->all();
+    }
+
+    return self::physicalItems($order)
+      ->filter(fn (OrderItem $item): bool => $item->received_at !== null)
+      ->pluck('id')
+      ->all();
   }
 
   /**

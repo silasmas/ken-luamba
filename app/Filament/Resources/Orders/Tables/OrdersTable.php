@@ -6,6 +6,7 @@ use App\Enums\OrderStatus;
 use App\Models\User;
 use App\Services\DeliveryService;
 use App\Support\OrderAdminFormatter;
+use App\Support\OrderBooksReceivedAdminAction;
 use App\Support\OrderBooksReceivedQuery;
 use App\Support\OrderExtraContributionQuery;
 use Filament\Actions\Action;
@@ -48,6 +49,7 @@ class OrdersTable
           ->state(fn ($record) => OrderAdminFormatter::itemsSummaryHtml($record))
           ->html()
           ->wrap()
+          ->extraCellAttributes(['class' => 'align-top'])
           ->tooltip(fn ($record): ?string => OrderAdminFormatter::itemsSummary($record) !== '—'
             ? OrderAdminFormatter::itemsSummary($record)
             : null)
@@ -70,10 +72,12 @@ class OrdersTable
         TextColumn::make('books_received')
           ->label('Livre reçu')
           ->state(fn ($record): string => OrderAdminFormatter::booksReceivedLabel($record))
+          ->description(fn ($record): ?string => OrderAdminFormatter::booksPendingSummary($record))
           ->badge()
-          ->color(fn ($record): string => match (OrderAdminFormatter::booksReceivedLabel($record)) {
-            'Reçu' => 'success',
-            'Non reçu' => 'warning',
+          ->color(fn ($record): string => match (true) {
+            OrderAdminFormatter::isBooksReceived($record) => 'success',
+            OrderAdminFormatter::isBooksPartiallyReceived($record) => 'info',
+            ! $record->isDigitalOnly() => 'warning',
             default => 'gray',
           })
           ->toggleable(),
@@ -141,6 +145,7 @@ class OrdersTable
           ->label('Livre reçu')
           ->options([
             'yes' => 'Reçu',
+            'partial' => 'Partiel',
             'no' => 'Non reçu',
             'na' => 'Numérique uniquement',
           ])
@@ -160,33 +165,21 @@ class OrdersTable
           )),
       ])
       ->recordActions([
-        Action::make('markBooksReceived')
-          ->label('Marquer reçu')
-          ->icon(Heroicon::OutlinedCheckCircle)
-          ->color('success')
-          ->requiresConfirmation()
-          ->visible(fn ($record): bool => ! $record->isDigitalOnly()
-            && ! OrderAdminFormatter::isBooksReceived($record))
-          ->action(function ($record): void {
-            app(DeliveryService::class)->markBooksReceivedByAdmin($record);
-
-            Notification::make()
-              ->title('Livre marqué comme reçu')
-              ->success()
-              ->send();
-          }),
+        OrderBooksReceivedAdminAction::manageReceipt(),
         Action::make('markBooksNotReceived')
-          ->label('Marquer non reçu')
+          ->label('Tout remettre en attente')
           ->icon(Heroicon::OutlinedXCircle)
           ->color('warning')
           ->requiresConfirmation()
+          ->modalDescription('Tous les articles seront marqués comme non reçus et la commande repassera en attente de remise.')
           ->visible(fn ($record): bool => ! $record->isDigitalOnly()
-            && OrderAdminFormatter::isBooksReceived($record))
+            && (OrderAdminFormatter::isBooksReceived($record)
+              || OrderAdminFormatter::isBooksPartiallyReceived($record)))
           ->action(function ($record): void {
             app(DeliveryService::class)->markBooksNotReceivedByAdmin($record);
 
             Notification::make()
-              ->title('Livre marqué comme non reçu')
+              ->title('Réception réinitialisée')
               ->success()
               ->send();
           }),
@@ -195,7 +188,7 @@ class OrdersTable
       ->toolbarActions([
         BulkActionGroup::make([
           BulkAction::make('markBooksReceivedBulk')
-            ->label('Marquer livres reçus')
+            ->label('Marquer tout reçu')
             ->icon(Heroicon::OutlinedCheckCircle)
             ->color('success')
             ->requiresConfirmation()
@@ -208,12 +201,13 @@ class OrdersTable
                   continue;
                 }
 
-                $service->markBooksReceivedByAdmin($record);
+                $physicalItemIds = OrderAdminFormatter::physicalItems($record)->pluck('id')->all();
+                $service->syncPhysicalItemsReceiptByAdmin($record, $physicalItemIds);
                 $count++;
               }
 
               Notification::make()
-                ->title("{$count} commande(s) marquée(s) comme reçue(s)")
+                ->title("{$count} commande(s) marquée(s) comme entièrement reçue(s)")
                 ->success()
                 ->send();
             }),

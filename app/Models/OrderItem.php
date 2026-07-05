@@ -28,6 +28,7 @@ class OrderItem extends Model
     'unit_price',
     'total_price',
     'pricing_period_id',
+    'received_at',
   ];
 
   /**
@@ -41,6 +42,7 @@ class OrderItem extends Model
       'format_type' => BookFormatType::class,
       'unit_price' => 'decimal:2',
       'total_price' => 'decimal:2',
+      'received_at' => 'datetime',
     ];
   }
 
@@ -62,5 +64,15 @@ class OrderItem extends Model
   public function bookFormat(): BelongsTo
   {
     return $this->belongsTo(BookFormat::class);
+  }
+
+  /**
+   * Indique si la ligne concerne un format physique à remettre au client.
+   *
+   * @return bool True pour relié ou broché
+   */
+  public function isPhysical(): bool
+  {
+    return ! $this->format_type->isDigital();
   }
 }

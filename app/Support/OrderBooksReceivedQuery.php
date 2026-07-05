@@ -2,8 +2,6 @@
 
 namespace App\Support;
 
-use App\Enums\BookFormatType;
-use App\Enums\DeliveryStatus;
 use App\Enums\OrderStatus;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -16,7 +14,7 @@ class OrderBooksReceivedQuery
    * Applique un filtre de réception sur une requête commandes.
    *
    * @param Builder $query Requête commandes
-   * @param string|null $value Valeur du filtre (yes, no, na)
+   * @param string|null $value Valeur du filtre (yes, partial, no, na)
    * @return Builder Requête filtrée
    */
   public static function applyFilter(Builder $query, ?string $value): Builder
@@ -27,6 +25,7 @@ class OrderBooksReceivedQuery
 
     return match ($value) {
       'yes' => self::received($query),
+      'partial' => self::partiallyReceived($query),
       'no' => self::notReceived($query),
       'na' => self::digitalOnly($query),
       default => $query,
@@ -43,7 +42,7 @@ class OrderBooksReceivedQuery
   {
     return $query->whereHas('items', fn (Builder $items): Builder => $items->whereIn(
       'format_type',
-      [BookFormatType::Hardcover->value, BookFormatType::Paperback->value],
+      self::physicalFormatValues(),
     ));
   }
 
@@ -57,12 +56,12 @@ class OrderBooksReceivedQuery
   {
     return $query->whereDoesntHave('items', fn (Builder $items): Builder => $items->whereIn(
       'format_type',
-      [BookFormatType::Hardcover->value, BookFormatType::Paperback->value],
+      self::physicalFormatValues(),
     ));
   }
 
   /**
-   * Commandes physiques dont le livre est considéré comme reçu.
+   * Commandes physiques entièrement reçues.
    *
    * @param Builder $query Requête commandes
    * @return Builder Requête filtrée
@@ -74,30 +73,65 @@ class OrderBooksReceivedQuery
         ->where('status', OrderStatus::Completed->value)
         ->orWhereHas('delivery', fn (Builder $delivery): Builder => $delivery->whereIn(
           'status',
-          [DeliveryStatus::Delivered->value, DeliveryStatus::PickedUp->value],
-        ));
+          ['delivered', 'picked_up'],
+        ))
+        ->orWhereDoesntHave('items', fn (Builder $items): Builder => $items
+          ->whereIn('format_type', self::physicalFormatValues())
+          ->whereNull('received_at'));
     });
   }
 
   /**
-   * Commandes physiques dont le livre n'est pas encore reçu.
+   * Commandes physiques partiellement reçues.
+   *
+   * @param Builder $query Requête commandes
+   * @return Builder Requête filtrée
+   */
+  public static function partiallyReceived(Builder $query): Builder
+  {
+    return self::withPhysical($query)
+      ->where('status', '!=', OrderStatus::Completed->value)
+      ->whereHas('items', fn (Builder $items): Builder => $items
+        ->whereIn('format_type', self::physicalFormatValues())
+        ->whereNotNull('received_at'))
+      ->whereHas('items', fn (Builder $items): Builder => $items
+        ->whereIn('format_type', self::physicalFormatValues())
+        ->whereNull('received_at'));
+  }
+
+  /**
+   * Commandes physiques sans aucun article reçu.
    *
    * @param Builder $query Requête commandes
    * @return Builder Requête filtrée
    */
   public static function notReceived(Builder $query): Builder
   {
-    return self::withPhysical($query)->where(function (Builder $notReceivedQuery): void {
-      $notReceivedQuery
-        ->where('status', '!=', OrderStatus::Completed->value)
-        ->where(function (Builder $deliveryQuery): void {
-          $deliveryQuery
-            ->whereDoesntHave('delivery')
-            ->orWhereHas('delivery', fn (Builder $delivery): Builder => $delivery->whereNotIn(
-              'status',
-              [DeliveryStatus::Delivered->value, DeliveryStatus::PickedUp->value],
-            ));
-        });
-    });
+    return self::withPhysical($query)
+      ->where('status', '!=', OrderStatus::Completed->value)
+      ->whereDoesntHave('items', fn (Builder $items): Builder => $items
+        ->whereIn('format_type', self::physicalFormatValues())
+        ->whereNotNull('received_at'))
+      ->where(function (Builder $deliveryQuery): void {
+        $deliveryQuery
+          ->whereDoesntHave('delivery')
+          ->orWhereHas('delivery', fn (Builder $delivery): Builder => $delivery->whereNotIn(
+            'status',
+            ['delivered', 'picked_up'],
+          ));
+      });
+  }
+
+  /**
+   * Retourne les valeurs enum des formats physiques.
+   *
+   * @return list<string> Codes hardcover et paperback
+   */
+  private static function physicalFormatValues(): array
+  {
+    return [
+      \App\Enums\BookFormatType::Hardcover->value,
+      \App\Enums\BookFormatType::Paperback->value,
+    ];
   }
 }

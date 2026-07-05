@@ -360,6 +360,53 @@ class DeliveryService
   }
 
   /**
+   * Synchronise la réception article par article depuis l'admin.
+   *
+   * @param Order $order Commande cible
+   * @param list<string> $receivedItemIds Identifiants des lignes reçues
+   * @return Order Commande mise à jour
+   */
+  public function syncPhysicalItemsReceiptByAdmin(Order $order, array $receivedItemIds): Order
+  {
+    if (! $order->hasPhysicalItems()) {
+      throw ValidationException::withMessages([
+        'order' => ['Cette commande ne contient pas de livre physique.'],
+      ]);
+    }
+
+    if (in_array($order->status, [OrderStatus::Cancelled, OrderStatus::Refunded, OrderStatus::PendingPayment], true)) {
+      throw ValidationException::withMessages([
+        'order' => ['Impossible de mettre à jour la réception dans cet état de commande.'],
+      ]);
+    }
+
+    $order->loadMissing('items');
+    $physicalItems = $order->items->filter(fn ($item) => $item->isPhysical());
+    $allowedIds = $physicalItems->pluck('id')->all();
+    $selectedIds = array_values(array_intersect($receivedItemIds, $allowedIds));
+
+    foreach ($physicalItems as $item) {
+      $shouldBeReceived = in_array($item->id, $selectedIds, true);
+
+      if ($shouldBeReceived && $item->received_at === null) {
+        $item->update(['received_at' => now()]);
+      }
+
+      if (! $shouldBeReceived && $item->received_at !== null) {
+        $item->update(['received_at' => null]);
+      }
+    }
+
+    $order->refresh()->loadMissing(['items', 'delivery', 'payment']);
+
+    if ($physicalItems->every(fn ($item) => $item->fresh()->received_at !== null)) {
+      return $this->markBooksReceivedByAdmin($order);
+    }
+
+    return $this->markBooksPartiallyReceivedByAdmin($order);
+  }
+
+  /**
    * Marque une commande physique comme livre reçu depuis l'admin.
    *
    * @param Order $order Commande cible
@@ -380,6 +427,14 @@ class DeliveryService
     }
 
     return DB::transaction(function () use ($order): Order {
+      $order->loadMissing('items');
+
+      foreach ($order->items as $item) {
+        if ($item->isPhysical() && $item->received_at === null) {
+          $item->update(['received_at' => now()]);
+        }
+      }
+
       $delivery = $order->delivery ?? $this->createForOrder($order);
 
       if ($delivery === null) {
@@ -407,6 +462,39 @@ class DeliveryService
   }
 
   /**
+   * Conserve une réception partielle sans clôturer la commande.
+   *
+   * @param Order $order Commande cible
+   * @return Order Commande mise à jour
+   */
+  private function markBooksPartiallyReceivedByAdmin(Order $order): Order
+  {
+    return DB::transaction(function () use ($order): Order {
+      $delivery = $order->delivery ?? $this->createForOrder($order);
+
+      if ($delivery !== null) {
+        $delivery->update([
+          'status' => DeliveryStatus::Pending,
+          'delivered_at' => null,
+        ]);
+      }
+
+      $order->loadMissing('payment');
+
+      $nextStatus = $order->payment?->status === PaymentStatus::Completed
+        ? OrderStatus::Paid
+        : OrderStatus::Processing;
+
+      $order->update([
+        'status' => $nextStatus,
+        'completed_at' => null,
+      ]);
+
+      return $order->fresh(['user', 'items', 'delivery', 'payment']);
+    });
+  }
+
+  /**
    * Marque une commande physique comme livre non reçu depuis l'admin.
    *
    * @param Order $order Commande cible
@@ -421,6 +509,14 @@ class DeliveryService
     }
 
     return DB::transaction(function () use ($order): Order {
+      $order->loadMissing('items');
+
+      foreach ($order->items as $item) {
+        if ($item->isPhysical() && $item->received_at !== null) {
+          $item->update(['received_at' => null]);
+        }
+      }
+
       $delivery = $order->delivery ?? $this->createForOrder($order);
 
       if ($delivery !== null) {

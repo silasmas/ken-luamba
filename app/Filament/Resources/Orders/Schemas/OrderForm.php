@@ -107,6 +107,9 @@ class OrderForm
               ->content(fn (?Order $record): string => $record
                 ? OrderAdminFormatter::booksReceivedLabel($record)
                 : '—')
+              ->helperText(fn (?Order $record): ?string => $record
+                ? OrderAdminFormatter::booksPendingSummary($record)
+                : null)
               ->visible(fn (?Order $record): bool => $record !== null && $record->hasPhysicalItems()),
             Placeholder::make('payment_mode_status')
               ->label('Mode d\'achat')
