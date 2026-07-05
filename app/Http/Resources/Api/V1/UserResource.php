@@ -24,6 +24,7 @@ class UserResource extends JsonResource
       'fullName' => $this->full_name ?? $this->name,
       'email' => $this->email,
       'phone' => $this->phone,
+      'secondaryPhone' => $this->secondary_phone,
       'avatarUrl' => MediaUrl::fromPath($this->avatar_path),
       'profileAddress' => $this->profile_address,
       'deliveryAddress' => $this->delivery_address,

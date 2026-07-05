@@ -23,6 +23,7 @@ class OtpCode extends Model
     'user_id',
     'email',
     'full_name',
+    'phone',
     'code',
     'type',
     'expires_at',

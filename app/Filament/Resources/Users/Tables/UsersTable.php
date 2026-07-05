@@ -34,6 +34,9 @@ class UsersTable
         TextColumn::make('phone')
           ->label('Téléphone')
           ->toggleable(),
+        TextColumn::make('secondary_phone')
+          ->label('Tél. Mobile Money')
+          ->toggleable(isToggledHiddenByDefault: true),
         TextColumn::make('role')
           ->label('Rôle métier')
           ->badge()

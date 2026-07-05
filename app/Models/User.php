@@ -15,7 +15,7 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'full_name', 'email', 'phone', 'role', 'password', 'is_active', 'avatar_path', 'profile_address', 'delivery_address'])]
+#[Fillable(['name', 'full_name', 'email', 'phone', 'secondary_phone', 'role', 'password', 'is_active', 'avatar_path', 'profile_address', 'delivery_address'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {

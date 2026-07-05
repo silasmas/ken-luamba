@@ -22,9 +22,10 @@ class OtpService
    *
    * @param string $email Adresse email du futur client
    * @param string $fullName Nom complet saisi à l'inscription
+   * @param string $phone Téléphone MSISDN 243XXXXXXXXX
    * @return void
    */
-  public function sendRegisterOtp(string $email, string $fullName): void
+  public function sendRegisterOtp(string $email, string $fullName, string $phone): void
   {
     if (User::query()->where('email', $email)->exists()) {
       throw ValidationException::withMessages([
@@ -32,7 +33,7 @@ class OtpService
       ]);
     }
 
-    $this->sendOtp($email, OtpType::Register, null, $fullName);
+    $this->sendOtp($email, OtpType::Register, null, $fullName, $phone);
   }
 
   /**
@@ -110,6 +111,7 @@ class OtpService
    * @param OtpType $type Type d'OTP
    * @param User|null $user Utilisateur existant pour la connexion
    * @param string|null $fullName Nom complet pour l'inscription
+   * @param string|null $phone Téléphone pour l'inscription
    * @return void
    */
   private function sendOtp(
@@ -117,6 +119,7 @@ class OtpService
     OtpType $type,
     ?User $user = null,
     ?string $fullName = null,
+    ?string $phone = null,
   ): void {
     $this->ensureRateLimitNotExceeded($email, $type);
 
@@ -132,6 +135,7 @@ class OtpService
       'user_id' => $user?->id,
       'email' => $email,
       'full_name' => $fullName,
+      'phone' => $phone,
       'code' => Hash::make($plainCode),
       'type' => $type,
       'expires_at' => now()->addMinutes(config('otp.expiry_minutes', 10)),
@@ -153,6 +157,7 @@ class OtpService
       'name' => $otpCode->full_name ?? 'Client',
       'full_name' => $otpCode->full_name,
       'email' => $otpCode->email,
+      'phone' => $otpCode->phone,
       'password' => Hash::make(Str::random(32)),
       'role' => UserRole::Client,
       'is_active' => true,

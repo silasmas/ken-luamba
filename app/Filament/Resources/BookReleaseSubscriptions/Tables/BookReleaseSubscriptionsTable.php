@@ -32,6 +32,10 @@ class BookReleaseSubscriptionsTable
           ->label('E-mail')
           ->searchable()
           ->copyable(),
+        TextColumn::make('phone')
+          ->label('Téléphone')
+          ->searchable()
+          ->copyable(),
         IconColumn::make('notified_at')
           ->label('Notifié')
           ->boolean()

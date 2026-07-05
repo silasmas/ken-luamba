@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Services\FlexPay\FlexPayCardService;
 use App\Services\FlexPay\FlexPayMobileService;
+use App\Services\Users\UserPhoneSyncService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
@@ -35,6 +36,7 @@ class PaymentService
     private readonly MobileMoneyOperatorService $operatorService,
     private readonly CartService $cartService,
     private readonly OrderNotificationService $notificationService,
+    private readonly UserPhoneSyncService $userPhoneSyncService,
   ) {}
 
   /**
@@ -347,6 +349,14 @@ class PaymentService
         $this->digitalAccessService->grantForOrder($order);
         $this->cartService->clearUserCart($order->user_id);
         $order->refresh()->load(['qrCode', 'delivery', 'user', 'items']);
+
+        if (
+          $payment->channel === PaymentChannel::MobileMoney
+          && filled($payment->phone)
+          && $order->user !== null
+        ) {
+          $this->userPhoneSyncService->syncFromMobileMoneyPayment($order->user, $payment->phone);
+        }
 
         $this->notificationService->afterCommit(function () use ($order): void {
           $this->notificationService->notifyPaymentSuccess($order);

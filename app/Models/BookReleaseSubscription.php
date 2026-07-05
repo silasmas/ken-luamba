@@ -21,6 +21,7 @@ class BookReleaseSubscription extends Model
   protected $fillable = [
     'book_id',
     'email',
+    'phone',
     'notified_at',
   ];
 

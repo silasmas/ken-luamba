@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Api\V1\Auth;
 
+use App\Rules\CongoleseMsisdn;
+use App\Support\PhoneNormalizer;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -20,6 +22,20 @@ class RegisterRequest extends FormRequest
   }
 
   /**
+   * Normalise le téléphone avant validation.
+   *
+   * @return void
+   */
+  protected function prepareForValidation(): void
+  {
+    if ($this->has('phone')) {
+      $this->merge([
+        'phone' => PhoneNormalizer::normalize($this->input('phone')),
+      ]);
+    }
+  }
+
+  /**
    * Règles de validation de l'inscription.
    *
    * @return array<string, mixed> Règles Laravel
@@ -29,6 +45,7 @@ class RegisterRequest extends FormRequest
     return [
       'email' => ['required', 'email', 'max:255'],
       'fullName' => ['required', 'string', 'max:255'],
+      'phone' => ['required', 'string', new CongoleseMsisdn()],
     ];
   }
 }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Api\V1\Auth;
 
+use App\Rules\CongoleseMsisdn;
+use App\Support\PhoneNormalizer;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
@@ -20,6 +22,28 @@ class UpdateProfileRequest extends FormRequest
   }
 
   /**
+   * Normalise les téléphones avant validation.
+   *
+   * @return void
+   */
+  protected function prepareForValidation(): void
+  {
+    $merge = [];
+
+    if ($this->has('phone')) {
+      $merge['phone'] = PhoneNormalizer::normalize($this->input('phone'));
+    }
+
+    if ($this->has('secondaryPhone')) {
+      $merge['secondaryPhone'] = PhoneNormalizer::normalize($this->input('secondaryPhone'));
+    }
+
+    if ($merge !== []) {
+      $this->merge($merge);
+    }
+  }
+
+  /**
    * Règles de validation du profil.
    *
    * @return array<string, mixed> Règles
@@ -28,7 +52,8 @@ class UpdateProfileRequest extends FormRequest
   {
     return [
       'fullName' => ['sometimes', 'string', 'max:120'],
-      'phone' => ['sometimes', 'nullable', 'string', 'max:30'],
+      'phone' => ['sometimes', 'nullable', 'string', new CongoleseMsisdn()],
+      'secondaryPhone' => ['sometimes', 'nullable', 'string', new CongoleseMsisdn()],
       'profileAddress' => ['sometimes', 'nullable', 'array'],
       'profileAddress.street' => ['nullable', 'string', 'max:255'],
       'profileAddress.city' => ['nullable', 'string', 'max:120'],

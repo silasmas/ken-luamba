@@ -39,6 +39,7 @@ class AuthController extends Controller
     $this->otpService->sendRegisterOtp(
       $request->validated('email'),
       $request->validated('fullName'),
+      $request->validated('phone'),
     );
 
     return response()->json([
@@ -135,6 +136,10 @@ class AuthController extends Controller
 
     if (array_key_exists('phone', $data)) {
       $user->phone = $data['phone'];
+    }
+
+    if (array_key_exists('secondaryPhone', $data)) {
+      $user->secondary_phone = $data['secondaryPhone'];
     }
 
     if (array_key_exists('profileAddress', $data)) {

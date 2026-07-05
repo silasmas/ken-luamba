@@ -45,10 +45,15 @@ class UserForm
               ->unique(ignoreRecord: true)
               ->helperText('Utilisé pour OTP, notifications et connexion admin.'),
             TextInput::make('phone')
-              ->label('Téléphone')
+              ->label('Téléphone principal')
               ->tel()
               ->maxLength(20)
-              ->helperText('Optionnel — utile pour livraison et SMS.'),
+              ->helperText('Format 243XXXXXXXXX — renseigné à l\'inscription.'),
+            TextInput::make('secondary_phone')
+              ->label('Téléphone Mobile Money')
+              ->tel()
+              ->maxLength(20)
+              ->helperText('Second numéro confirmé après paiement Mobile Money.'),
           ],
         ),
         AdminFormLayout::section(
