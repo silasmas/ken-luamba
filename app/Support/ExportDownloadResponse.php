@@ -21,8 +21,10 @@ class ExportDownloadResponse
       readfile($path);
       @unlink($path);
     }, basename($path), [
-      'Content-Type' => match (pathinfo($path, PATHINFO_EXTENSION)) {
+      'Content-Type' => match (strtolower((string) pathinfo($path, PATHINFO_EXTENSION))) {
         'pdf' => 'application/pdf',
+        'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'epub' => 'application/epub+zip',
         default => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       },
     ]);
