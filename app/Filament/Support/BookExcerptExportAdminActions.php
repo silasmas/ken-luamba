@@ -10,7 +10,6 @@ use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 
 /**
  * Actions Filament d'export de l'extrait feuilletable (PDF, Word, EPUB).
@@ -54,7 +53,7 @@ class BookExcerptExportAdminActions
         'includeCovers' => true,
       ])
       ->form(self::exportFormSchema())
-      ->action(function (Book $record, array $data) use ($format): StreamedResponse {
+      ->action(function (Book $record, array $data) use ($format) {
         $includeCovers = (bool) ($data['includeCovers'] ?? true);
         $service = app(BookExcerptExportService::class);
 
@@ -71,7 +70,7 @@ class BookExcerptExportAdminActions
             ->danger()
             ->send();
 
-          return;
+          return null;
         }
 
         return ExportDownloadResponse::stream($path);
