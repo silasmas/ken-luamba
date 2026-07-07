@@ -39,11 +39,11 @@ class BookExcerptExportAdminActions
    *
    * @param string $name Identifiant de l'action
    * @param string $label Libellé du format
-   * @param string $icon Icône Heroicon
+   * @param Heroicon $icon Icône Heroicon Filament
    * @param string $format pdf, docx ou epub
    * @return Action Action configurée
    */
-  private static function makeExportAction(string $name, string $label, string $icon, string $format): Action
+  private static function makeExportAction(string $name, string $label, Heroicon $icon, string $format): Action
   {
     return Action::make($name)
       ->label($label)
