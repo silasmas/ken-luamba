@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Users\Schemas;
 use App\Enums\UserRole;
 use App\Filament\Support\AdminFormLayout;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -100,6 +101,23 @@ class UserForm
           ],
           1,
         ),
+        AdminFormLayout::section(
+          'Code livreur',
+          'Code pour la porte livreur (scan sans connexion, session 24h).',
+          [
+            Placeholder::make('courier_code_status')
+              ->label('État')
+              ->content(fn ($record): string => filled($record?->courier_code_hash)
+                ? 'Un code est déjà défini (non affiché pour sécurité).'
+                : 'Aucun code défini.'),
+            Toggle::make('regenerate_courier_code')
+              ->label('Générer / régénérer le code livreur')
+              ->helperText('Le nouveau code s\'affiche une seule fois après enregistrement.')
+              ->dehydrated(false)
+              ->default(false),
+          ],
+          1,
+        )->visible(fn (callable $get): bool => $get('role') === UserRole::Courier->value),
       ]);
   }
 }

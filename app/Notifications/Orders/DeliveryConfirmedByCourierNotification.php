@@ -49,22 +49,45 @@ class DeliveryConfirmedByCourierNotification extends Notification
     $courierName = $this->courier?->full_name ?? 'Le livreur';
     $isAdmin = $notifiable->role?->value === 'admin';
 
+    $isDirect = $this->order->isDirectPayment();
+    $clientEmail = $this->order->user?->email ?? '—';
+
     if ($isAdmin) {
-      return (new MailMessage)
+      $mail = (new MailMessage)
         ->subject('Livraison confirmée par le livreur — '.$this->order->order_number)
         ->greeting('Bonjour,')
         ->line('La commande **'.$this->order->order_number.'** a été marquée livrée par **'.$courierName.'**.')
         ->line('Client : **'.($this->order->user?->full_name ?? '—').'**')
-        ->line('En attente de confirmation client.');
+        ->line('Email : **'.$clientEmail.'**');
+
+      return $isDirect
+        ? $mail->line('Remise paiement direct finalisée.')
+        : $mail->line('En attente de confirmation client.');
     }
 
     if ($notifiable->id === $this->courier?->id) {
-      return (new MailMessage)
+      $mail = (new MailMessage)
         ->subject('Livraison confirmée — '.$this->order->order_number)
         ->greeting('Bonjour '.$notifiable->full_name.',')
-        ->line('Vous avez confirmé la livraison de **'.$this->order->order_number.'**.')
+        ->line('Vous avez confirmé la livraison de **'.$this->order->order_number.'**.');
+
+      if ($isDirect) {
+        return $mail
+          ->line('La remise paiement direct est finalisée.')
+          ->action('Espace livreur', $frontendUrl.'/livreur/scan');
+      }
+
+      return $mail
         ->line('Le client va maintenant confirmer la réception.')
         ->action('Espace livreur', $frontendUrl.'/livreur');
+    }
+
+    if ($isDirect) {
+      return (new MailMessage)
+        ->subject('Livraison effectuée — '.$this->order->order_number)
+        ->greeting('Bonjour '.($notifiable->full_name ?? '').',')
+        ->line('Votre achat **'.$this->order->order_number.'** a bien été remis.')
+        ->line('Merci pour votre confiance !');
     }
 
     return (new MailMessage)

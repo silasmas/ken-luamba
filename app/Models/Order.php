@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\FulfillmentType;
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +25,8 @@ class Order extends Model
    */
   protected $fillable = [
     'order_number',
+    'source',
+    'public_token',
     'user_id',
     'status',
     'fulfillment_type',
@@ -50,6 +53,7 @@ class Order extends Model
   protected function casts(): array
   {
     return [
+      'source' => OrderSource::class,
       'status' => OrderStatus::class,
       'fulfillment_type' => FulfillmentType::class,
       'shipping_address' => 'array',
@@ -63,6 +67,16 @@ class Order extends Model
       'payment_reminder_sent_at' => 'datetime',
       'admin_pending_delivery_notified_at' => 'datetime',
     ];
+  }
+
+  /**
+   * Indique si la commande provient du parcours paiement direct.
+   *
+   * @return bool True si source = direct_payment
+   */
+  public function isDirectPayment(): bool
+  {
+    return $this->source === OrderSource::DirectPayment;
   }
 
   /**

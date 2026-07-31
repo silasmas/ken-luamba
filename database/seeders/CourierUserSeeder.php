@@ -17,7 +17,7 @@ class CourierUserSeeder extends Seeder
    */
   public function run(): void
   {
-    User::query()->updateOrCreate(
+    $courier = User::query()->updateOrCreate(
       ['email' => 'livreur@kenluamba.com'],
       [
         'name' => 'Livreur Demo',
@@ -29,5 +29,12 @@ class CourierUserSeeder extends Seeder
         'email_verified_at' => now(),
       ]
     );
+
+    if (blank($courier->courier_code_hash)) {
+      // Code démo fixe pour les tests locaux / seed.
+      $courier->forceFill([
+        'courier_code_hash' => Hash::make('LIVREUR24'),
+      ])->save();
+    }
   }
 }

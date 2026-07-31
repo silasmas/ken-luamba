@@ -120,6 +120,7 @@ class DeliveryService
       'status' => $order->status->value,
       'statusLabel' => $order->status->label(),
       'customerName' => $order->user?->full_name,
+      'customerEmail' => $order->user?->email,
       'fulfillmentType' => $order->fulfillment_type?->value,
       'fulfillmentLabel' => $order->fulfillment_type?->label(),
       'shippingAddress' => $order->shipping_address,
@@ -169,6 +170,12 @@ class DeliveryService
         ]);
       }
 
+      if ($qrCode->is_used) {
+        throw ValidationException::withMessages([
+          'token' => ['Ce QR code a déjà été utilisé.'],
+        ]);
+      }
+
       $delivery = $order->delivery ?? $this->createForOrder($order);
 
       if ($delivery === null) {
@@ -181,7 +188,10 @@ class DeliveryService
         ? DeliveryStatus::PickedUp
         : DeliveryStatus::Delivered;
 
-      $orderStatus = OrderStatus::DeliveredByCourier;
+      // Paiement direct : la remise est finale dès le scan (pas de confirmation client).
+      $orderStatus = $order->isDirectPayment()
+        ? OrderStatus::Completed
+        : OrderStatus::DeliveredByCourier;
 
       $delivery->update([
         'courier_id' => $courier->id,
@@ -189,7 +199,10 @@ class DeliveryService
         'delivered_at' => now(),
       ]);
 
-      $order->update(['status' => $orderStatus]);
+      $order->update([
+        'status' => $orderStatus,
+        'completed_at' => $orderStatus === OrderStatus::Completed ? now() : $order->completed_at,
+      ]);
 
       $qrCode->update([
         'is_used' => true,

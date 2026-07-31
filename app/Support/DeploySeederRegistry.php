@@ -9,6 +9,7 @@ use Database\Seeders\BookReleaseSubscriptionPermissionSeeder;
 use Database\Seeders\BookReviewSeeder;
 use Database\Seeders\CatalogBookSeeder;
 use Database\Seeders\ContactSettingPermissionSeeder;
+use Database\Seeders\DirectPaymentSettingPermissionSeeder;
 use Database\Seeders\CourierUserSeeder;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\PickupPointSeeder;
@@ -105,6 +106,13 @@ class DeploySeederRegistry
         'label' => 'Permissions boutique',
         'group' => 'Permissions',
         'description' => 'Droits Filament pour les réglages boutique.',
+      ],
+      [
+        'class' => DirectPaymentSettingPermissionSeeder::class,
+        'key' => 'DirectPaymentSettingPermissionSeeder',
+        'label' => 'Permissions paiement direct',
+        'group' => 'Permissions',
+        'description' => 'Droits Filament pour les réglages paiement direct.',
       ],
       [
         'class' => BookReleaseSubscriptionPermissionSeeder::class,

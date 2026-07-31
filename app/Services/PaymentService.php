@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Enums\PaymentChannel;
 use App\Enums\PaymentStatus;
@@ -143,11 +144,16 @@ class PaymentService
       ];
     }
 
+    $returnPath = $order->source === OrderSource::DirectPayment && filled($order->public_token)
+      ? '/paiement-direct/result/'.$order->public_token
+      : '/checkout/result';
+
     $result = $this->cardService->initiate(
       $order->order_number,
       (float) $order->total,
       $order->currency,
       'Commande Ken Luamba — '.$order->order_number,
+      $returnPath,
     );
 
     if (! $result['success']) {

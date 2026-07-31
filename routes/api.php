@@ -9,7 +9,9 @@ use App\Http\Controllers\Api\V1\BookReviewController;
 use App\Http\Controllers\Api\V1\CartController;
 use App\Http\Controllers\Api\V1\ContactController;
 use App\Http\Controllers\Api\V1\CourierController;
+use App\Http\Controllers\Api\V1\CourierGateController;
 use App\Http\Controllers\Api\V1\DigitalShareController;
+use App\Http\Controllers\Api\V1\DirectPaymentController;
 use App\Http\Controllers\Api\V1\InvitationController;
 use App\Http\Controllers\Api\V1\HealthController;
 use App\Http\Controllers\Api\V1\LibraryController;
@@ -56,6 +58,23 @@ Route::prefix('v1')->group(function (): void {
   Route::post('/payments/flexpay-callback', [PaymentController::class, 'flexpayCallback']);
   Route::get('/payments/status', [PaymentController::class, 'checkStatus']);
   Route::get('/payments/card-return', [PaymentController::class, 'cardReturn']);
+
+  Route::prefix('direct-payment')->middleware('throttle:60,1')->group(function (): void {
+    Route::get('/catalog', [DirectPaymentController::class, 'catalog']);
+    Route::post('/checkout', [DirectPaymentController::class, 'checkout']);
+    Route::get('/result/{publicToken}', [DirectPaymentController::class, 'result']);
+  });
+
+  Route::prefix('courier-gate')->middleware('throttle:60,1')->group(function (): void {
+    Route::post('/login', [CourierGateController::class, 'login']);
+
+    Route::middleware('auth:sanctum')->group(function (): void {
+      Route::post('/logout', [CourierGateController::class, 'logout']);
+      Route::get('/me', [CourierGateController::class, 'me']);
+      Route::post('/scan', [CourierGateController::class, 'scan']);
+      Route::post('/confirm', [CourierGateController::class, 'confirm']);
+    });
+  });
 
   Route::prefix('cart')->middleware('sanctum.optional')->group(function (): void {
     Route::post('/session', [CartController::class, 'createSession']);

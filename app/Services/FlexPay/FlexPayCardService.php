@@ -16,6 +16,7 @@ class FlexPayCardService
    * @param float $amount Montant à payer
    * @param string $currency Devise (CDF, USD)
    * @param string $description Description affichée
+   * @param string $returnPath Chemin frontend de retour (ex. /checkout/result)
    * @return array{success: bool, url?: string, orderNumber?: string, message?: string}
    */
   public function initiate(
@@ -23,11 +24,13 @@ class FlexPayCardService
     float $amount,
     string $currency,
     string $description,
+    string $returnPath = '/checkout/result',
   ): array {
     $token = config('services.flexpay.token');
     $merchant = config('services.flexpay.merchant');
     $gateway = config('services.flexpay.gateway_card');
     $frontendUrl = rtrim((string) env('FRONTEND_URL', env('APP_URL')), '/');
+    $normalizedPath = '/'.ltrim($returnPath, '/');
 
     if (empty($token) || empty($merchant) || empty($gateway)) {
       return [
@@ -36,7 +39,7 @@ class FlexPayCardService
       ];
     }
 
-    $baseRedirectUrl = $frontendUrl."/checkout/result?reference={$reference}&amount={$amount}&currency={$currency}";
+    $baseRedirectUrl = $frontendUrl."{$normalizedPath}?reference={$reference}&amount={$amount}&currency={$currency}";
 
     $body = [
       'authorization' => 'Bearer '.$token,

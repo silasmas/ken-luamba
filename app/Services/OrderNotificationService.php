@@ -39,7 +39,13 @@ class OrderNotificationService
     }
 
     if ($order->delivery !== null && $order->admin_pending_delivery_notified_at === null) {
-      $this->notifyAdmins(new OrderAwaitingDeliveryNotification($order));
+      $notification = new OrderAwaitingDeliveryNotification($order);
+      $this->notifyAdmins($notification);
+
+      if ($order->isDirectPayment()) {
+        $this->notifyCouriers($notification);
+      }
+
       $order->update(['admin_pending_delivery_notified_at' => now()]);
     }
   }
@@ -184,6 +190,20 @@ class OrderNotificationService
       ->where('is_active', true)
       ->get()
       ->each(fn (User $admin) => $admin->notify($notification));
+  }
+
+  /**
+   * Envoie une notification à tous les livreurs actifs.
+   *
+   * @param Notification $notification Notification à diffuser
+   */
+  private function notifyCouriers(Notification $notification): void
+  {
+    User::query()
+      ->where('role', UserRole::Courier)
+      ->where('is_active', true)
+      ->get()
+      ->each(fn (User $courier) => $courier->notify($notification));
   }
 
   /**
