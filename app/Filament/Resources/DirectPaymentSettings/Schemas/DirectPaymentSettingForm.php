@@ -6,12 +6,14 @@ use App\Enums\BookFormatType;
 use App\Filament\Support\AdminFormLayout;
 use App\Models\BookFormat;
 use App\Models\DirectPaymentSetting;
+use App\Services\DirectPaymentQrService;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
 
 /**
  * Formulaire Filament des paramètres paiement direct.
@@ -44,7 +46,7 @@ class DirectPaymentSettingForm
       ->components([
         AdminFormLayout::section(
           'Page publique',
-          'Lien et textes affichés sur la page paiement direct (frontend).',
+          'Lien et QR à partager pour ouvrir la page paiement direct (frontend).',
           [
             Toggle::make('is_enabled')
               ->label('Activer le paiement direct')
@@ -58,9 +60,27 @@ class DirectPaymentSettingForm
               ->rows(3)
               ->columnSpanFull(),
             Placeholder::make('public_url')
-              ->label('Lien à partager / QR')
+              ->label('Lien à partager')
               ->content(fn (?DirectPaymentSetting $record): string => $record?->publicUrl()
                 ?? DirectPaymentSetting::instance()->publicUrl()),
+            Placeholder::make('public_qr')
+              ->label('QR code')
+              ->content(function (): HtmlString {
+                $qrUrl = app(DirectPaymentQrService::class)->imageUrl();
+                $downloadUrl = $qrUrl.'?size=800&download=1';
+
+                return new HtmlString(
+                  '<div style="display:flex;flex-direction:column;gap:0.75rem;align-items:flex-start;">'
+                  .'<img src="'.e($qrUrl).'" alt="QR paiement direct" width="220" height="220" '
+                  .'style="border:1px solid #e5e7eb;border-radius:8px;background:#fff;padding:8px;" />'
+                  .'<a href="'.e($downloadUrl).'" target="_blank" rel="noopener" '
+                  .'style="color:#2563eb;text-decoration:underline;font-size:0.875rem;">'
+                  .'Télécharger le QR (PNG)</a>'
+                  .'<span style="color:#6b7280;font-size:0.8rem;">Scannez ce QR pour ouvrir la page paiement direct.</span>'
+                  .'</div>'
+                );
+              })
+              ->columnSpanFull(),
           ],
           1,
         ),

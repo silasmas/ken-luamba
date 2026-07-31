@@ -64,6 +64,7 @@ class DirectPaymentService
       'title' => $settings->title,
       'message' => $settings->message,
       'publicUrl' => $settings->publicUrl(),
+      'qrImageUrl' => app(DirectPaymentQrService::class)->imageUrl(),
       'defaultSelectedIds' => $defaultSelectedIds,
       'books' => $formats->map(function (BookFormat $format) use ($defaultSelectedIds): array {
         $book = $format->book;

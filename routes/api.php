@@ -61,6 +61,7 @@ Route::prefix('v1')->group(function (): void {
 
   Route::prefix('direct-payment')->middleware('throttle:60,1')->group(function (): void {
     Route::get('/catalog', [DirectPaymentController::class, 'catalog']);
+    Route::get('/qr.png', [DirectPaymentController::class, 'qrImage']);
     Route::post('/checkout', [DirectPaymentController::class, 'checkout']);
     Route::get('/result/{publicToken}', [DirectPaymentController::class, 'result']);
   });

@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Enums\PaymentChannel;
 use App\Http\Controllers\Controller;
+use App\Services\DirectPaymentQrService;
 use App\Services\DirectPaymentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Validation\Rule;
 
 /**
@@ -18,9 +20,11 @@ class DirectPaymentController extends Controller
    * Initialise le contrôleur.
    *
    * @param DirectPaymentService $directPaymentService Service paiement direct
+   * @param DirectPaymentQrService $directPaymentQrService Générateur QR du lien public
    */
   public function __construct(
     private readonly DirectPaymentService $directPaymentService,
+    private readonly DirectPaymentQrService $directPaymentQrService,
   ) {}
 
   /**
@@ -32,6 +36,25 @@ class DirectPaymentController extends Controller
   {
     return response()->json([
       'data' => $this->directPaymentService->catalog(),
+    ]);
+  }
+
+  /**
+   * Retourne le QR code PNG du lien page paiement direct.
+   *
+   * @param Request $request Requête (size optionnel)
+   * @return Response Image PNG
+   */
+  public function qrImage(Request $request): Response
+  {
+    $size = (int) $request->integer('size', 400);
+    $png = $this->directPaymentQrService->generatePng($size);
+    $disposition = $request->boolean('download') ? 'attachment' : 'inline';
+
+    return response($png, 200, [
+      'Content-Type' => 'image/png',
+      'Content-Disposition' => $disposition.'; filename="paiement-direct-qr.png"',
+      'Cache-Control' => 'public, max-age=300',
     ]);
   }
 

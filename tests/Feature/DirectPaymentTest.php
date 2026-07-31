@@ -108,7 +108,22 @@ class DirectPaymentTest extends TestCase
     $response->assertOk()
       ->assertJsonPath('data.enabled', true)
       ->assertJsonPath('data.defaultSelectedIds.0', $format->id)
-      ->assertJsonPath('data.books.0.bookFormatId', $format->id);
+      ->assertJsonPath('data.books.0.bookFormatId', $format->id)
+      ->assertJsonPath('data.qrImageUrl', url('/api/v1/direct-payment/qr.png'));
+  }
+
+  /**
+   * Le QR PNG du lien paiement direct est généré.
+   */
+  public function test_share_qr_png_is_generated(): void
+  {
+    $this->seedCatalogBook();
+
+    $response = $this->get('/api/v1/direct-payment/qr.png');
+
+    $response->assertOk();
+    $this->assertSame('image/png', $response->headers->get('Content-Type'));
+    $this->assertStringStartsWith("\x89PNG", $response->getContent());
   }
 
   /**
