@@ -556,7 +556,7 @@ class OrdersTable
           ->button()
           ->requiresConfirmation()
           ->modalHeading('Renvoyer les mails d\'achat')
-          ->modalDescription('Maximum 30 mails par lot, espacés de 8s (quota Hostinger ≈ 100/jour). Un worker queue doit tourner.')
+          ->modalDescription('Maximum 30 mails par lot, espacés de 8s (quota Hostinger ≈ 1000/24 h). Un worker queue:work doit tourner.')
           ->deselectRecordsAfterCompletion()
           ->action(function (Collection $records): void {
             $records->loadMissing('user');

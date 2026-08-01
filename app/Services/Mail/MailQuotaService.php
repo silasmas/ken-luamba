@@ -4,6 +4,7 @@ namespace App\Services\Mail;
 
 use App\Models\MailSendLog;
 use Carbon\CarbonInterface;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Estime la consommation du quota d'envoi Hostinger (fenêtre glissante 24 h).
@@ -31,12 +32,26 @@ class MailQuotaService
   }
 
   /**
+   * Indique si la table de journalisation existe (après migrate).
+   *
+   * @return bool True si le compteur peut lire la BDD
+   */
+  public function isReady(): bool
+  {
+    return Schema::hasTable('mail_send_logs');
+  }
+
+  /**
    * Nombre d'emails réellement envoyés par l'app sur 24 h.
    *
-   * @return int Envois journalés
+   * @return int Envois journalés (0 si table absente)
    */
   public function usedInRolling24h(): int
   {
+    if (! $this->isReady()) {
+      return 0;
+    }
+
     return MailSendLog::query()
       ->where('created_at', '>=', $this->windowStart())
       ->count();
@@ -70,6 +85,11 @@ class MailQuotaService
    */
   public function canSend(int $needed = 1): bool
   {
+    // Sans table (migration pas encore jouée), on ne bloque pas l'envoi.
+    if (! $this->isReady()) {
+      return true;
+    }
+
     return $this->remainingInRolling24h() >= max(1, $needed);
   }
 
@@ -90,11 +110,13 @@ class MailQuotaService
   public function snapshot(): array
   {
     $limit = $this->dailyLimit();
+    $ready = $this->isReady();
     $used = $this->usedInRolling24h();
     $remaining = max(0, $limit - $used);
-    $percent = round(($used / $limit) * 100, 1);
+    $percent = $ready ? round(($used / $limit) * 100, 1) : 0.0;
 
     $color = match (true) {
+      ! $ready => 'danger',
       $remaining <= 0 => 'danger',
       $remaining <= 50 => 'danger',
       $remaining <= 200 => 'warning',
@@ -107,9 +129,12 @@ class MailQuotaService
       'remaining' => $remaining,
       'percent' => $percent,
       'window_start' => $this->windowStart()->toIso8601String(),
-      'can_send' => $remaining > 0,
+      'can_send' => ! $ready || $remaining > 0,
+      'ready' => $ready,
       'color' => $color,
-      'label' => sprintf('%d restants / %d (24 h)', $remaining, $limit),
+      'label' => $ready
+        ? sprintf('%d restants / %d (24 h)', $remaining, $limit)
+        : 'Migration requise (mail_send_logs)',
     ];
   }
 }

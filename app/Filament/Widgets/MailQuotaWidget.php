@@ -32,22 +32,28 @@ class MailQuotaWidget extends StatsOverviewWidget
     $windowLabel = OrderAdminFormatter::formatLocalizedDateTime(
       now()->subDay(),
     );
+    $mailer = (string) config('mail.default');
+    $apiReady = app(\App\Services\Mail\HostingerMailApiClient::class)->isConfigured();
 
     return [
       Stat::make('Envoyés (24 h)', (string) $snapshot['used'])
-        ->description('Depuis '.$windowLabel)
+        ->description(($snapshot['ready'] ?? true)
+          ? 'Depuis '.$windowLabel
+          : 'Lancez php artisan migrate (table mail_send_logs)')
         ->descriptionIcon('heroicon-m-paper-airplane')
         ->color($snapshot['color']),
       Stat::make('Restants estimés', (string) $snapshot['remaining'])
         ->description(sprintf('Sur %d max / 24 h (%.1f %% utilisés)', $snapshot['limit'], $snapshot['percent']))
         ->descriptionIcon('heroicon-m-inbox-stack')
         ->color($snapshot['color']),
-      Stat::make('Plafond plan', (string) $snapshot['limit'])
-        ->description($snapshot['can_send']
-          ? 'Marge disponible pour renvois'
-          : 'Quota estimé épuisé — attendre le reset 24 h')
+      Stat::make('Plafond / canal', (string) $snapshot['limit'])
+        ->description(sprintf(
+          'Mailer: %s%s',
+          $mailer,
+          $apiReady ? ' · API Hostinger configurée' : ' · API Hostinger non configurée',
+        ))
         ->descriptionIcon('heroicon-m-shield-check')
-        ->color($snapshot['can_send'] ? 'info' : 'danger'),
+        ->color($mailer === 'hostinger' ? 'success' : 'info'),
     ];
   }
 }

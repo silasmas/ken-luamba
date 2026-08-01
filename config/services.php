@@ -43,4 +43,14 @@ return [
         'gateway_check' => env('FLEXPAY_GATEWAY_CHECK', 'https://backend.flexpay.cd/api/rest/v1/check'),
     ],
 
+    /*
+    | Hostinger Mail API (hPanel → Emails → Développeurs → Clés API)
+    | Doc: https://api.mail.hostinger.com/#description/overview
+    */
+    'hostinger_mail' => [
+        'token' => env('HOSTINGER_MAIL_TOKEN'),
+        'mailbox_id' => env('HOSTINGER_MAILBOX_ID'),
+        'base_url' => env('HOSTINGER_MAIL_BASE_URL', 'https://api.mail.hostinger.com'),
+    ],
+
 ];

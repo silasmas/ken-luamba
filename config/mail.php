@@ -49,6 +49,14 @@ return [
             'local_domain' => env('MAIL_EHLO_DOMAIN', parse_url((string) env('APP_URL', 'http://localhost'), PHP_URL_HOST)),
         ],
 
+        /*
+        | Hostinger Mail API — https://api.mail.hostinger.com
+        | MAIL_MAILER=hostinger + HOSTINGER_MAIL_TOKEN + HOSTINGER_MAILBOX_ID
+        */
+        'hostinger' => [
+            'transport' => 'hostinger',
+        ],
+
         'ses' => [
             'transport' => 'ses',
         ],

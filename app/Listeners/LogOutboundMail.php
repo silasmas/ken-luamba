@@ -4,6 +4,7 @@ namespace App\Listeners;
 
 use App\Models\MailSendLog;
 use Illuminate\Mail\Events\MessageSent;
+use Illuminate\Support\Facades\Schema;
 use Throwable;
 
 /**
@@ -18,6 +19,10 @@ class LogOutboundMail
    */
   public function handle(MessageSent $event): void
   {
+    if (! Schema::hasTable('mail_send_logs')) {
+      return;
+    }
+
     try {
       $message = $event->message;
       $toAddresses = method_exists($message, 'getTo') ? ($message->getTo() ?? []) : [];
