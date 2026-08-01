@@ -266,22 +266,11 @@ class PaymentService
 
     return match ($status) {
       0 => $this->markAsPaid($payment, 'Paiement confirmé. Merci pour votre commande !'),
-      1 => tap([
-        'success' => false,
-        'status' => $status,
-        'message' => 'Paiement annulé ou refusé sur '.$operatorLabel.'. Vous pouvez réessayer.',
-        'orderNumber' => $payment->order?->order_number,
-        'steps' => $forPolling ? $this->buildPollingSteps($operatorLabel, 'error') : null,
-      ], function () use ($payment, $operatorLabel): void {
-        $payment->update(['status' => PaymentStatus::Failed]);
-
-        if ($payment->order !== null) {
-          $this->notificationService->notifyPaymentFailed(
-            $payment->order->loadMissing('user'),
-            'Paiement annulé ou refusé sur '.$operatorLabel.'.',
-          );
-        }
-      }),
+      1 => $this->markAsFailed(
+        $payment,
+        'Paiement annulé ou refusé sur '.$operatorLabel.'. Vous pouvez réessayer.',
+        $forPolling ? $this->buildPollingSteps($operatorLabel, 'error') : null,
+      ),
       2 => [
         'success' => true,
         'status' => $status,
@@ -296,6 +285,61 @@ class PaymentService
         'steps' => $forPolling ? $this->buildPollingSteps($operatorLabel, 'waiting') : null,
       ],
     };
+  }
+
+  /**
+   * Marque le paiement comme échoué / refusé et met à jour la commande.
+   * Les mails sont envoyés après coup et n'impactent jamais le statut.
+   *
+   * @param Payment $payment Paiement cible
+   * @param string $message Message client / admin
+   * @param array<int, array<string, string>>|null $steps Étapes UI polling
+   * @return array<string, mixed> Résultat
+   */
+  private function markAsFailed(Payment $payment, string $message, ?array $steps): array
+  {
+    $order = $payment->order;
+
+    $payment->update([
+      'status' => PaymentStatus::Failed,
+      'metadata' => array_merge($payment->metadata ?? [], [
+        'failureReason' => $message,
+        'failedAt' => now()->toIso8601String(),
+      ]),
+    ]);
+
+    // Commande laissée en attente de paiement pour permettre un nouvel essai.
+    // Le paiement est bien marqué Failed (visible admin / API).
+    if ($order !== null && $order->paid_at === null) {
+      $order->update([
+        'status' => OrderStatus::PendingPayment,
+      ]);
+    }
+
+    $orderId = $order?->id;
+    $orderNumber = $order?->order_number;
+
+    if ($order !== null) {
+      $this->notificationService->afterCommit(function () use ($order, $message): void {
+        try {
+          $this->notificationService->notifyPaymentFailed(
+            $order->loadMissing('user'),
+            $message,
+          );
+        } catch (\Throwable $exception) {
+          report($exception);
+        }
+      });
+    }
+
+    return [
+      'success' => false,
+      'status' => 1,
+      'message' => $message,
+      'orderId' => $orderId,
+      'orderNumber' => $orderNumber,
+      'steps' => $steps,
+    ];
   }
 
   /**

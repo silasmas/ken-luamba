@@ -11,6 +11,7 @@ use Throwable;
 
 /**
  * Vérifie auprès de FlexPay le statut d'une commande en attente de paiement.
+ * La mise à jour du statut est indépendante de l'envoi des mails.
  */
 class OrderPaymentVerification
 {
@@ -37,72 +38,89 @@ class OrderPaymentVerification
   }
 
   /**
-   * Interroge FlexPay et met à jour la commande / le paiement.
+   * Interroge FlexPay, met à jour les statuts, puis signale l'état du mail.
    *
    * @param Order $order Commande à vérifier
    * @return array{success: bool, title: string, message: string, color: string} Résultat UI
    */
   public static function verify(Order $order): array
   {
+    $gatewayError = null;
+
     try {
-      $result = app(PaymentService::class)->checkAndUpdateStatus($order->order_number);
-      $order->refresh()->loadMissing('payment');
-
-      return self::buildResultFromGateway($order, $result);
+      app(PaymentService::class)->checkAndUpdateStatus($order->order_number);
     } catch (ValidationException $exception) {
-      $message = collect($exception->errors())->flatten()->first()
+      $gatewayError = collect($exception->errors())->flatten()->first()
         ?? $exception->getMessage();
-
-      return [
-        'success' => false,
-        'title' => 'Vérification impossible',
-        'message' => (string) $message,
-        'color' => 'danger',
-      ];
     } catch (Throwable $exception) {
-      $order->refresh()->loadMissing('payment');
-
-      // Le paiement peut déjà être validé alors qu'un mail SMTP a échoué ensuite.
-      if ($order->paid_at !== null) {
-        return [
-          'success' => true,
-          'title' => 'Paiement confirmé',
-          'message' => 'Transaction validée. '
-            .self::humanizeSecondaryError($exception->getMessage()),
-          'color' => 'success',
-        ];
-      }
-
-      return self::buildFailureFromException($exception);
+      $gatewayError = $exception->getMessage() ?: 'Erreur technique pendant la vérification.';
     }
+
+    $order->refresh()->loadMissing(['payment', 'user']);
+
+    return self::buildResultFromOrderState($order, $gatewayError);
   }
 
   /**
-   * Construit le résultat UI à partir de la réponse FlexPay.
+   * Construit le message admin à partir de l'état BDD après vérification.
    *
    * @param Order $order Commande rafraîchie
-   * @param array<string, mixed> $result Réponse PaymentService
+   * @param string|null $gatewayError Erreur technique éventuelle
    * @return array{success: bool, title: string, message: string, color: string}
    */
-  private static function buildResultFromGateway(Order $order, array $result): array
+  private static function buildResultFromOrderState(Order $order, ?string $gatewayError): array
   {
-    $status = $result['status'] ?? null;
-    $isPaid = $status === 0 || $order->paid_at !== null;
+    $payment = $order->payment;
+    $mailNote = self::mailStatusNote($order);
 
-    if ($isPaid) {
+    if ($order->paid_at !== null || $payment?->status === PaymentStatus::Completed) {
       return [
         'success' => true,
         'title' => 'Paiement confirmé',
-        'message' => (string) ($result['message'] ?? 'La transaction a été validée.'),
+        'message' => 'Transaction mise à jour : payée. '.$mailNote,
         'color' => 'success',
       ];
     }
 
-    if ($status === 1) {
+    if (
+      $payment?->status === PaymentStatus::Failed
+      || $payment?->status === PaymentStatus::Cancelled
+    ) {
+      $reason = is_array($payment?->metadata)
+        ? (string) ($payment->metadata['failureReason'] ?? '')
+        : '';
+
       return [
         'success' => false,
-        'title' => 'Paiement non abouti',
-        'message' => (string) ($result['message'] ?? 'Transaction annulée ou refusée.'),
+        'title' => 'Paiement annulé / refusé',
+        'message' => trim(
+          'Transaction mise à jour : '
+          .($payment->status->label())
+          .' · Commande toujours '
+          .$order->status->label()
+          .' (nouvel essai possible)'
+          .($reason !== '' ? ' — '.$reason : '')
+          .'. '.$mailNote
+        ),
+        'color' => 'danger',
+      ];
+    }
+
+    if ($gatewayError !== null) {
+      if (self::isHostingerMailRateLimit($gatewayError)) {
+        return [
+          'success' => false,
+          'title' => 'Toujours en attente',
+          'message' => 'Le statut FlexPay n\'a pas changé (toujours en attente). '
+            .'Note mail : quota Hostinger dépassé — cela n\'empêche pas la vérification du paiement.',
+          'color' => 'warning',
+        ];
+      }
+
+      return [
+        'success' => false,
+        'title' => 'Vérification incomplète',
+        'message' => $gatewayError,
         'color' => 'danger',
       ];
     }
@@ -110,59 +128,38 @@ class OrderPaymentVerification
     return [
       'success' => false,
       'title' => 'Toujours en attente',
-      'message' => (string) ($result['message'] ?? 'Aucune confirmation chez FlexPay pour le moment.'),
+      'message' => 'Aucune confirmation chez FlexPay pour le moment. '.$mailNote,
       'color' => 'warning',
     ];
   }
 
   /**
-   * Transforme une exception en message admin compréhensible.
+   * Indique clairement si le mail d'achat est parti ou non.
    *
-   * @param Throwable $exception Exception capturée
-   * @return array{success: bool, title: string, message: string, color: string}
+   * @param Order $order Commande
+   * @return string Note mail
    */
-  private static function buildFailureFromException(Throwable $exception): array
+  private static function mailStatusNote(Order $order): string
   {
-    $raw = $exception->getMessage();
-
-    if (self::isHostingerMailRateLimit($raw)) {
-      return [
-        'success' => false,
-        'title' => 'Quota email Hostinger dépassé',
-        'message' => 'Ce n\'est pas une erreur FlexPay. Hostinger bloque les mails (limite d\'envoi). '
-          .'Attendez le reset du quota, puis renvoyez le mail d\'achat séparément si besoin.',
-        'color' => 'warning',
-      ];
+    if ($order->paid_at === null) {
+      return $order->user?->email
+        ? 'Mail d\'achat : non applicable (commande non payée).'
+        : 'Mail d\'achat : non applicable.';
     }
 
-    return [
-      'success' => false,
-      'title' => 'Erreur de vérification',
-      'message' => $raw ?: 'Impossible de contacter la passerelle.',
-      'color' => 'danger',
-    ];
+    if ($order->payment_success_email_sent_at !== null) {
+      return 'Mail d\'achat : envoyé (ou mis en file) le '
+        .OrderAdminFormatter::formatLocalizedDateTime($order->payment_success_email_sent_at).'.';
+    }
+
+    return 'Mail d\'achat : non parti — utilisez « Renvoyer mail achat » quand le quota Hostinger le permet.';
   }
 
   /**
-   * Message secondaire quand le paiement est OK mais un traitement annexe a échoué.
-   *
-   * @param string $raw Message technique
-   * @return string Message utilisateur
-   */
-  private static function humanizeSecondaryError(string $raw): string
-  {
-    if (self::isHostingerMailRateLimit($raw)) {
-      return 'Le mail n\'a pas pu partir (quota Hostinger). Utilisez « Renvoyer mail achat » plus tard.';
-    }
-
-    return 'Un traitement annexe a échoué : '.$raw;
-  }
-
-  /**
-   * Détecte le rate-limit SMTP Hostinger dans un message d'exception.
+   * Détecte le rate-limit SMTP Hostinger.
    *
    * @param string $message Message brut
-   * @return bool True si quota mail Hostinger
+   * @return bool True si quota mail
    */
   private static function isHostingerMailRateLimit(string $message): bool
   {

@@ -142,17 +142,25 @@ class OrderNotificationService
 
   /**
    * Notifie le client après un échec de paiement.
+   * Ne lève jamais d'exception (SMTP Hostinger, etc.).
    *
    * @param Order $order Commande concernée
    * @param string $reason Motif affiché au client
    */
   public function notifyPaymentFailed(Order $order, string $reason): void
   {
-    $order = $this->loadOrder($order);
-    $client = $order->user;
+    try {
+      $order = $this->loadOrder($order);
+      $client = $order->user;
 
-    if ($client !== null) {
-      $client->notify(new OrderPaymentFailedNotification($order, $reason));
+      if ($client !== null && filled($client->email)) {
+        $client->notify(new OrderPaymentFailedNotification($order, $reason));
+      }
+    } catch (Throwable $exception) {
+      Log::error('Échec notification échec paiement (statut déjà mis à jour).', [
+        'order_number' => $order->order_number ?? null,
+        'error' => $exception->getMessage(),
+      ]);
     }
   }
 
