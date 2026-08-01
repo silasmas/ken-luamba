@@ -117,12 +117,14 @@ class OrderForm
               ->disabled()
               ->helperText('Montant libre ajouté par le client au-delà du total articles + livraison.'),
             Placeholder::make('books_received_status')
-              ->label('Livre reçu')
+              ->label(fn (?Order $record): string => $record?->isDirectPayment()
+                ? 'Récupération (vente directe)'
+                : 'Livre reçu')
               ->content(fn (?Order $record): string => $record
                 ? OrderAdminFormatter::booksReceivedLabel($record)
                 : '—')
               ->helperText(fn (?Order $record): ?string => $record
-                ? OrderAdminFormatter::booksPendingSummary($record)
+                ? OrderAdminFormatter::booksReceivedDescription($record)
                 : null)
               ->visible(fn (?Order $record): bool => $record !== null && $record->hasPhysicalItems()),
             Placeholder::make('payment_mode_status')

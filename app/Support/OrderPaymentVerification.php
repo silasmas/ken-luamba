@@ -48,7 +48,15 @@ class OrderPaymentVerification
     $gatewayError = null;
 
     try {
-      app(PaymentService::class)->checkAndUpdateStatus($order->order_number);
+      $order->loadMissing('payment');
+
+      if ($order->payment === null) {
+        throw ValidationException::withMessages([
+          'payment' => ['Aucun paiement lié à cette commande.'],
+        ]);
+      }
+
+      app(PaymentService::class)->checkAndUpdatePayment($order->payment);
     } catch (ValidationException $exception) {
       $gatewayError = collect($exception->errors())->flatten()->first()
         ?? $exception->getMessage();

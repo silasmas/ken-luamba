@@ -192,8 +192,11 @@ class PaymentService
   public function checkAndUpdateStatus(string $orderNumber): array
   {
     $payment = Payment::query()
-      ->where('provider_reference', $orderNumber)
-      ->orWhereHas('order', fn ($q) => $q->where('order_number', $orderNumber))
+      ->where(function ($query) use ($orderNumber): void {
+        $query
+          ->where('provider_reference', $orderNumber)
+          ->orWhereHas('order', fn ($q) => $q->where('order_number', $orderNumber));
+      })
       ->with('order')
       ->first();
 
@@ -203,10 +206,45 @@ class PaymentService
       ]);
     }
 
-    $checkRef = $payment->provider_reference ?? $orderNumber;
-    $result = $this->mobileService->checkStatus($checkRef);
+    return $this->checkAndUpdatePayment($payment);
+  }
 
-    return $this->applyFlexPayStatus($payment, $result['status'], $result['message'], true);
+  /**
+   * Interroge FlexPay pour un paiement précis puis persiste le statut.
+   *
+   * @param Payment $payment Paiement à synchroniser
+   * @return array<string, mixed> Statut courant
+   */
+  public function checkAndUpdatePayment(Payment $payment): array
+  {
+    $payment->refresh()->loadMissing('order');
+
+    if ($payment->status === PaymentStatus::Completed) {
+      return [
+        'success' => true,
+        'status' => 0,
+        'message' => 'Paiement déjà confirmé.',
+        'orderId' => $payment->order_id,
+        'orderNumber' => $payment->order?->order_number,
+      ];
+    }
+
+    $checkRef = $payment->provider_reference ?: $payment->order?->order_number;
+
+    if (! filled($checkRef)) {
+      throw ValidationException::withMessages([
+        'reference' => ['Aucune référence FlexPay pour cette commande.'],
+      ]);
+    }
+
+    $result = $this->mobileService->checkStatus((string) $checkRef);
+
+    return $this->applyFlexPayStatus(
+      $payment->fresh(['order']) ?? $payment,
+      (int) $result['status'],
+      (string) $result['message'],
+      true,
+    );
   }
 
   /**
@@ -262,9 +300,11 @@ class PaymentService
     string $message,
     bool $forPolling = false,
   ): array {
+    $payment->loadMissing('order');
     $operatorLabel = (string) ($payment->metadata['providerLabel'] ?? 'votre opérateur');
+    $normalizedStatus = (int) $status;
 
-    return match ($status) {
+    return match ($normalizedStatus) {
       0 => $this->markAsPaid($payment, 'Paiement confirmé. Merci pour votre commande !'),
       1 => $this->markAsFailed(
         $payment,
@@ -273,15 +313,17 @@ class PaymentService
       ),
       2 => [
         'success' => true,
-        'status' => $status,
+        'status' => $normalizedStatus,
         'message' => 'En attente de validation sur '.$operatorLabel.'. Consultez votre téléphone.',
         'orderNumber' => $payment->provider_reference,
         'steps' => $forPolling ? $this->buildPollingSteps($operatorLabel, 'waiting') : null,
       ],
       default => [
         'success' => false,
-        'status' => $status,
-        'message' => 'Paiement en cours de traitement. Patientez quelques instants.',
+        'status' => $normalizedStatus,
+        'message' => filled($message)
+          ? $message
+          : 'Paiement en cours de traitement. Patientez quelques instants.',
         'steps' => $forPolling ? $this->buildPollingSteps($operatorLabel, 'waiting') : null,
       ],
     };
@@ -299,27 +341,36 @@ class PaymentService
   private function markAsFailed(Payment $payment, string $message, ?array $steps): array
   {
     $order = $payment->order;
+    $wasAlreadyFailed = in_array(
+      $payment->status,
+      [PaymentStatus::Failed, PaymentStatus::Cancelled],
+      true,
+    );
 
-    $payment->update([
+    $payment->forceFill([
       'status' => PaymentStatus::Failed,
       'metadata' => array_merge($payment->metadata ?? [], [
         'failureReason' => $message,
         'failedAt' => now()->toIso8601String(),
+        'flexPayStatus' => 1,
       ]),
-    ]);
+    ])->save();
+
+    $payment->refresh();
 
     // Commande laissée en attente de paiement pour permettre un nouvel essai.
-    // Le paiement est bien marqué Failed (visible admin / API).
+    // Le statut transaction Failed est la source de vérité affichée en admin.
     if ($order !== null && $order->paid_at === null) {
-      $order->update([
+      $order->forceFill([
         'status' => OrderStatus::PendingPayment,
-      ]);
+      ])->save();
+      $order->refresh();
     }
 
     $orderId = $order?->id;
     $orderNumber = $order?->order_number;
 
-    if ($order !== null) {
+    if ($order !== null && ! $wasAlreadyFailed) {
       $this->notificationService->afterCommit(function () use ($order, $message): void {
         try {
           $this->notificationService->notifyPaymentFailed(
@@ -338,6 +389,7 @@ class PaymentService
       'message' => $message,
       'orderId' => $orderId,
       'orderNumber' => $orderNumber,
+      'paymentStatus' => PaymentStatus::Failed->value,
       'steps' => $steps,
     ];
   }
@@ -372,18 +424,36 @@ class PaymentService
   private function markAsPaid(Payment $payment, string $message): array
   {
     return DB::transaction(function () use ($payment, $message): array {
-      $payment->update([
+      $payment->refresh()->loadMissing('order');
+
+      if ($payment->status === PaymentStatus::Completed && $payment->order?->paid_at !== null) {
+        return [
+          'success' => true,
+          'status' => 0,
+          'message' => $message,
+          'orderId' => $payment->order_id,
+          'orderNumber' => $payment->order?->order_number,
+          'hasPhysicalItems' => $payment->order?->hasPhysicalItems() ?? false,
+          'isDigitalOnly' => $payment->order?->isDigitalOnly() ?? false,
+          'qrToken' => $payment->order?->hasPhysicalItems()
+            ? $payment->order?->qrCode?->token
+            : null,
+          'paymentStatus' => PaymentStatus::Completed->value,
+        ];
+      }
+
+      $payment->forceFill([
         'status' => PaymentStatus::Completed,
         'paid_at' => now(),
-      ]);
+      ])->save();
 
       $order = $payment->order;
       $order?->loadMissing('items');
 
-      $order?->update([
+      $order?->forceFill([
         'status' => OrderStatus::Paid,
         'paid_at' => now(),
-      ]);
+      ])->save();
 
       if ($order !== null) {
         if ($order->hasPhysicalItems()) {

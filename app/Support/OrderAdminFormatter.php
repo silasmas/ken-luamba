@@ -220,6 +220,7 @@ class OrderAdminFormatter
 
   /**
    * Libellé admin du statut de réception des livres.
+   * Pour la vente directe : « A récupéré » / « Pas encore » (remise en main propre).
    *
    * @param Order $order Commande source
    * @return string Libellé affiché dans Filament
@@ -236,15 +237,73 @@ class OrderAdminFormatter
       return '—';
     }
 
+    $isDirect = $order->isDirectPayment();
+
     if ($counts['received'] === $counts['total']) {
-      return 'Reçu';
+      return $isDirect ? 'A récupéré' : 'Reçu';
     }
 
     if ($counts['received'] === 0) {
-      return 'Non reçu';
+      return $isDirect ? 'Pas encore' : 'Non reçu';
     }
 
-    return sprintf('Partiel (%d/%d)', $counts['received'], $counts['total']);
+    return sprintf(
+      $isDirect ? 'Partiel (%d/%d récupérés)' : 'Partiel (%d/%d)',
+      $counts['received'],
+      $counts['total'],
+    );
+  }
+
+  /**
+   * Date de récupération / réception complète, si connue.
+   *
+   * @param Order $order Commande source
+   * @return CarbonInterface|null Instant de remise ou null
+   */
+  public static function booksRecoveredAt(Order $order): ?CarbonInterface
+  {
+    if (! self::isBooksReceived($order)) {
+      return null;
+    }
+
+    $order->loadMissing(['items', 'delivery']);
+
+    $itemRecoveredAt = self::physicalItems($order)
+      ->pluck('received_at')
+      ->filter()
+      ->sortDesc()
+      ->first();
+
+    return $order->completed_at
+      ?? $order->delivery?->delivered_at
+      ?? ($itemRecoveredAt instanceof CarbonInterface ? $itemRecoveredAt : null);
+  }
+
+  /**
+   * Ligne secondaire sous le badge de récupération (date ou articles en attente).
+   *
+   * @param Order $order Commande source
+   * @return string|null Texte descriptif
+   */
+  public static function booksReceivedDescription(Order $order): ?string
+  {
+    if ($order->isDigitalOnly()) {
+      return null;
+    }
+
+    if (self::isBooksReceived($order)) {
+      $at = self::booksRecoveredAt($order);
+
+      if ($at === null) {
+        return $order->isDirectPayment() ? 'Remise en main propre' : 'Remise enregistrée';
+      }
+
+      $prefix = $order->isDirectPayment() ? 'Récupéré le ' : 'Reçu le ';
+
+      return $prefix.self::formatLocalizedDateTime($at);
+    }
+
+    return self::booksPendingSummary($order);
   }
 
   /**
@@ -302,6 +361,7 @@ class OrderAdminFormatter
 
     $pendingLines = self::booksPendingLines($order);
     $pendingHtml = '';
+    $recoveredDescription = self::booksReceivedDescription($order);
 
     if ($pendingLines !== []) {
       $items = collect($pendingLines)
@@ -311,6 +371,14 @@ class OrderAdminFormatter
       $pendingHtml = sprintf(
         '<ul class="mt-2 space-y-1 text-xs text-gray-600 dark:text-gray-400">%s</ul>',
         $items,
+      );
+    } elseif (
+      self::isBooksReceived($order)
+      && filled($recoveredDescription)
+    ) {
+      $pendingHtml = sprintf(
+        '<p class="mt-2 text-xs text-gray-600 dark:text-gray-400">%s</p>',
+        e($recoveredDescription),
       );
     }
 

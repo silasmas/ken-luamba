@@ -9,6 +9,7 @@ use App\Models\Order;
 use App\Services\OrderNotificationService;
 use App\Services\Orders\OrderAdminExportService;
 use App\Support\ExportDownloadResponse;
+use App\Support\OrderBooksReceivedQuery;
 use App\Support\OrderPaymentVerification;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -48,6 +49,32 @@ class ListOrders extends ListRecords
         ->modifyQueryUsing(fn (Builder $query): Builder => $query->where(
           'source',
           OrderSource::DirectPayment->value,
+        )),
+      'direct_to_collect' => Tab::make('Direct — à récupérer')
+        ->icon(Heroicon::OutlinedHandRaised)
+        ->badge(fn (): int => OrderBooksReceivedQuery::notReceived(
+          Order::query()
+            ->where('source', OrderSource::DirectPayment->value)
+            ->whereNotNull('paid_at'),
+        )->count())
+        ->badgeColor('warning')
+        ->modifyQueryUsing(fn (Builder $query): Builder => OrderBooksReceivedQuery::notReceived(
+          $query
+            ->where('source', OrderSource::DirectPayment->value)
+            ->whereNotNull('paid_at'),
+        )),
+      'direct_collected' => Tab::make('Direct — récupéré')
+        ->icon(Heroicon::OutlinedCheckBadge)
+        ->badge(fn (): int => OrderBooksReceivedQuery::received(
+          Order::query()
+            ->where('source', OrderSource::DirectPayment->value)
+            ->whereNotNull('paid_at'),
+        )->count())
+        ->badgeColor('success')
+        ->modifyQueryUsing(fn (Builder $query): Builder => OrderBooksReceivedQuery::received(
+          $query
+            ->where('source', OrderSource::DirectPayment->value)
+            ->whereNotNull('paid_at'),
         )),
       'pending_payment' => Tab::make('En attente paiement')
         ->icon(Heroicon::OutlinedClock)

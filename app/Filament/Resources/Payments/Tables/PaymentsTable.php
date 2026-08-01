@@ -67,7 +67,7 @@ class PaymentsTable
             : 'gray')
           ->toggleable(),
         TextColumn::make('order.books_received')
-          ->label('Livre reçu')
+          ->label('Récupération')
           ->state(fn ($record) => $record->order
             ? OrderAdminFormatter::booksReceivedCellHtml($record->order)
             : new HtmlString('<span class="text-gray-400">—</span>'))
@@ -145,11 +145,11 @@ class PaymentsTable
             fn (PaymentChannel $channel) => [$channel->value => $channel->label()]
           )->all()),
         SelectFilter::make('books_received')
-          ->label('Livre reçu')
+          ->label('Récupération / réception')
           ->options([
-            'yes' => 'Reçu',
+            'yes' => 'A récupéré / reçu',
             'partial' => 'Partiel',
-            'no' => 'Non reçu',
+            'no' => 'Pas encore / non reçu',
             'na' => 'Numérique uniquement',
           ])
           ->query(function (Builder $query, array $data): Builder {

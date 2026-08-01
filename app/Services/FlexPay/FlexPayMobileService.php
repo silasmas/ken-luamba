@@ -84,12 +84,44 @@ class FlexPayMobileService
     ])->get($url);
 
     $json = $response->json() ?? [];
-    $transaction = $json['transaction'] ?? [];
+    $transaction = is_array($json['transaction'] ?? null) ? $json['transaction'] : [];
+
+    // FlexPay : 0=payé, 1=annulé/refusé, 2=en attente (parfois string ou à la racine).
+    $rawStatus = $transaction['status']
+      ?? $json['transactionStatus']
+      ?? $json['status']
+      ?? null;
+
+    $status = is_numeric($rawStatus) ? (int) $rawStatus : -1;
+    $message = (string) ($json['message'] ?? $transaction['message'] ?? 'Statut inconnu');
+
+    if ($status === -1 && $this->messageLooksFailed($message)) {
+      $status = 1;
+    }
 
     return [
-      'status' => (int) ($transaction['status'] ?? -1),
-      'message' => (string) ($json['message'] ?? 'Statut inconnu'),
-      'reference' => $transaction['reference'] ?? null,
+      'status' => $status,
+      'message' => $message,
+      'reference' => $transaction['reference'] ?? $json['reference'] ?? null,
     ];
+  }
+
+  /**
+   * Détecte un échec / annulation dans le message FlexPay quand le code statut manque.
+   *
+   * @param string $message Message API
+   * @return bool True si le libellé indique un refus
+   */
+  private function messageLooksFailed(string $message): bool
+  {
+    $haystack = mb_strtolower($message);
+
+    return str_contains($haystack, 'annul')
+      || str_contains($haystack, 'refus')
+      || str_contains($haystack, 'échou')
+      || str_contains($haystack, 'echec')
+      || str_contains($haystack, 'fail')
+      || str_contains($haystack, 'cancel')
+      || str_contains($haystack, 'decline');
   }
 }

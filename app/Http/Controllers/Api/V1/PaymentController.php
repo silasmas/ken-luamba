@@ -128,8 +128,11 @@ class PaymentController extends Controller
     }
 
     $payment = \App\Models\Payment::query()
-      ->where('provider_reference', $reference)
-      ->orWhereHas('order', fn ($q) => $q->where('order_number', $reference))
+      ->where(function ($query) use ($reference): void {
+        $query
+          ->where('provider_reference', $reference)
+          ->orWhereHas('order', fn ($q) => $q->where('order_number', $reference));
+      })
       ->with('order')
       ->first();
 

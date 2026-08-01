@@ -24,7 +24,9 @@ class OrderBooksReceivedAdminAction
   public static function manageReceipt(): Action
   {
     return Action::make('manageBooksReceipt')
-      ->label('Gérer la réception')
+      ->label(fn (Order $record): string => $record->isDirectPayment()
+        ? 'Gérer la récupération'
+        : 'Gérer la réception')
       ->icon(Heroicon::OutlinedClipboardDocumentCheck)
       ->color('primary')
       ->visible(fn (Order $record): bool => self::canManageReceipt($record))
@@ -39,11 +41,14 @@ class OrderBooksReceivedAdminAction
 
         $record->refresh()->loadMissing('items');
         $counts = OrderAdminFormatter::booksReceivedCounts($record);
+        $isDirect = $record->isDirectPayment();
 
         if (OrderAdminFormatter::isBooksReceived($record)) {
           Notification::make()
-            ->title('Réception complète')
-            ->body('Tous les articles sont reçus. La commande est marquée comme terminée.')
+            ->title($isDirect ? 'Récupération complète' : 'Réception complète')
+            ->body($isDirect
+              ? 'Le client a récupéré tous les articles. Vente directe terminée.'
+              : 'Tous les articles sont reçus. La commande est marquée comme terminée.')
             ->success()
             ->send();
 
@@ -53,15 +58,21 @@ class OrderBooksReceivedAdminAction
         $pending = OrderAdminFormatter::booksPendingSummary($record);
 
         Notification::make()
-          ->title('Réception partielle enregistrée')
+          ->title($isDirect ? 'Récupération partielle' : 'Réception partielle enregistrée')
           ->body($pending
             ? sprintf(
-              '%d/%d article(s) reçu(s). En attente : %s',
+              '%d/%d article(s) %s. En attente : %s',
               $counts['received'],
               $counts['total'],
+              $isDirect ? 'récupéré(s)' : 'reçu(s)',
               $pending,
             )
-            : sprintf('%d/%d article(s) reçu(s).', $counts['received'], $counts['total']))
+            : sprintf(
+              '%d/%d article(s) %s.',
+              $counts['received'],
+              $counts['total'],
+              $isDirect ? 'récupéré(s)' : 'reçu(s)',
+            ))
           ->warning()
           ->send();
       });
@@ -101,18 +112,22 @@ class OrderBooksReceivedAdminAction
 
     $pending = OrderAdminFormatter::booksPendingSummary($record);
 
+    $isDirect = $record->isDirectPayment();
+
     return [
       Placeholder::make('receipt_help')
         ->label('Instructions')
-        ->content('Cochez les articles déjà remis au client. Lorsque tous les articles physiques sont cochés, la commande sera marquée comme entièrement reçue.')
+        ->content($isDirect
+          ? 'Cochez les articles déjà récupérés par le client (remise en main propre). Quand tout est coché, la vente directe est marquée « A récupéré ».'
+          : 'Cochez les articles déjà remis au client. Lorsque tous les articles physiques sont cochés, la commande sera marquée comme entièrement reçue.')
         ->columnSpanFull(),
       Placeholder::make('receipt_pending')
-        ->label('Articles encore à remettre')
+        ->label($isDirect ? 'Articles encore à récupérer' : 'Articles encore à remettre')
         ->content($pending ?? 'Aucun article en attente pour le moment.')
         ->visible(fn (): bool => $pending !== null)
         ->columnSpanFull(),
       CheckboxList::make('receivedItemIds')
-        ->label('Articles reçus')
+        ->label($isDirect ? 'Articles récupérés' : 'Articles reçus')
         ->options($options)
         ->columns(1)
         ->bulkToggleable()

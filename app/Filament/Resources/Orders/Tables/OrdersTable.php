@@ -21,11 +21,14 @@ use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\Hidden;
 use Filament\Notifications\Notification;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -86,25 +89,66 @@ class OrdersTable
           ->placeholder('—')
           ->toggleable(isToggledHiddenByDefault: true),
         TextColumn::make('books_received')
-          ->label('Livre reçu')
+          ->label('Récupération')
           ->state(fn ($record) => OrderAdminFormatter::booksReceivedCellHtml($record))
           ->html()
+          ->description(fn ($record): ?string => $record->isDirectPayment()
+            ? (OrderAdminFormatter::isBooksReceived($record)
+              ? 'Vente directe — remise en main propre'
+              : (OrderAdminFormatter::isBooksPartiallyReceived($record)
+                ? 'Vente directe — récupération partielle'
+                : ($record->paid_at !== null ? 'Vente directe — à remettre au client' : null)))
+            : null)
           ->extraHeaderAttributes(ResizableTableColumn::attributes('books_received', '16rem')['header'])
           ->extraCellAttributes(ResizableTableColumn::attributes('books_received', '16rem')['cell'])
           ->toggleable(),
         TextColumn::make('status')
-          ->label('Statut')
+          ->label('Statut commande')
           ->badge()
-          ->formatStateUsing(fn (OrderStatus $state): string => $state->label())
-          ->color(fn (OrderStatus $state): string => match ($state) {
-            OrderStatus::Paid, OrderStatus::Completed => 'success',
-            OrderStatus::PendingPayment => 'warning',
-            OrderStatus::Cancelled, OrderStatus::Refunded => 'danger',
+          ->formatStateUsing(function (OrderStatus $state, $record): string {
+            if (
+              $state === OrderStatus::PendingPayment
+              && in_array($record->payment?->status, [PaymentStatus::Failed, PaymentStatus::Cancelled], true)
+            ) {
+              return 'Paiement échoué / refusé';
+            }
+
+            return $state->label();
+          })
+          ->color(function (OrderStatus $state, $record): string {
+            if (
+              $state === OrderStatus::PendingPayment
+              && in_array($record->payment?->status, [PaymentStatus::Failed, PaymentStatus::Cancelled], true)
+            ) {
+              return 'danger';
+            }
+
+            return match ($state) {
+              OrderStatus::Paid, OrderStatus::Completed => 'success',
+              OrderStatus::PendingPayment => 'warning',
+              OrderStatus::Cancelled, OrderStatus::Refunded => 'danger',
+              default => 'gray',
+            };
+          })
+          ->description(fn ($record): ?string => $record->payment?->status instanceof PaymentStatus
+            ? 'Transaction : '.$record->payment->status->label()
+            : null)
+          ->toggleable(),
+        TextColumn::make('payment.status')
+          ->label('Statut paiement')
+          ->badge()
+          ->formatStateUsing(fn ($state): string => $state instanceof PaymentStatus ? $state->label() : '—')
+          ->color(fn ($state): string => match ($state) {
+            PaymentStatus::Completed => 'success',
+            PaymentStatus::Pending, PaymentStatus::Processing => 'warning',
+            PaymentStatus::Failed, PaymentStatus::Cancelled => 'danger',
+            PaymentStatus::Refunded => 'gray',
             default => 'gray',
           })
+          ->sortable()
           ->toggleable(),
         TextColumn::make('payment.channel')
-          ->label('Paiement')
+          ->label('Canal paiement')
           ->formatStateUsing(fn ($state): string => $state instanceof PaymentChannel
             ? $state->label()
             : '—')
@@ -239,11 +283,11 @@ class OrdersTable
             };
           }),
         SelectFilter::make('books_received')
-          ->label('Livre reçu')
+          ->label('Récupération / réception')
           ->options([
-            'yes' => 'Reçu',
+            'yes' => 'A récupéré / reçu',
             'partial' => 'Partiel',
-            'no' => 'Non reçu',
+            'no' => 'Pas encore / non reçu',
             'na' => 'Numérique uniquement',
           ])
           ->query(fn (Builder $query, array $data): Builder => OrderBooksReceivedQuery::applyFilter(
@@ -263,26 +307,120 @@ class OrdersTable
         Filter::make('created_between')
           ->label('Date de création')
           ->schema([
-            DatePicker::make('from')
-              ->label('Du')
-              ->native(false),
-            DatePicker::make('until')
-              ->label('Au')
-              ->native(false),
+            // Force l'application du filtre (Filament ignore query() si isActive === false).
+            Hidden::make('isActive')->default(true)->dehydrated(),
+            DatePicker::make('created_from')
+              ->label('Créée du')
+              ->native(false)
+              ->displayFormat('d/m/Y')
+              ->live(),
+            DatePicker::make('created_until')
+              ->label('Créée au')
+              ->native(false)
+              ->displayFormat('d/m/Y')
+              ->live(),
           ])
+          ->columns(2)
           ->query(function (Builder $query, array $data): Builder {
-            return $query
-              ->when(
-                filled($data['from'] ?? null),
-                fn (Builder $q): Builder => $q->whereDate('created_at', '>=', $data['from']),
-              )
-              ->when(
-                filled($data['until'] ?? null),
-                fn (Builder $q): Builder => $q->whereDate('created_at', '<=', $data['until']),
+            $timezone = (string) config('app.timezone', 'Africa/Kinshasa');
+            $from = $data['created_from'] ?? null;
+            $until = $data['created_until'] ?? null;
+
+            if (filled($from)) {
+              $query->where(
+                'created_at',
+                '>=',
+                Carbon::parse($from, $timezone)->startOfDay(),
               );
+            }
+
+            if (filled($until)) {
+              $query->where(
+                'created_at',
+                '<=',
+                Carbon::parse($until, $timezone)->endOfDay(),
+              );
+            }
+
+            return $query;
+          })
+          ->indicateUsing(function (array $data): array {
+            $indicators = [];
+
+            if (filled($data['created_from'] ?? null)) {
+              $indicators[] = Indicator::make(
+                'Créée du '.Carbon::parse($data['created_from'])->format('d/m/Y')
+              )->removeField('created_from');
+            }
+
+            if (filled($data['created_until'] ?? null)) {
+              $indicators[] = Indicator::make(
+                'Créée au '.Carbon::parse($data['created_until'])->format('d/m/Y')
+              )->removeField('created_until');
+            }
+
+            return $indicators;
+          }),
+        Filter::make('paid_between')
+          ->label('Date de paiement')
+          ->schema([
+            Hidden::make('isActive')->default(true)->dehydrated(),
+            DatePicker::make('paid_from')
+              ->label('Payée du')
+              ->native(false)
+              ->displayFormat('d/m/Y')
+              ->live(),
+            DatePicker::make('paid_until')
+              ->label('Payée au')
+              ->native(false)
+              ->displayFormat('d/m/Y')
+              ->live(),
+          ])
+          ->columns(2)
+          ->query(function (Builder $query, array $data): Builder {
+            $timezone = (string) config('app.timezone', 'Africa/Kinshasa');
+            $from = $data['paid_from'] ?? null;
+            $until = $data['paid_until'] ?? null;
+
+            if (filled($from)) {
+              $query->where(
+                'paid_at',
+                '>=',
+                Carbon::parse($from, $timezone)->startOfDay(),
+              );
+            }
+
+            if (filled($until)) {
+              $query->where(
+                'paid_at',
+                '<=',
+                Carbon::parse($until, $timezone)->endOfDay(),
+              );
+            }
+
+            return $query;
+          })
+          ->indicateUsing(function (array $data): array {
+            $indicators = [];
+
+            if (filled($data['paid_from'] ?? null)) {
+              $indicators[] = Indicator::make(
+                'Payée du '.Carbon::parse($data['paid_from'])->format('d/m/Y')
+              )->removeField('paid_from');
+            }
+
+            if (filled($data['paid_until'] ?? null)) {
+              $indicators[] = Indicator::make(
+                'Payée au '.Carbon::parse($data['paid_until'])->format('d/m/Y')
+              )->removeField('paid_until');
+            }
+
+            return $indicators;
           }),
       ])
       ->filtersFormColumns(2)
+      // Appliquer dès la saisie (sinon il faut cliquer « Appliquer », souvent oublié).
+      ->deferFilters(false)
       ->recordActions([
         Action::make('verifyPayment')
           ->label('Vérifier paiement')
@@ -292,14 +430,18 @@ class OrdersTable
           ->modalHeading('Vérifier la transaction FlexPay')
           ->modalDescription('Interroge FlexPay pour savoir si le paiement en attente a abouti.')
           ->visible(fn ($record): bool => OrderPaymentVerification::canVerify($record))
-          ->action(function ($record): void {
+          ->action(function ($record, $livewire): void {
             $result = OrderPaymentVerification::verify($record);
+            $record->refresh()->load(['payment', 'user']);
 
             Notification::make()
               ->title($result['title'])
               ->body($result['message'])
               ->{$result['color']}()
               ->send();
+
+            // Force le rafraîchissement de la ligne (statut paiement visible).
+            $livewire->resetTable();
           }),
         Action::make('resendPurchaseEmail')
           ->label('Renvoyer mail achat')
@@ -319,23 +461,51 @@ class OrdersTable
               ->{$result['success'] ? 'success' : 'danger'}()
               ->send();
           }),
+        Action::make('markDirectCollected')
+          ->label('Marquer récupéré')
+          ->icon(Heroicon::OutlinedHandRaised)
+          ->color('success')
+          ->requiresConfirmation()
+          ->modalHeading('Confirmer la récupération')
+          ->modalDescription('Le client a récupéré les livres en main propre (vente directe).')
+          ->visible(fn ($record): bool => $record->isDirectPayment()
+            && $record->paid_at !== null
+            && ! $record->isDigitalOnly()
+            && ! OrderAdminFormatter::isBooksReceived($record))
+          ->action(function ($record, $livewire): void {
+            app(DeliveryService::class)->markBooksReceivedByAdmin($record);
+
+            Notification::make()
+              ->title('Récupération enregistrée')
+              ->body('La vente directe est marquée comme récupérée par le client.')
+              ->success()
+              ->send();
+
+            $livewire->resetTable();
+          }),
         OrderBooksReceivedAdminAction::manageReceipt(),
         Action::make('markBooksNotReceived')
-          ->label('Tout remettre en attente')
+          ->label(fn ($record): string => $record->isDirectPayment()
+            ? 'Annuler la récupération'
+            : 'Tout remettre en attente')
           ->icon(Heroicon::OutlinedXCircle)
           ->color('warning')
           ->requiresConfirmation()
-          ->modalDescription('Tous les articles seront marqués comme non reçus et la commande repassera en attente de remise.')
+          ->modalDescription(fn ($record): string => $record->isDirectPayment()
+            ? 'La vente directe repassera en « Pas encore » (livres non récupérés).'
+            : 'Tous les articles seront marqués comme non reçus et la commande repassera en attente de remise.')
           ->visible(fn ($record): bool => ! $record->isDigitalOnly()
             && (OrderAdminFormatter::isBooksReceived($record)
               || OrderAdminFormatter::isBooksPartiallyReceived($record)))
-          ->action(function ($record): void {
+          ->action(function ($record, $livewire): void {
             app(DeliveryService::class)->markBooksNotReceivedByAdmin($record);
 
             Notification::make()
-              ->title('Réception réinitialisée')
+              ->title($record->isDirectPayment() ? 'Récupération annulée' : 'Réception réinitialisée')
               ->success()
               ->send();
+
+            $livewire->resetTable();
           }),
         EditAction::make(),
       ])
@@ -349,7 +519,7 @@ class OrdersTable
           ->modalHeading('Vérifier les paiements sélectionnés')
           ->modalDescription('Interroge FlexPay pour chaque commande sélectionnée encore en attente.')
           ->deselectRecordsAfterCompletion()
-          ->action(function (Collection $records): void {
+          ->action(function (Collection $records, $livewire): void {
             $records->loadMissing(['payment', 'user']);
             $confirmed = 0;
             $pending = 0;
@@ -376,6 +546,8 @@ class OrdersTable
               ->body("Confirmés : {$confirmed} · En attente : {$pending} · Échoués : {$failed} · Ignorés : {$skipped}")
               ->success()
               ->send();
+
+            $livewire->resetTable();
           }),
         BulkAction::make('resendPurchaseEmailsBulk')
           ->label('Renvoyer mails achat')
@@ -418,7 +590,7 @@ class OrdersTable
           }),
         BulkActionGroup::make([
           BulkAction::make('markBooksReceivedBulk')
-            ->label('Marquer tout reçu')
+            ->label('Marquer récupéré / reçu')
             ->icon(Heroicon::OutlinedCheckCircle)
             ->color('success')
             ->requiresConfirmation()
