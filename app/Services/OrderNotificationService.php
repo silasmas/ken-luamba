@@ -18,6 +18,8 @@ use App\Notifications\Orders\OrderPaymentReminderNotification;
 use App\Notifications\Orders\OrderPaymentSuccessNotification;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Service central d'envoi des notifications email liées aux commandes et livraisons.
@@ -34,8 +36,17 @@ class OrderNotificationService
     $order = $this->loadOrder($order);
     $client = $order->user;
 
-    if ($client !== null) {
-      $client->notify(new OrderPaymentSuccessNotification($order));
+    if ($client !== null && $order->payment_success_email_sent_at === null) {
+      try {
+        $client->notify(new OrderPaymentSuccessNotification($order));
+        $order->forceFill(['payment_success_email_sent_at' => now()])->save();
+      } catch (Throwable $exception) {
+        Log::error('Échec envoi mail confirmation achat.', [
+          'order_number' => $order->order_number,
+          'user_id' => $client->id,
+          'error' => $exception->getMessage(),
+        ]);
+      }
     }
 
     if ($order->delivery !== null && $order->admin_pending_delivery_notified_at === null) {

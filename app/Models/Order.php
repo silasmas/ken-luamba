@@ -42,6 +42,7 @@ class Order extends Model
     'paid_at',
     'completed_at',
     'payment_reminder_sent_at',
+    'payment_success_email_sent_at',
     'admin_pending_delivery_notified_at',
   ];
 
@@ -65,8 +66,19 @@ class Order extends Model
       'paid_at' => 'datetime',
       'completed_at' => 'datetime',
       'payment_reminder_sent_at' => 'datetime',
+      'payment_success_email_sent_at' => 'datetime',
       'admin_pending_delivery_notified_at' => 'datetime',
     ];
+  }
+
+  /**
+   * Indique si le mail de confirmation d'achat a été envoyé.
+   *
+   * @return bool True si horodatage d'envoi présent
+   */
+  public function hasPaymentSuccessEmailBeenSent(): bool
+  {
+    return $this->payment_success_email_sent_at !== null;
   }
 
   /**

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Orders\Tables;
 
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Models\User;
 use App\Services\DeliveryService;
@@ -57,6 +58,13 @@ class OrdersTable
           ->searchable(query: function ($query, string $search): void {
             $query->whereHas('items', fn ($items) => $items->where('book_title', 'like', "%{$search}%"));
           }),
+        TextColumn::make('source')
+          ->label('Canal')
+          ->state(fn ($record): string => OrderAdminFormatter::salesChannelLabel($record))
+          ->badge()
+          ->color(fn ($record): string => OrderAdminFormatter::salesChannelColor($record))
+          ->sortable()
+          ->toggleable(),
         TextColumn::make('payment_mode')
           ->label('Mode d\'achat')
           ->state(fn ($record): string => OrderAdminFormatter::paymentModeLabel($record))
@@ -88,6 +96,13 @@ class OrdersTable
             default => 'gray',
           })
           ->toggleable(),
+        TextColumn::make('purchase_email')
+          ->label('Mail achat')
+          ->state(fn ($record): string => OrderAdminFormatter::purchaseEmailLabel($record))
+          ->description(fn ($record): ?string => OrderAdminFormatter::purchaseEmailDescription($record))
+          ->badge()
+          ->color(fn ($record): string => OrderAdminFormatter::purchaseEmailColor($record))
+          ->toggleable(),
         TextColumn::make('fulfillment_type')
           ->label('Réception')
           ->formatStateUsing(fn ($state) => $state?->label() ?? '—')
@@ -97,16 +112,16 @@ class OrdersTable
           ->money(fn ($record) => $record->currency)
           ->sortable()
           ->toggleable(),
-        TextColumn::make('paid_at')
-          ->label('Payée le')
-          ->dateTime('d/m/Y H:i')
-          ->sortable()
-          ->toggleable(isToggledHiddenByDefault: true),
         TextColumn::make('created_at')
           ->label('Créée le')
-          ->dateTime('d/m/Y H:i')
+          ->formatStateUsing(fn ($state): string => OrderAdminFormatter::formatLocalizedDateTime($state))
           ->sortable()
-          ->toggleable(isToggledHiddenByDefault: true),
+          ->toggleable(),
+        TextColumn::make('paid_at')
+          ->label('Payée le')
+          ->formatStateUsing(fn ($state): string => OrderAdminFormatter::formatLocalizedDateTime($state))
+          ->sortable()
+          ->toggleable(),
       ])
       ->defaultSort('created_at', 'desc')
       ->filters([
@@ -119,6 +134,14 @@ class OrdersTable
             ->all())
           ->searchable()
           ->preload(),
+        SelectFilter::make('source')
+          ->label('Canal')
+          ->options(collect(OrderSource::cases())->mapWithKeys(
+            fn (OrderSource $source): array => [$source->value => match ($source) {
+              OrderSource::DirectPayment => 'Vente directe',
+              OrderSource::Shop => 'Site (boutique)',
+            }]
+          )->all()),
         SelectFilter::make('status')
           ->label('Statut')
           ->options(collect(OrderStatus::cases())->mapWithKeys(
@@ -134,6 +157,21 @@ class OrdersTable
             return match ($data['value'] ?? null) {
               'paid' => $query->whereNotNull('paid_at'),
               'unpaid' => $query->whereNull('paid_at'),
+              default => $query,
+            };
+          }),
+        SelectFilter::make('purchase_email')
+          ->label('Mail achat')
+          ->options([
+            'sent' => 'Envoyé',
+            'not_sent' => 'Non envoyé (payée)',
+          ])
+          ->query(function (Builder $query, array $data): Builder {
+            return match ($data['value'] ?? null) {
+              'sent' => $query->whereNotNull('payment_success_email_sent_at'),
+              'not_sent' => $query
+                ->whereNotNull('paid_at')
+                ->whereNull('payment_success_email_sent_at'),
               default => $query,
             };
           }),

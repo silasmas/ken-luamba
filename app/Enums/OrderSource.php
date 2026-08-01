@@ -18,8 +18,8 @@ enum OrderSource: string
   public function label(): string
   {
     return match ($this) {
-      self::Shop => 'Boutique',
-      self::DirectPayment => 'Paiement direct',
+      self::Shop => 'Site (boutique)',
+      self::DirectPayment => 'Vente directe',
     };
   }
 }

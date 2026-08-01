@@ -49,6 +49,20 @@ class OrderForm
               ->required()
               ->native(false)
               ->helperText('Étape actuelle : paiement, préparation, livraison…'),
+            Placeholder::make('sales_channel')
+              ->label('Canal de vente')
+              ->content(fn (?Order $record): string => $record
+                ? OrderAdminFormatter::salesChannelLabel($record)
+                : '—')
+              ->helperText('Site (boutique classique) ou vente directe (QR / lien).'),
+            Placeholder::make('purchase_email_status')
+              ->label('Mail de confirmation d\'achat')
+              ->content(fn (?Order $record): string => $record
+                ? OrderAdminFormatter::purchaseEmailLabel($record)
+                : '—')
+              ->helperText(fn (?Order $record): ?string => $record
+                ? OrderAdminFormatter::purchaseEmailDescription($record)
+                : null),
           ],
         ),
         AdminFormLayout::section(
@@ -132,14 +146,28 @@ class OrderForm
         ),
         AdminFormLayout::section(
           'Dates clés',
-          'Horodatage des étapes importantes.',
+          'Horodatage des étapes importantes (fuseau '.config('app.timezone').').',
           [
+            Placeholder::make('created_at_display')
+              ->label('Créée le')
+              ->content(fn (?Order $record): string => OrderAdminFormatter::formatLocalizedDateTime(
+                $record?->created_at,
+              )),
             DateTimePicker::make('paid_at')
               ->label('Payée le')
-              ->helperText('Date de confirmation du paiement FlexPay.'),
+              ->timezone(config('app.timezone'))
+              ->displayFormat('d/m/Y H:i')
+              ->helperText('Date de confirmation du paiement FlexPay (heure locale).'),
             DateTimePicker::make('completed_at')
               ->label('Terminée le')
-              ->helperText('Date de clôture après validation client.'),
+              ->timezone(config('app.timezone'))
+              ->displayFormat('d/m/Y H:i')
+              ->helperText('Date de clôture après validation client (heure locale).'),
+            Placeholder::make('payment_success_email_sent_at_display')
+              ->label('Mail achat envoyé le')
+              ->content(fn (?Order $record): string => OrderAdminFormatter::formatLocalizedDateTime(
+                $record?->payment_success_email_sent_at,
+              )),
           ],
         ),
       ]);

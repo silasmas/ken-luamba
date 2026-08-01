@@ -3,11 +3,14 @@
 namespace App\Support;
 
 use App\Enums\DeliveryStatus;
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 /**
  * Formate les informations commande pour l'admin Filament.
@@ -379,6 +382,112 @@ class OrderAdminFormatter
   public static function expectedTotalAmount(Order $order): float
   {
     return max(0, (float) $order->total - self::extraContributionAmount($order));
+  }
+
+  /**
+   * Formate une date/heure dans le fuseau applicatif avec décalage et localisation.
+   *
+   * @param CarbonInterface|null $date Date source (UTC ou autre)
+   * @return string Date lisible ou tiret
+   */
+  public static function formatLocalizedDateTime(?CarbonInterface $date): string
+  {
+    if ($date === null) {
+      return '—';
+    }
+
+    $timezone = (string) config('app.timezone', 'Africa/Kinshasa');
+    $local = $date->copy()->timezone($timezone)->locale((string) config('app.locale', 'fr'));
+    $city = str_replace('_', ' ', Str::afterLast($timezone, '/'));
+
+    return sprintf(
+      '%s (%s, UTC%s)',
+      $local->translatedFormat('d/m/Y H:i'),
+      $city,
+      $local->format('P'),
+    );
+  }
+
+  /**
+   * Libellé du canal de vente (boutique ou paiement direct).
+   *
+   * @param Order $order Commande source
+   * @return string Libellé admin
+   */
+  public static function salesChannelLabel(Order $order): string
+  {
+    $source = $order->source instanceof OrderSource
+      ? $order->source
+      : OrderSource::tryFrom((string) $order->source) ?? OrderSource::Shop;
+
+    return match ($source) {
+      OrderSource::DirectPayment => 'Vente directe',
+      OrderSource::Shop => 'Site (boutique)',
+    };
+  }
+
+  /**
+   * Couleur badge du canal de vente.
+   *
+   * @param Order $order Commande source
+   * @return string Couleur Filament
+   */
+  public static function salesChannelColor(Order $order): string
+  {
+    return $order->isDirectPayment() ? 'warning' : 'info';
+  }
+
+  /**
+   * Libellé du statut d'envoi du mail de confirmation d'achat.
+   *
+   * @param Order $order Commande source
+   * @return string Oui / Non / —
+   */
+  public static function purchaseEmailLabel(Order $order): string
+  {
+    if ($order->payment_success_email_sent_at !== null) {
+      return 'Oui';
+    }
+
+    if ($order->paid_at === null) {
+      return '—';
+    }
+
+    return 'Non';
+  }
+
+  /**
+   * Détail sous le badge mail d'achat (date d'envoi localisée).
+   *
+   * @param Order $order Commande source
+   * @return string|null Description ou null
+   */
+  public static function purchaseEmailDescription(Order $order): ?string
+  {
+    if ($order->payment_success_email_sent_at === null) {
+      return $order->paid_at !== null ? 'Mail non envoyé ou non enregistré' : null;
+    }
+
+    return 'Envoyé le '.self::formatLocalizedDateTime($order->payment_success_email_sent_at);
+  }
+
+  /**
+   * Couleur badge du statut mail d'achat.
+   *
+   * @param Order $order Commande source
+   * @return string Couleur Filament
+   */
+  public static function purchaseEmailColor(Order $order): string
+  {
+    if ($order->payment_success_email_sent_at !== null) {
+      return 'success';
+    }
+
+    if ($order->paid_at === null) {
+      return 'gray';
+    }
+
+    return 'danger';
   }
 
   /**
