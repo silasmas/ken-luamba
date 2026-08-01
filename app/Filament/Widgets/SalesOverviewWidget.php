@@ -8,7 +8,7 @@ use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 /**
- * Widget tableau de bord — indicateurs ventes et commandes.
+ * Widget tableau de bord — indicateurs ventes filtrés par période.
  */
 class SalesOverviewWidget extends StatsOverviewWidget
 {
@@ -17,6 +17,8 @@ class SalesOverviewWidget extends StatsOverviewWidget
   protected static ?int $sort = 2;
 
   protected int|string|array $columnSpan = 'full';
+
+  protected ?string $heading = 'Période sélectionnée';
 
   /**
    * Retourne les statistiques affichées sur le dashboard.
@@ -27,15 +29,8 @@ class SalesOverviewWidget extends StatsOverviewWidget
   {
     $analytics = app(DashboardAnalyticsService::class);
     $period = $analytics->resolvePeriod($this->pageFilters);
-
-    $revenue = $analytics->revenueInPeriod($period['start'], $period['end']);
-    $ordersCount = $analytics->ordersInPeriod($period['start'], $period['end']);
+    $activity = $analytics->activityForBounds($period['start'], $period['end']);
     $purchases = $analytics->purchasesInPeriod($period['start'], $period['end']);
-
-    $pendingPayment = \App\Models\Order::query()
-      ->where('status', \App\Enums\OrderStatus::PendingPayment)
-      ->whereBetween('created_at', [$period['start'], $period['end']])
-      ->count();
 
     $completedPayments = \App\Models\Payment::query()
       ->where('status', \App\Enums\PaymentStatus::Completed)
@@ -43,20 +38,25 @@ class SalesOverviewWidget extends StatsOverviewWidget
       ->count();
 
     return [
-      Stat::make('Chiffre d\'affaires', $analytics->formatMoney($revenue))
+      Stat::make('Chiffre d\'affaires', $analytics->formatMoney($activity['revenue']))
         ->description('Sur la période sélectionnée ('.$analytics->shopCurrencyCode().')')
         ->descriptionIcon('heroicon-m-banknotes')
         ->color('success'),
-      Stat::make('Commandes', (string) $ordersCount)
-        ->description($purchases.' articles achetés')
+      Stat::make('Commandes', (string) $activity['orders'])
+        ->description($activity['paidOrders'].' payées · '.$purchases.' articles')
         ->descriptionIcon('heroicon-m-shopping-bag')
         ->color('primary'),
-      Stat::make('En attente de paiement', (string) $pendingPayment)
+      Stat::make('En attente de paiement', (string) $activity['pending'])
         ->description('Checkout non finalisé')
         ->descriptionIcon('heroicon-m-clock')
         ->color('warning'),
       Stat::make('Paiements confirmés', (string) $completedPayments)
-        ->description('Transactions FlexPay validées')
+        ->description(sprintf(
+          'Direct %d · Boutique %d · Clients +%d',
+          $activity['direct'],
+          $activity['shop'],
+          $activity['clients'],
+        ))
         ->descriptionIcon('heroicon-m-credit-card')
         ->color('info'),
     ];

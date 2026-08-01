@@ -3,6 +3,7 @@
 namespace App\Services\Dashboard;
 
 use App\Enums\BookFormatType;
+use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Enums\UserRole;
 use App\Models\Book;
@@ -61,6 +62,9 @@ class DashboardAnalyticsService
     $end = now()->endOfDay();
 
     $start = match ($preset) {
+      'today' => now()->startOfDay(),
+      'week' => now()->startOfWeek()->startOfDay(),
+      'month' => now()->startOfMonth()->startOfDay(),
       '7d' => now()->subDays(6)->startOfDay(),
       '90d' => now()->subDays(89)->startOfDay(),
       'year' => now()->startOfYear()->startOfDay(),
@@ -69,6 +73,53 @@ class DashboardAnalyticsService
     };
 
     return ['start' => $start, 'end' => $end];
+  }
+
+  /**
+   * Snapshot ventes et activité pour aujourd'hui, semaine et mois en cours.
+   *
+   * @return array{
+   *   today: array{revenue: float, orders: int, paidOrders: int, pending: int, clients: int, direct: int, shop: int},
+   *   week: array{revenue: float, orders: int, paidOrders: int, pending: int, clients: int, direct: int, shop: int},
+   *   month: array{revenue: float, orders: int, paidOrders: int, pending: int, clients: int, direct: int, shop: int}
+   * }
+   */
+  public function salesActivitySnapshot(): array
+  {
+    return [
+      'today' => $this->activityForBounds(now()->startOfDay(), now()->endOfDay()),
+      'week' => $this->activityForBounds(now()->startOfWeek()->startOfDay(), now()->endOfDay()),
+      'month' => $this->activityForBounds(now()->startOfMonth()->startOfDay(), now()->endOfDay()),
+    ];
+  }
+
+  /**
+   * Agrège les indicateurs d'activité sur une borne temporelle.
+   *
+   * @param CarbonInterface $start Début
+   * @param CarbonInterface $end Fin
+   * @return array{revenue: float, orders: int, paidOrders: int, pending: int, clients: int, direct: int, shop: int}
+   */
+  public function activityForBounds(CarbonInterface $start, CarbonInterface $end): array
+  {
+    $paidOrders = $this->paidOrdersInPeriodQuery($start, $end)->count();
+
+    return [
+      'revenue' => $this->revenueInPeriod($start, $end),
+      'orders' => $this->ordersInPeriod($start, $end),
+      'paidOrders' => $paidOrders,
+      'pending' => Order::query()
+        ->where('status', OrderStatus::PendingPayment)
+        ->whereBetween('created_at', [$start, $end])
+        ->count(),
+      'clients' => $this->newClientsInPeriod($start, $end),
+      'direct' => $this->paidOrdersInPeriodQuery($start, $end)
+        ->where('source', OrderSource::DirectPayment->value)
+        ->count(),
+      'shop' => $this->paidOrdersInPeriodQuery($start, $end)
+        ->where('source', OrderSource::Shop->value)
+        ->count(),
+    ];
   }
 
   /**

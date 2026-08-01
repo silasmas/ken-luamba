@@ -38,6 +38,9 @@ class Dashboard extends BaseDashboard
             Select::make('period')
               ->label('Période')
               ->options([
+                'today' => 'Aujourd\'hui',
+                'week' => 'Cette semaine',
+                'month' => 'Ce mois',
                 '7d' => '7 derniers jours',
                 '30d' => '30 derniers jours',
                 '90d' => '90 derniers jours',
@@ -45,7 +48,7 @@ class Dashboard extends BaseDashboard
                 'all' => 'Toute la période',
                 'custom' => 'Personnalisée',
               ])
-              ->default('30d')
+              ->default('month')
               ->native(false)
               ->live(),
             DatePicker::make('startDate')
