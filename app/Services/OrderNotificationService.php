@@ -34,19 +34,9 @@ class OrderNotificationService
   public function notifyPaymentSuccess(Order $order): void
   {
     $order = $this->loadOrder($order);
-    $client = $order->user;
 
-    if ($client !== null && $order->payment_success_email_sent_at === null) {
-      try {
-        $client->notify(new OrderPaymentSuccessNotification($order));
-        $order->forceFill(['payment_success_email_sent_at' => now()])->save();
-      } catch (Throwable $exception) {
-        Log::error('Échec envoi mail confirmation achat.', [
-          'order_number' => $order->order_number,
-          'user_id' => $client->id,
-          'error' => $exception->getMessage(),
-        ]);
-      }
+    if ($order->payment_success_email_sent_at === null) {
+      $this->sendPaymentSuccessEmail($order);
     }
 
     if ($order->delivery !== null && $order->admin_pending_delivery_notified_at === null) {
@@ -58,6 +48,75 @@ class OrderNotificationService
       }
 
       $order->update(['admin_pending_delivery_notified_at' => now()]);
+    }
+  }
+
+  /**
+   * Renvoie (ou envoie) le mail de confirmation d'achat au client.
+   *
+   * @param Order $order Commande payée
+   * @return array{success: bool, message: string} Résultat pour l'UI admin
+   */
+  public function resendPaymentSuccessEmail(Order $order): array
+  {
+    $order = $this->loadOrder($order);
+
+    if ($order->paid_at === null) {
+      return [
+        'success' => false,
+        'message' => 'La commande n\'est pas encore payée.',
+      ];
+    }
+
+    if ($order->user === null || blank($order->user->email)) {
+      return [
+        'success' => false,
+        'message' => 'Aucun email client associé à cette commande.',
+      ];
+    }
+
+    $sent = $this->sendPaymentSuccessEmail($order);
+
+    if (! $sent) {
+      return [
+        'success' => false,
+        'message' => 'Échec d\'envoi du mail. Vérifiez la configuration SMTP.',
+      ];
+    }
+
+    return [
+      'success' => true,
+      'message' => 'Mail de confirmation renvoyé à '.$order->user->email.'.',
+    ];
+  }
+
+  /**
+   * Envoie le mail de confirmation d'achat et horodate l'envoi.
+   *
+   * @param Order $order Commande cible
+   * @return bool True si l'envoi a réussi
+   */
+  private function sendPaymentSuccessEmail(Order $order): bool
+  {
+    $client = $order->user;
+
+    if ($client === null || blank($client->email)) {
+      return false;
+    }
+
+    try {
+      $client->notify(new OrderPaymentSuccessNotification($order));
+      $order->forceFill(['payment_success_email_sent_at' => now()])->save();
+
+      return true;
+    } catch (Throwable $exception) {
+      Log::error('Échec envoi mail confirmation achat.', [
+        'order_number' => $order->order_number,
+        'user_id' => $client->id,
+        'error' => $exception->getMessage(),
+      ]);
+
+      return false;
     }
   }
 

@@ -9,6 +9,7 @@ use App\Enums\PaymentChannel;
 use App\Enums\PaymentStatus;
 use App\Models\User;
 use App\Services\DeliveryService;
+use App\Services\OrderNotificationService;
 use App\Filament\Support\OrderBooksReceivedAdminAction;
 use App\Filament\Support\ResizableTableColumn;
 use App\Support\OrderAdminFormatter;
@@ -300,6 +301,24 @@ class OrdersTable
               ->{$result['color']}()
               ->send();
           }),
+        Action::make('resendPurchaseEmail')
+          ->label('Renvoyer mail achat')
+          ->icon(Heroicon::OutlinedEnvelope)
+          ->color('info')
+          ->requiresConfirmation()
+          ->modalHeading('Renvoyer le mail de confirmation')
+          ->modalDescription(fn ($record): string => 'Un email de confirmation sera envoyé à '
+            .($record->user?->email ?? 'l\'adresse du client').'.')
+          ->visible(fn ($record): bool => $record->paid_at !== null && filled($record->user?->email))
+          ->action(function ($record): void {
+            $result = app(OrderNotificationService::class)->resendPaymentSuccessEmail($record);
+
+            Notification::make()
+              ->title($result['success'] ? 'Mail renvoyé' : 'Envoi impossible')
+              ->body($result['message'])
+              ->{$result['success'] ? 'success' : 'danger'}()
+              ->send();
+          }),
         OrderBooksReceivedAdminAction::manageReceipt(),
         Action::make('markBooksNotReceived')
           ->label('Tout remettre en attente')
@@ -350,6 +369,32 @@ class OrdersTable
               Notification::make()
                 ->title('Vérification terminée')
                 ->body("Confirmés : {$confirmed} · Toujours en attente : {$pending} · Échoués / erreurs : {$failed}")
+                ->success()
+                ->send();
+            }),
+          BulkAction::make('resendPurchaseEmailsBulk')
+            ->label('Renvoyer mails achat')
+            ->icon(Heroicon::OutlinedEnvelope)
+            ->color('info')
+            ->requiresConfirmation()
+            ->deselectRecordsAfterCompletion()
+            ->action(function (Collection $records): void {
+              $service = app(OrderNotificationService::class);
+              $sent = 0;
+              $failed = 0;
+
+              foreach ($records as $record) {
+                if ($record->paid_at === null || blank($record->user?->email)) {
+                  continue;
+                }
+
+                $result = $service->resendPaymentSuccessEmail($record);
+                $result['success'] ? $sent++ : $failed++;
+              }
+
+              Notification::make()
+                ->title('Renvoi des mails terminé')
+                ->body("Envoyés : {$sent} · Échoués / ignorés : {$failed}")
                 ->success()
                 ->send();
             }),
