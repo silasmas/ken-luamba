@@ -365,7 +365,12 @@ class PaymentService
         }
 
         $this->notificationService->afterCommit(function () use ($order): void {
-          $this->notificationService->notifyPaymentSuccess($order);
+          // Isolé : un échec SMTP ne doit jamais faire échouer la validation FlexPay.
+          try {
+            $this->notificationService->notifyPaymentSuccess($order);
+          } catch (\Throwable $exception) {
+            report($exception);
+          }
         });
       }
 

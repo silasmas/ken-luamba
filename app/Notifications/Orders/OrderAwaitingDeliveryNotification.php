@@ -4,15 +4,22 @@ namespace App\Notifications\Orders;
 
 use App\Models\Order;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use Illuminate\Queue\Middleware\RateLimited;
 
 /**
  * Alerte admin / livreur : commande payée en attente de livraison.
  */
-class OrderAwaitingDeliveryNotification extends Notification
+class OrderAwaitingDeliveryNotification extends Notification implements ShouldQueue
 {
   use Queueable;
+
+  /**
+   * Nombre de tentatives en cas d'échec SMTP temporaire.
+   */
+  public int $tries = 3;
 
   /**
    * Initialise l'alerte commande en attente de livraison.
@@ -20,6 +27,16 @@ class OrderAwaitingDeliveryNotification extends Notification
    * @param Order $order Commande payée avec livraison physique
    */
   public function __construct(private readonly Order $order) {}
+
+  /**
+   * Middleware de file : limite le débit SMTP Hostinger.
+   *
+   * @return array<int, object>
+   */
+  public function middleware(): array
+  {
+    return [new RateLimited('hostinger-mail')];
+  }
 
   /**
    * Canaux de diffusion.
@@ -40,31 +57,27 @@ class OrderAwaitingDeliveryNotification extends Notification
    */
   public function toMail(mixed $notifiable): MailMessage
   {
-    $clientName = $this->order->user?->full_name ?? '—';
     $clientEmail = $this->order->user?->email ?? '—';
     $isDirect = $this->order->isDirectPayment();
 
     $mail = (new MailMessage)
-      ->subject(($isDirect ? 'Achat direct à remettre' : 'Commande à livrer').' — '.$this->order->order_number)
-      ->greeting('Bonjour,');
+      ->subject('Commande à remettre — '.$this->order->order_number)
+      ->greeting('Bonjour,')
+      ->line('Une commande payée attend une remise / livraison.')
+      ->line('Commande : **'.$this->order->order_number.'**')
+      ->line('Montant : **'.number_format((float) $this->order->total, 0, ',', ' ').' '.$this->order->currency.'**');
 
     if ($isDirect) {
       $mail
-        ->line('Un client a effectué un **achat direct** qu\'il faut vérifier et lui remettre.')
+        ->line('Canal : **vente directe**')
         ->line('Email client : **'.$clientEmail.'**')
-        ->line('Nom : **'.$clientName.'**')
-        ->line('Commande : **'.$this->order->order_number.'**')
-        ->line('Montant : **'.number_format((float) $this->order->total, 0, ',', ' ').' '.$this->order->currency.'**')
-        ->line('Scannez le QR code du client pour finaliser la remise.');
+        ->line('Le client présentera son QR code de remise.');
     } else {
       $mail
-        ->line('Une commande payée attend une livraison.')
-        ->line('Commande : **'.$this->order->order_number.'**')
-        ->line('Client : **'.$clientName.'**')
-        ->line('Montant : **'.number_format((float) $this->order->total, 0, ',', ' ').' '.$this->order->currency.'**')
-        ->line('Assignez un livreur depuis l\'administration.');
+        ->line('Canal : **boutique**')
+        ->line('Client : **'.($this->order->user?->full_name ?? '—').'**');
     }
 
-    return $mail;
+    return $mail->action('Voir la commande', url('/admin/orders/'.$this->order->id.'/edit'));
   }
 }

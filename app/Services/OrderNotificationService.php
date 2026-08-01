@@ -28,26 +28,34 @@ class OrderNotificationService
 {
   /**
    * Notifie le client après un paiement réussi.
+   * Les échecs SMTP (quota Hostinger, etc.) n'interrompent jamais le flux paiement.
    *
    * @param Order $order Commande payée
    */
   public function notifyPaymentSuccess(Order $order): void
   {
-    $order = $this->loadOrder($order);
+    try {
+      $order = $this->loadOrder($order);
 
-    if ($order->payment_success_email_sent_at === null) {
-      $this->sendPaymentSuccessEmail($order);
-    }
-
-    if ($order->delivery !== null && $order->admin_pending_delivery_notified_at === null) {
-      $notification = new OrderAwaitingDeliveryNotification($order);
-      $this->notifyAdmins($notification);
-
-      if ($order->isDirectPayment()) {
-        $this->notifyCouriers($notification);
+      if ($order->payment_success_email_sent_at === null) {
+        $this->sendPaymentSuccessEmail($order);
       }
 
-      $order->update(['admin_pending_delivery_notified_at' => now()]);
+      if ($order->delivery !== null && $order->admin_pending_delivery_notified_at === null) {
+        $notification = new OrderAwaitingDeliveryNotification($order);
+        $this->notifyAdmins($notification);
+
+        if ($order->isDirectPayment()) {
+          $this->notifyCouriers($notification);
+        }
+
+        $order->update(['admin_pending_delivery_notified_at' => now()]);
+      }
+    } catch (Throwable $exception) {
+      Log::error('Échec notifications après paiement (paiement déjà validé).', [
+        'order_number' => $order->order_number ?? null,
+        'error' => $exception->getMessage(),
+      ]);
     }
   }
 
@@ -271,7 +279,16 @@ class OrderNotificationService
       ->where('role', UserRole::Admin)
       ->where('is_active', true)
       ->get()
-      ->each(fn (User $admin) => $admin->notify($notification));
+      ->each(function (User $admin) use ($notification): void {
+        try {
+          $admin->notify(clone $notification);
+        } catch (Throwable $exception) {
+          Log::warning('Échec notification admin.', [
+            'admin_id' => $admin->id,
+            'error' => $exception->getMessage(),
+          ]);
+        }
+      });
   }
 
   /**
@@ -285,7 +302,16 @@ class OrderNotificationService
       ->where('role', UserRole::Courier)
       ->where('is_active', true)
       ->get()
-      ->each(fn (User $courier) => $courier->notify($notification));
+      ->each(function (User $courier) use ($notification): void {
+        try {
+          $courier->notify(clone $notification);
+        } catch (Throwable $exception) {
+          Log::warning('Échec notification livreur.', [
+            'courier_id' => $courier->id,
+            'error' => $exception->getMessage(),
+          ]);
+        }
+      });
   }
 
   /**
