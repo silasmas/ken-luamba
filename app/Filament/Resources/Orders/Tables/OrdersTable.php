@@ -384,7 +384,7 @@ class OrdersTable
           ->button()
           ->requiresConfirmation()
           ->modalHeading('Renvoyer les mails d\'achat')
-          ->modalDescription('Envoie le mail de confirmation à chaque client des commandes payées sélectionnées.')
+          ->modalDescription('Maximum 30 mails par lot, espacés de 8s (quota Hostinger ≈ 100/jour). Un worker queue doit tourner.')
           ->deselectRecordsAfterCompletion()
           ->action(function (Collection $records): void {
             $records->loadMissing('user');
@@ -392,6 +392,7 @@ class OrdersTable
             $sent = 0;
             $failed = 0;
             $skipped = 0;
+            $index = 0;
 
             foreach ($records as $record) {
               if ($record->paid_at === null || blank($record->user?->email)) {
@@ -399,13 +400,19 @@ class OrdersTable
                 continue;
               }
 
-              $result = $service->resendPaymentSuccessEmail($record);
+              if ($index >= 30) {
+                $skipped++;
+                continue;
+              }
+
+              $result = $service->resendPaymentSuccessEmail($record, $index * 8);
               $result['success'] ? $sent++ : $failed++;
+              $index++;
             }
 
             Notification::make()
-              ->title('Renvoi groupé terminé')
-              ->body("Envoyés : {$sent} · Échoués : {$failed} · Ignorés : {$skipped}")
+              ->title('Renvoi groupé mis en file')
+              ->body("En file : {$sent} · Échoués : {$failed} · Ignorés : {$skipped}")
               ->success()
               ->send();
           }),

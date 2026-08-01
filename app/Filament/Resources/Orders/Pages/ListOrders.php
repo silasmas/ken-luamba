@@ -141,13 +141,15 @@ class ListOrders extends ListRecords
         ->color('info')
         ->requiresConfirmation()
         ->modalHeading('Renvoyer les mails d\'achat')
-        ->modalDescription('Envoie le mail de confirmation à tous les clients des commandes payées du filtre / onglet actuel.')
+        ->modalDescription('Maximum 30 mails du filtre actuel, espacés de 8s pour respecter le quota Hostinger (~100/jour).')
         ->action(function (): void {
           $orders = $this->getFilteredTableQuery()
             ->with('user')
             ->whereNotNull('paid_at')
+            ->limit(30)
             ->get()
-            ->filter(fn (Order $order): bool => filled($order->user?->email));
+            ->filter(fn (Order $order): bool => filled($order->user?->email))
+            ->values();
 
           if ($orders->isEmpty()) {
             Notification::make()
@@ -163,14 +165,14 @@ class ListOrders extends ListRecords
           $sent = 0;
           $failed = 0;
 
-          foreach ($orders as $order) {
-            $result = $service->resendPaymentSuccessEmail($order);
+          foreach ($orders as $index => $order) {
+            $result = $service->resendPaymentSuccessEmail($order, $index * 8);
             $result['success'] ? $sent++ : $failed++;
           }
 
           Notification::make()
-            ->title('Renvoi groupé terminé')
-            ->body("Envoyés : {$sent} · Échoués : {$failed}")
+            ->title('Renvoi groupé mis en file')
+            ->body("En file : {$sent} · Échoués : {$failed} (max 30/lot, worker queue requis)")
             ->success()
             ->send();
         }),

@@ -55,9 +55,10 @@ class OrderNotificationService
    * Renvoie (ou envoie) le mail de confirmation d'achat au client.
    *
    * @param Order $order Commande payée
+   * @param int $delaySeconds Délai avant envoi (espacement anti-quota Hostinger)
    * @return array{success: bool, message: string} Résultat pour l'UI admin
    */
-  public function resendPaymentSuccessEmail(Order $order): array
+  public function resendPaymentSuccessEmail(Order $order, int $delaySeconds = 0): array
   {
     $order = $this->loadOrder($order);
 
@@ -75,18 +76,22 @@ class OrderNotificationService
       ];
     }
 
-    $sent = $this->sendPaymentSuccessEmail($order);
+    $sent = $this->sendPaymentSuccessEmail($order, $delaySeconds);
 
     if (! $sent) {
       return [
         'success' => false,
-        'message' => 'Échec d\'envoi du mail. Vérifiez la configuration SMTP.',
+        'message' => 'Échec de mise en file du mail. Vérifiez SMTP et que `queue:work` tourne.',
       ];
     }
 
+    $email = $order->user->email;
+
     return [
       'success' => true,
-      'message' => 'Mail de confirmation renvoyé à '.$order->user->email.'.',
+      'message' => $delaySeconds > 0
+        ? "Mail mis en file pour {$email} (envoi dans ~{$delaySeconds}s)."
+        : "Mail de confirmation mis en file pour {$email}.",
     ];
   }
 
@@ -94,9 +99,10 @@ class OrderNotificationService
    * Envoie le mail de confirmation d'achat et horodate l'envoi.
    *
    * @param Order $order Commande cible
-   * @return bool True si l'envoi a réussi
+   * @param int $delaySeconds Délai avant dispatch en file
+   * @return bool True si la mise en file / envoi a réussi
    */
-  private function sendPaymentSuccessEmail(Order $order): bool
+  private function sendPaymentSuccessEmail(Order $order, int $delaySeconds = 0): bool
   {
     $client = $order->user;
 
@@ -105,7 +111,13 @@ class OrderNotificationService
     }
 
     try {
-      $client->notify(new OrderPaymentSuccessNotification($order));
+      $notification = new OrderPaymentSuccessNotification($order);
+
+      if ($delaySeconds > 0) {
+        $notification->delay(now()->addSeconds($delaySeconds));
+      }
+
+      $client->notify($notification);
       $order->forceFill(['payment_success_email_sent_at' => now()])->save();
 
       return true;
