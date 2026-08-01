@@ -6,8 +6,10 @@ use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Filament\Resources\Orders\OrderResource;
 use App\Models\Order;
+use App\Services\OrderNotificationService;
 use App\Services\Orders\OrderAdminExportService;
 use App\Support\ExportDownloadResponse;
+use App\Support\OrderPaymentVerification;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ListRecords;
@@ -83,13 +85,95 @@ class ListOrders extends ListRecords
   }
 
   /**
-   * Actions d'en-tête : exports Excel et PDF des commandes filtrées.
+   * Actions d'en-tête : vérif/renvoi groupés + exports.
    *
    * @return array<int, Action> Actions disponibles
    */
   protected function getHeaderActions(): array
   {
     return [
+      Action::make('verifyAllPendingInFilter')
+        ->label('Vérifier les en attente')
+        ->icon(Heroicon::OutlinedArrowPath)
+        ->color('warning')
+        ->requiresConfirmation()
+        ->modalHeading('Vérifier tous les paiements en attente')
+        ->modalDescription('Interroge FlexPay pour toutes les commandes en attente du filtre / onglet actuel.')
+        ->action(function (): void {
+          $orders = $this->getFilteredTableQuery()
+            ->with(['payment', 'user'])
+            ->get()
+            ->filter(fn (Order $order): bool => OrderPaymentVerification::canVerify($order));
+
+          if ($orders->isEmpty()) {
+            Notification::make()
+              ->title('Aucune commande à vérifier')
+              ->body('Aucune commande en attente dans le filtre actuel.')
+              ->warning()
+              ->send();
+
+            return;
+          }
+
+          $confirmed = 0;
+          $pending = 0;
+          $failed = 0;
+
+          foreach ($orders as $order) {
+            $result = OrderPaymentVerification::verify($order);
+
+            match ($result['color']) {
+              'success' => $confirmed++,
+              'danger' => $failed++,
+              default => $pending++,
+            };
+          }
+
+          Notification::make()
+            ->title('Vérification groupée terminée')
+            ->body("Traitées : {$orders->count()} · Confirmés : {$confirmed} · En attente : {$pending} · Échoués : {$failed}")
+            ->success()
+            ->send();
+        }),
+      Action::make('resendAllPaidEmailsInFilter')
+        ->label('Renvoyer mails achat')
+        ->icon(Heroicon::OutlinedEnvelope)
+        ->color('info')
+        ->requiresConfirmation()
+        ->modalHeading('Renvoyer les mails d\'achat')
+        ->modalDescription('Envoie le mail de confirmation à tous les clients des commandes payées du filtre / onglet actuel.')
+        ->action(function (): void {
+          $orders = $this->getFilteredTableQuery()
+            ->with('user')
+            ->whereNotNull('paid_at')
+            ->get()
+            ->filter(fn (Order $order): bool => filled($order->user?->email));
+
+          if ($orders->isEmpty()) {
+            Notification::make()
+              ->title('Aucun mail à renvoyer')
+              ->body('Aucune commande payée avec email dans le filtre actuel.')
+              ->warning()
+              ->send();
+
+            return;
+          }
+
+          $service = app(OrderNotificationService::class);
+          $sent = 0;
+          $failed = 0;
+
+          foreach ($orders as $order) {
+            $result = $service->resendPaymentSuccessEmail($order);
+            $result['success'] ? $sent++ : $failed++;
+          }
+
+          Notification::make()
+            ->title('Renvoi groupé terminé')
+            ->body("Envoyés : {$sent} · Échoués : {$failed}")
+            ->success()
+            ->send();
+        }),
       Action::make('exportExcel')
         ->label('Exporter Excel')
         ->icon(Heroicon::OutlinedArrowDownTray)

@@ -340,64 +340,76 @@ class OrdersTable
         EditAction::make(),
       ])
       ->toolbarActions([
+        BulkAction::make('verifyPaymentsBulk')
+          ->label('Vérifier paiements')
+          ->icon(Heroicon::OutlinedArrowPath)
+          ->color('warning')
+          ->button()
+          ->requiresConfirmation()
+          ->modalHeading('Vérifier les paiements sélectionnés')
+          ->modalDescription('Interroge FlexPay pour chaque commande sélectionnée encore en attente.')
+          ->deselectRecordsAfterCompletion()
+          ->action(function (Collection $records): void {
+            $records->loadMissing(['payment', 'user']);
+            $confirmed = 0;
+            $pending = 0;
+            $failed = 0;
+            $skipped = 0;
+
+            foreach ($records as $record) {
+              if (! OrderPaymentVerification::canVerify($record)) {
+                $skipped++;
+                continue;
+              }
+
+              $result = OrderPaymentVerification::verify($record);
+
+              match ($result['color']) {
+                'success' => $confirmed++,
+                'danger' => $failed++,
+                default => $pending++,
+              };
+            }
+
+            Notification::make()
+              ->title('Vérification groupée terminée')
+              ->body("Confirmés : {$confirmed} · En attente : {$pending} · Échoués : {$failed} · Ignorés : {$skipped}")
+              ->success()
+              ->send();
+          }),
+        BulkAction::make('resendPurchaseEmailsBulk')
+          ->label('Renvoyer mails achat')
+          ->icon(Heroicon::OutlinedEnvelope)
+          ->color('info')
+          ->button()
+          ->requiresConfirmation()
+          ->modalHeading('Renvoyer les mails d\'achat')
+          ->modalDescription('Envoie le mail de confirmation à chaque client des commandes payées sélectionnées.')
+          ->deselectRecordsAfterCompletion()
+          ->action(function (Collection $records): void {
+            $records->loadMissing('user');
+            $service = app(OrderNotificationService::class);
+            $sent = 0;
+            $failed = 0;
+            $skipped = 0;
+
+            foreach ($records as $record) {
+              if ($record->paid_at === null || blank($record->user?->email)) {
+                $skipped++;
+                continue;
+              }
+
+              $result = $service->resendPaymentSuccessEmail($record);
+              $result['success'] ? $sent++ : $failed++;
+            }
+
+            Notification::make()
+              ->title('Renvoi groupé terminé')
+              ->body("Envoyés : {$sent} · Échoués : {$failed} · Ignorés : {$skipped}")
+              ->success()
+              ->send();
+          }),
         BulkActionGroup::make([
-          BulkAction::make('verifyPaymentsBulk')
-            ->label('Vérifier les paiements')
-            ->icon(Heroicon::OutlinedArrowPath)
-            ->color('warning')
-            ->requiresConfirmation()
-            ->deselectRecordsAfterCompletion()
-            ->action(function (Collection $records): void {
-              $confirmed = 0;
-              $pending = 0;
-              $failed = 0;
-
-              foreach ($records as $record) {
-                if (! OrderPaymentVerification::canVerify($record)) {
-                  continue;
-                }
-
-                $result = OrderPaymentVerification::verify($record);
-
-                match ($result['color']) {
-                  'success' => $confirmed++,
-                  'danger' => $failed++,
-                  default => $pending++,
-                };
-              }
-
-              Notification::make()
-                ->title('Vérification terminée')
-                ->body("Confirmés : {$confirmed} · Toujours en attente : {$pending} · Échoués / erreurs : {$failed}")
-                ->success()
-                ->send();
-            }),
-          BulkAction::make('resendPurchaseEmailsBulk')
-            ->label('Renvoyer mails achat')
-            ->icon(Heroicon::OutlinedEnvelope)
-            ->color('info')
-            ->requiresConfirmation()
-            ->deselectRecordsAfterCompletion()
-            ->action(function (Collection $records): void {
-              $service = app(OrderNotificationService::class);
-              $sent = 0;
-              $failed = 0;
-
-              foreach ($records as $record) {
-                if ($record->paid_at === null || blank($record->user?->email)) {
-                  continue;
-                }
-
-                $result = $service->resendPaymentSuccessEmail($record);
-                $result['success'] ? $sent++ : $failed++;
-              }
-
-              Notification::make()
-                ->title('Renvoi des mails terminé')
-                ->body("Envoyés : {$sent} · Échoués / ignorés : {$failed}")
-                ->success()
-                ->send();
-            }),
           BulkAction::make('markBooksReceivedBulk')
             ->label('Marquer tout reçu')
             ->icon(Heroicon::OutlinedCheckCircle)
