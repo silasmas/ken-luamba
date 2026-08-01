@@ -115,4 +115,17 @@ return [
         'name' => env('MAIL_FROM_NAME', env('APP_NAME', 'Laravel')),
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Daily send limit (Hostinger rolling 24h window)
+    |--------------------------------------------------------------------------
+    |
+    | Used by the admin quota counter. Business Email Starter ≈ 1000 / 24h.
+    | Free email was ≈ 100 / 24h. This is an app-side estimate (mails logged
+    | after MessageSent), not Hostinger's proprietary remaining counter.
+    |
+    */
+
+    'daily_limit' => (int) env('MAIL_DAILY_LIMIT', 1000),
+
 ];

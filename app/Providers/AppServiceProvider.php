@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Listeners\LogOutboundMail;
 use Filament\Support\Facades\FilamentTimezone;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Mail\Events\MessageSent;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 
@@ -28,5 +31,7 @@ class AppServiceProvider extends ServiceProvider
     RateLimiter::for('hostinger-mail', function (): Limit {
       return Limit::perMinute(8);
     });
+
+    Event::listen(MessageSent::class, LogOutboundMail::class);
   }
 }

@@ -16,6 +16,7 @@ use App\Notifications\Orders\OrderAwaitingDeliveryNotification;
 use App\Notifications\Orders\OrderPaymentFailedNotification;
 use App\Notifications\Orders\OrderPaymentReminderNotification;
 use App\Notifications\Orders\OrderPaymentSuccessNotification;
+use App\Services\Mail\MailQuotaService;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -84,22 +85,39 @@ class OrderNotificationService
       ];
     }
 
+    $quota = app(MailQuotaService::class);
+
+    if (! $quota->canSend()) {
+      $snapshot = $quota->snapshot();
+
+      return [
+        'success' => false,
+        'message' => sprintf(
+          'Quota estimé épuisé (%d/%d sur 24 h). Attendez le reset Hostinger ou augmentez MAIL_DAILY_LIMIT si le plan a changé.',
+          $snapshot['used'],
+          $snapshot['limit'],
+        ),
+      ];
+    }
+
     $sent = $this->sendPaymentSuccessEmail($order, $delaySeconds);
 
     if (! $sent) {
       return [
         'success' => false,
-        'message' => 'Échec de mise en file du mail. Vérifiez SMTP et que `queue:work` tourne.',
+        'message' => 'Échec de mise en file du mail. Vérifiez SMTP, la table `jobs`, et que `queue:work` tourne.',
       ];
     }
 
     $email = $order->user->email;
+    $remaining = $quota->remainingInRolling24h();
 
     return [
       'success' => true,
-      'message' => $delaySeconds > 0
+      'message' => ($delaySeconds > 0
         ? "Mail mis en file pour {$email} (envoi dans ~{$delaySeconds}s)."
-        : "Mail de confirmation mis en file pour {$email}.",
+        : "Mail de confirmation mis en file pour {$email}.")
+        .' Quota estimé restant : '.$remaining.'/'.$quota->dailyLimit().' (24 h).',
     ];
   }
 

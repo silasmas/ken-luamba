@@ -5,9 +5,14 @@ namespace App\Filament\Resources\Orders\Pages;
 use App\Enums\OrderSource;
 use App\Enums\OrderStatus;
 use App\Filament\Resources\Orders\OrderResource;
+use App\Filament\Widgets\MailQuotaWidget;
+use App\Filament\Widgets\OrderListStatsWidget;
 use App\Models\Order;
+use App\Models\ShopSetting;
+use App\Services\Mail\MailQuotaService;
 use App\Services\OrderNotificationService;
 use App\Services\Orders\OrderAdminExportService;
+use App\Services\Orders\OrderListStatsService;
 use App\Support\ExportDownloadResponse;
 use App\Support\OrderBooksReceivedQuery;
 use App\Support\OrderPaymentVerification;
@@ -35,28 +40,40 @@ class ListOrders extends ListRecords
   {
     return [
       'all' => Tab::make('Toutes')
-        ->badge(fn (): int => Order::query()->count()),
+        ->badge(fn (): string => $this->tabBadge(Order::query(), includeRevenue: true))
+        ->badgeColor('primary'),
       'shop' => Tab::make('Site (boutique)')
         ->icon(Heroicon::OutlinedShoppingBag)
-        ->badge(fn (): int => Order::query()->where('source', OrderSource::Shop)->count())
+        ->badge(fn (): string => $this->tabBadge(
+          Order::query()->where('source', OrderSource::Shop->value),
+          includeRevenue: true,
+        ))
+        ->badgeColor('info')
         ->modifyQueryUsing(fn (Builder $query): Builder => $query->where(
           'source',
           OrderSource::Shop->value,
         )),
       'direct_payment' => Tab::make('Vente directe')
         ->icon(Heroicon::OutlinedQrCode)
-        ->badge(fn (): int => Order::query()->where('source', OrderSource::DirectPayment)->count())
+        ->badge(fn (): string => $this->tabBadge(
+          Order::query()->where('source', OrderSource::DirectPayment->value),
+          includeRevenue: true,
+        ))
+        ->badgeColor('warning')
         ->modifyQueryUsing(fn (Builder $query): Builder => $query->where(
           'source',
           OrderSource::DirectPayment->value,
         )),
       'direct_to_collect' => Tab::make('Direct — à récupérer')
         ->icon(Heroicon::OutlinedHandRaised)
-        ->badge(fn (): int => OrderBooksReceivedQuery::notReceived(
-          Order::query()
-            ->where('source', OrderSource::DirectPayment->value)
-            ->whereNotNull('paid_at'),
-        )->count())
+        ->badge(fn (): string => $this->tabBadge(
+          OrderBooksReceivedQuery::notReceived(
+            Order::query()
+              ->where('source', OrderSource::DirectPayment->value)
+              ->whereNotNull('paid_at'),
+          ),
+          includeRevenue: true,
+        ))
         ->badgeColor('warning')
         ->modifyQueryUsing(fn (Builder $query): Builder => OrderBooksReceivedQuery::notReceived(
           $query
@@ -65,11 +82,14 @@ class ListOrders extends ListRecords
         )),
       'direct_collected' => Tab::make('Direct — récupéré')
         ->icon(Heroicon::OutlinedCheckBadge)
-        ->badge(fn (): int => OrderBooksReceivedQuery::received(
-          Order::query()
-            ->where('source', OrderSource::DirectPayment->value)
-            ->whereNotNull('paid_at'),
-        )->count())
+        ->badge(fn (): string => $this->tabBadge(
+          OrderBooksReceivedQuery::received(
+            Order::query()
+              ->where('source', OrderSource::DirectPayment->value)
+              ->whereNotNull('paid_at'),
+          ),
+          includeRevenue: true,
+        ))
         ->badgeColor('success')
         ->modifyQueryUsing(fn (Builder $query): Builder => OrderBooksReceivedQuery::received(
           $query
@@ -78,7 +98,10 @@ class ListOrders extends ListRecords
         )),
       'pending_payment' => Tab::make('En attente paiement')
         ->icon(Heroicon::OutlinedClock)
-        ->badge(fn (): int => Order::query()->where('status', OrderStatus::PendingPayment)->count())
+        ->badge(fn (): string => $this->tabBadge(
+          Order::query()->where('status', OrderStatus::PendingPayment->value),
+          includeRevenue: false,
+        ))
         ->badgeColor('warning')
         ->modifyQueryUsing(fn (Builder $query): Builder => $query->where(
           'status',
@@ -86,20 +109,26 @@ class ListOrders extends ListRecords
         )),
       'paid' => Tab::make('Payées')
         ->icon(Heroicon::OutlinedCheckBadge)
-        ->badge(fn (): int => Order::query()->whereNotNull('paid_at')->count())
+        ->badge(fn (): string => $this->tabBadge(
+          Order::query()->whereNotNull('paid_at'),
+          includeRevenue: true,
+        ))
         ->badgeColor('success')
         ->modifyQueryUsing(fn (Builder $query): Builder => $query->whereNotNull('paid_at')),
       'awaiting_handover' => Tab::make('À remettre')
         ->icon(Heroicon::OutlinedTruck)
-        ->badge(fn (): int => Order::query()
-          ->whereNotNull('paid_at')
-          ->whereIn('status', [
-            OrderStatus::Paid->value,
-            OrderStatus::Processing->value,
-            OrderStatus::OutForDelivery->value,
-            OrderStatus::DeliveredByCourier->value,
-          ])
-          ->count())
+        ->badge(fn (): string => $this->tabBadge(
+          Order::query()
+            ->whereNotNull('paid_at')
+            ->whereIn('status', [
+              OrderStatus::Paid->value,
+              OrderStatus::Processing->value,
+              OrderStatus::OutForDelivery->value,
+              OrderStatus::DeliveredByCourier->value,
+            ]),
+          includeRevenue: true,
+        ))
+        ->badgeColor('warning')
         ->modifyQueryUsing(fn (Builder $query): Builder => $query
           ->whereNotNull('paid_at')
           ->whereIn('status', [
@@ -112,13 +141,62 @@ class ListOrders extends ListRecords
   }
 
   /**
+   * Badge d'onglet : nombre de commandes (+ total encaissé si pertinent).
+   *
+   * @param Builder $query Requête de l'onglet
+   * @param bool $includeRevenue Inclure le CA payé dans le badge
+   * @return string Libellé badge
+   */
+  private function tabBadge(Builder $query, bool $includeRevenue = false): string
+  {
+    $count = (clone $query)->count();
+
+    if (! $includeRevenue || $count === 0) {
+      return (string) $count;
+    }
+
+    $revenue = (float) ((clone $query)->whereNotNull('paid_at')->sum('total') ?? 0);
+    $service = app(OrderListStatsService::class);
+
+    return $count.' · '.$service->formatMoney($revenue, ShopSetting::currencyCode());
+  }
+
+  /**
+   * Widgets au-dessus de la liste commandes.
+   *
+   * @return array<int, class-string>
+   */
+  protected function getHeaderWidgets(): array
+  {
+    return [
+      MailQuotaWidget::class,
+      OrderListStatsWidget::class,
+    ];
+  }
+
+  /**
    * Actions d'en-tête : vérif/renvoi groupés + exports.
    *
    * @return array<int, Action> Actions disponibles
    */
   protected function getHeaderActions(): array
   {
+    $quota = app(MailQuotaService::class)->snapshot();
+
     return [
+      Action::make('mailQuotaStatus')
+        ->label($quota['label'])
+        ->icon(Heroicon::OutlinedEnvelope)
+        ->color($quota['color'])
+        ->disabled()
+        ->extraAttributes([
+          'title' => sprintf(
+            'Envoyés app : %d · Restants estimés : %d · Plafond : %d / 24 h',
+            $quota['used'],
+            $quota['remaining'],
+            $quota['limit'],
+          ),
+        ]),
       Action::make('verifyAllPendingInFilter')
         ->label('Vérifier les en attente')
         ->icon(Heroicon::OutlinedArrowPath)
@@ -168,7 +246,7 @@ class ListOrders extends ListRecords
         ->color('info')
         ->requiresConfirmation()
         ->modalHeading('Renvoyer les mails d\'achat')
-        ->modalDescription('Maximum 30 mails du filtre actuel, espacés de 8s pour respecter le quota Hostinger (~100/jour).')
+        ->modalDescription('Maximum 30 mails du filtre actuel, espacés de 8s pour respecter le quota Hostinger (~1000/24 h).')
         ->action(function (): void {
           $orders = $this->getFilteredTableQuery()
             ->with('user')

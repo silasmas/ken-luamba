@@ -58,6 +58,7 @@ class AdminPanelProvider extends PanelProvider
       ])
       ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
       ->widgets([
+        \App\Filament\Widgets\MailQuotaWidget::class,
         \App\Filament\Widgets\SalesPeriodSnapshotWidget::class,
         \App\Filament\Widgets\InvitationMessagingStatsWidget::class,
         \App\Filament\Widgets\CatalogStatsWidget::class,
