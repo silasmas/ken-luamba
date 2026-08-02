@@ -114,13 +114,13 @@ class HostingerMailApiClient
    */
   private function http()
   {
-    $token = (string) config('services.hostinger_mail.token');
+    $token = trim((string) config('services.hostinger_mail.token'));
 
     if ($token === '') {
       throw new RuntimeException('HOSTINGER_MAIL_TOKEN manquant.');
     }
 
-    return Http::baseUrl((string) config('services.hostinger_mail.base_url'))
+    return Http::baseUrl(rtrim((string) config('services.hostinger_mail.base_url'), '/'))
       ->withToken($token)
       ->acceptJson()
       ->asJson()
@@ -134,10 +134,10 @@ class HostingerMailApiClient
    */
   private function mailboxId(): string
   {
-    $mailboxId = (string) config('services.hostinger_mail.mailbox_id');
+    $mailboxId = trim((string) config('services.hostinger_mail.mailbox_id'));
 
-    if ($mailboxId === '') {
-      throw new RuntimeException('HOSTINGER_MAILBOX_ID manquant.');
+    if ($mailboxId === '' || str_starts_with($mailboxId, 'ACxxxx')) {
+      throw new RuntimeException('HOSTINGER_MAILBOX_ID manquant ou invalide.');
     }
 
     return $mailboxId;
