@@ -7,6 +7,7 @@ use App\Enums\OrderStatus;
 use App\Enums\PaymentStatus;
 use App\Models\ShopSetting;
 use App\Support\OrderBooksReceivedQuery;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -24,6 +25,12 @@ class OrderListStatsService
    *   unpaid: int,
    *   revenue: float,
    *   average_paid: float,
+   *   shop: int,
+   *   direct: int,
+   *   shop_paid: int,
+   *   direct_paid: int,
+   *   shop_revenue: float,
+   *   direct_revenue: float,
    *   pending_payment: int,
    *   payment_failed: int,
    *   completed: int,
@@ -31,9 +38,12 @@ class OrderListStatsService
    *   recovered: int,
    *   to_collect: int,
    *   mail_missing: int,
-   *   shop: int,
-   *   direct: int,
    *   by_status: array<string, int>,
+   *   periods: array{
+   *     today: array{label: string, revenue: float, shop_revenue: float, direct_revenue: float, shop_paid: int, direct_paid: int},
+   *     week: array{label: string, revenue: float, shop_revenue: float, direct_revenue: float, shop_paid: int, direct_paid: int},
+   *     month: array{label: string, revenue: float, shop_revenue: float, direct_revenue: float, shop_paid: int, direct_paid: int}
+   *   },
    *   currency: string
    * }
    */
@@ -44,6 +54,34 @@ class OrderListStatsService
     $unpaid = max(0, $total - $paid);
     $revenue = (float) ((clone $query)->whereNotNull('paid_at')->sum('total') ?? 0);
     $averagePaid = $paid > 0 ? $revenue / $paid : 0.0;
+
+    $shop = (clone $query)
+      ->where('source', OrderSource::Shop->value)
+      ->count();
+
+    $direct = (clone $query)
+      ->where('source', OrderSource::DirectPayment->value)
+      ->count();
+
+    $shopPaid = (clone $query)
+      ->where('source', OrderSource::Shop->value)
+      ->whereNotNull('paid_at')
+      ->count();
+
+    $directPaid = (clone $query)
+      ->where('source', OrderSource::DirectPayment->value)
+      ->whereNotNull('paid_at')
+      ->count();
+
+    $shopRevenue = (float) ((clone $query)
+      ->where('source', OrderSource::Shop->value)
+      ->whereNotNull('paid_at')
+      ->sum('total') ?? 0);
+
+    $directRevenue = (float) ((clone $query)
+      ->where('source', OrderSource::DirectPayment->value)
+      ->whereNotNull('paid_at')
+      ->sum('total') ?? 0);
 
     $pendingPayment = (clone $query)
       ->where('status', OrderStatus::PendingPayment->value)
@@ -83,14 +121,6 @@ class OrderListStatsService
       ->whereNull('payment_success_email_sent_at')
       ->count();
 
-    $shop = (clone $query)
-      ->where('source', OrderSource::Shop->value)
-      ->count();
-
-    $direct = (clone $query)
-      ->where('source', OrderSource::DirectPayment->value)
-      ->count();
-
     $byStatus = (clone $query)
       ->reorder()
       ->selectRaw('status, COUNT(*) as aggregate')
@@ -105,6 +135,12 @@ class OrderListStatsService
       'unpaid' => $unpaid,
       'revenue' => $revenue,
       'average_paid' => $averagePaid,
+      'shop' => $shop,
+      'direct' => $direct,
+      'shop_paid' => $shopPaid,
+      'direct_paid' => $directPaid,
+      'shop_revenue' => $shopRevenue,
+      'direct_revenue' => $directRevenue,
       'pending_payment' => $pendingPayment,
       'payment_failed' => $paymentFailed,
       'completed' => $completed,
@@ -112,10 +148,81 @@ class OrderListStatsService
       'recovered' => $recovered,
       'to_collect' => $toCollect,
       'mail_missing' => $mailMissing,
-      'shop' => $shop,
-      'direct' => $direct,
       'by_status' => $byStatus,
+      'periods' => [
+        'today' => $this->encashmentForPeriod(
+          $query,
+          now()->startOfDay(),
+          now()->endOfDay(),
+          'Aujourd\'hui',
+        ),
+        'week' => $this->encashmentForPeriod(
+          $query,
+          now()->startOfWeek()->startOfDay(),
+          now()->endOfDay(),
+          'Cette semaine',
+        ),
+        'month' => $this->encashmentForPeriod(
+          $query,
+          now()->startOfMonth()->startOfDay(),
+          now()->endOfDay(),
+          'Ce mois',
+        ),
+      ],
       'currency' => ShopSetting::currencyCode(),
+    ];
+  }
+
+  /**
+   * Encaissements (selon paid_at) boutique vs direct sur une période.
+   *
+   * @param Builder $query Requête de base (onglet)
+   * @param CarbonInterface $start Début
+   * @param CarbonInterface $end Fin
+   * @param string $title Titre court de période
+   * @return array{label: string, revenue: float, shop_revenue: float, direct_revenue: float, shop_paid: int, direct_paid: int}
+   */
+  public function encashmentForPeriod(
+    Builder $query,
+    CarbonInterface $start,
+    CarbonInterface $end,
+    string $title,
+  ): array {
+    $paidQuery = (clone $query)
+      ->whereNotNull('paid_at')
+      ->whereBetween('paid_at', [$start, $end]);
+
+    $shopPaid = (clone $paidQuery)
+      ->where('source', OrderSource::Shop->value)
+      ->count();
+
+    $directPaid = (clone $paidQuery)
+      ->where('source', OrderSource::DirectPayment->value)
+      ->count();
+
+    $shopRevenue = (float) ((clone $paidQuery)
+      ->where('source', OrderSource::Shop->value)
+      ->sum('total') ?? 0);
+
+    $directRevenue = (float) ((clone $paidQuery)
+      ->where('source', OrderSource::DirectPayment->value)
+      ->sum('total') ?? 0);
+
+    $timezone = (string) config('app.timezone', 'Africa/Kinshasa');
+
+    return [
+      'label' => sprintf(
+        '%s · %s → %s (paiement, %s)',
+        $title,
+        $start->copy()->timezone($timezone)->format('d/m/Y H:i'),
+        $end->copy()->timezone($timezone)->format('d/m/Y H:i'),
+        str_replace('_', ' ', \Illuminate\Support\Str::afterLast($timezone, '/')),
+      ),
+      'revenue' => $shopRevenue + $directRevenue,
+      'shop_revenue' => $shopRevenue,
+      'direct_revenue' => $directRevenue,
+      'shop_paid' => $shopPaid,
+      'direct_paid' => $directPaid,
     ];
   }
 

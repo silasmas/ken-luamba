@@ -13,10 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Livewire\Attributes\Reactive;
 
 /**
- * Stats dynamiques selon l'onglet actif de la liste commandes.
- *
- * N'utilise pas InteractsWithPageTable : Livewire peut envoyer null sur
- * tableColumnSearches au changement d'onglet (TypeError PHP 8.3).
+ * Stats dynamiques selon l'onglet actif : boutique / direct + encaissements par période.
  */
 class OrderListStatsWidget extends StatsOverviewWidget
 {
@@ -28,7 +25,7 @@ class OrderListStatsWidget extends StatsOverviewWidget
 
   protected ?string $heading = 'Stats de la vue actuelle';
 
-  protected ?string $description = 'Totaux selon l\'onglet actif';
+  protected ?string $description = 'Boutique vs vente directe · encaissements selon date de paiement';
 
   /**
    * Onglet Filament courant (réactif depuis ListOrders).
@@ -47,36 +44,78 @@ class OrderListStatsWidget extends StatsOverviewWidget
     $stats = $service->summarize($this->queryForActiveTab());
     $currency = $stats['currency'];
     $tabLabel = $this->activeTabLabel();
+    $today = $stats['periods']['today'];
+    $week = $stats['periods']['week'];
+    $month = $stats['periods']['month'];
 
     return [
       Stat::make('Commandes (vue)', (string) $stats['total'])
-        ->description($tabLabel.' · Boutique '.$stats['shop'].' · Direct '.$stats['direct'])
+        ->description($tabLabel.' · Payées '.$stats['paid'].' · Non payées '.$stats['unpaid'])
         ->descriptionIcon('heroicon-m-shopping-bag')
         ->color('primary'),
-      Stat::make('Total encaissé', $service->formatMoney($stats['revenue'], $currency))
+      Stat::make('Encaissé boutique (vue)', $service->formatMoney($stats['shop_revenue'], $currency))
         ->description(sprintf(
-          '%d payée(s) · panier moyen %s',
-          $stats['paid'],
+          '%d cmd site · %d payée(s) · panier moyen vue %s',
+          $stats['shop'],
+          $stats['shop_paid'],
           $service->formatMoney($stats['average_paid'], $currency),
+        ))
+        ->descriptionIcon('heroicon-m-globe-alt')
+        ->color('info'),
+      Stat::make('Encaissé vente directe (vue)', $service->formatMoney($stats['direct_revenue'], $currency))
+        ->description(sprintf(
+          '%d cmd direct · %d payée(s)',
+          $stats['direct'],
+          $stats['direct_paid'],
+        ))
+        ->descriptionIcon('heroicon-m-qr-code')
+        ->color('warning'),
+      Stat::make('Encaissé aujourd\'hui', $service->formatMoney($today['revenue'], $currency))
+        ->description(sprintf(
+          'Boutique %s (%d) · Direct %s (%d) · %s',
+          $service->formatMoney($today['shop_revenue'], $currency),
+          $today['shop_paid'],
+          $service->formatMoney($today['direct_revenue'], $currency),
+          $today['direct_paid'],
+          $today['label'],
+        ))
+        ->descriptionIcon('heroicon-m-calendar-days')
+        ->color('success'),
+      Stat::make('Encaissé cette semaine', $service->formatMoney($week['revenue'], $currency))
+        ->description(sprintf(
+          'Boutique %s (%d) · Direct %s (%d) · %s',
+          $service->formatMoney($week['shop_revenue'], $currency),
+          $week['shop_paid'],
+          $service->formatMoney($week['direct_revenue'], $currency),
+          $week['direct_paid'],
+          $week['label'],
+        ))
+        ->descriptionIcon('heroicon-m-chart-bar')
+        ->color('primary'),
+      Stat::make('Encaissé ce mois', $service->formatMoney($month['revenue'], $currency))
+        ->description(sprintf(
+          'Boutique %s (%d) · Direct %s (%d) · %s',
+          $service->formatMoney($month['shop_revenue'], $currency),
+          $month['shop_paid'],
+          $service->formatMoney($month['direct_revenue'], $currency),
+          $month['direct_paid'],
+          $month['label'],
         ))
         ->descriptionIcon('heroicon-m-banknotes')
         ->color('success'),
-      Stat::make('Payées / non payées', $stats['paid'].' / '.$stats['unpaid'])
-        ->description('En attente paiement : '.$stats['pending_payment'].' · Échecs paiement : '.$stats['payment_failed'])
-        ->descriptionIcon('heroicon-m-credit-card')
-        ->color($stats['payment_failed'] > 0 ? 'danger' : 'warning'),
       Stat::make('Récupérés / à remettre', $stats['recovered'].' / '.$stats['to_collect'])
         ->description('À remettre (parcours) : '.$stats['awaiting_handover'].' · Terminées : '.$stats['completed'])
         ->descriptionIcon('heroicon-m-hand-raised')
         ->color($stats['to_collect'] > 0 ? 'warning' : 'success'),
-      Stat::make('Mails achat manquants', (string) $stats['mail_missing'])
-        ->description('Commandes payées sans mail d\'achat journalisé')
-        ->descriptionIcon('heroicon-m-envelope')
-        ->color($stats['mail_missing'] > 0 ? 'warning' : 'success'),
-      Stat::make('Répartition statuts', (string) count(array_filter($stats['by_status'])))
-        ->description($service->statusBreakdownLabel($stats['by_status']))
-        ->descriptionIcon('heroicon-m-queue-list')
-        ->color('gray'),
+      Stat::make('Paiements / mails', $stats['pending_payment'].' en attente')
+        ->description(sprintf(
+          'Échecs paiement %d · Mails achat manquants %d · %s',
+          $stats['payment_failed'],
+          $stats['mail_missing'],
+          $service->statusBreakdownLabel($stats['by_status']),
+        ))
+        ->descriptionIcon('heroicon-m-credit-card')
+        ->color($stats['payment_failed'] > 0 ? 'danger' : 'gray'),
     ];
   }
 

@@ -29,32 +29,49 @@ class SalesOverviewWidget extends StatsOverviewWidget
   {
     $analytics = app(DashboardAnalyticsService::class);
     $period = $analytics->resolvePeriod($this->pageFilters);
-    $activity = $analytics->activityForBounds($period['start'], $period['end']);
+    $activity = $analytics->activityForBounds(
+      $period['start'],
+      $period['end'],
+      'Période sélectionnée',
+    );
     $purchases = $analytics->purchasesInPeriod($period['start'], $period['end']);
 
     $completedPayments = \App\Models\Payment::query()
       ->where('status', \App\Enums\PaymentStatus::Completed)
-      ->whereBetween('created_at', [$period['start'], $period['end']])
+      ->whereNotNull('paid_at')
+      ->whereBetween('paid_at', [$period['start'], $period['end']])
       ->count();
 
     return [
-      Stat::make('Chiffre d\'affaires', $analytics->formatMoney($activity['revenue']))
-        ->description('Sur la période sélectionnée ('.$analytics->shopCurrencyCode().')')
+      Stat::make('Encaissé total', $analytics->formatMoney($activity['revenue']))
+        ->description($activity['period_label'])
         ->descriptionIcon('heroicon-m-banknotes')
         ->color('success'),
-      Stat::make('Commandes', (string) $activity['orders'])
-        ->description($activity['paidOrders'].' payées · '.$purchases.' articles')
+      Stat::make('Encaissé boutique', $analytics->formatMoney($activity['shop_revenue']))
+        ->description(sprintf(
+          '%d cmd site payée(s) · %s',
+          $activity['shop'],
+          $activity['period_label'],
+        ))
+        ->descriptionIcon('heroicon-m-globe-alt')
+        ->color('info'),
+      Stat::make('Encaissé vente directe', $analytics->formatMoney($activity['direct_revenue']))
+        ->description(sprintf(
+          '%d cmd direct payée(s) · %s',
+          $activity['direct'],
+          $activity['period_label'],
+        ))
+        ->descriptionIcon('heroicon-m-qr-code')
+        ->color('warning'),
+      Stat::make('Commandes créées', (string) $activity['orders'])
+        ->description($activity['paidOrders'].' payées · '.$purchases.' articles · En attente '.$activity['pending'])
         ->descriptionIcon('heroicon-m-shopping-bag')
         ->color('primary'),
-      Stat::make('En attente de paiement', (string) $activity['pending'])
-        ->description('Checkout non finalisé')
-        ->descriptionIcon('heroicon-m-clock')
-        ->color('warning'),
       Stat::make('Paiements confirmés', (string) $completedPayments)
         ->description(sprintf(
-          'Direct %d · Boutique %d · Clients +%d',
-          $activity['direct'],
+          'Boutique %d · Direct %d · Nouveaux clients +%d',
           $activity['shop'],
+          $activity['direct'],
           $activity['clients'],
         ))
         ->descriptionIcon('heroicon-m-credit-card')

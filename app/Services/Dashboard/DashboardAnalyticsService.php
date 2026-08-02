@@ -79,17 +79,17 @@ class DashboardAnalyticsService
    * Snapshot ventes et activité pour aujourd'hui, semaine et mois en cours.
    *
    * @return array{
-   *   today: array{revenue: float, orders: int, paidOrders: int, pending: int, clients: int, direct: int, shop: int},
-   *   week: array{revenue: float, orders: int, paidOrders: int, pending: int, clients: int, direct: int, shop: int},
-   *   month: array{revenue: float, orders: int, paidOrders: int, pending: int, clients: int, direct: int, shop: int}
+   *   today: array<string, mixed>,
+   *   week: array<string, mixed>,
+   *   month: array<string, mixed>
    * }
    */
   public function salesActivitySnapshot(): array
   {
     return [
-      'today' => $this->activityForBounds(now()->startOfDay(), now()->endOfDay()),
-      'week' => $this->activityForBounds(now()->startOfWeek()->startOfDay(), now()->endOfDay()),
-      'month' => $this->activityForBounds(now()->startOfMonth()->startOfDay(), now()->endOfDay()),
+      'today' => $this->activityForBounds(now()->startOfDay(), now()->endOfDay(), 'Aujourd\'hui'),
+      'week' => $this->activityForBounds(now()->startOfWeek()->startOfDay(), now()->endOfDay(), 'Cette semaine'),
+      'month' => $this->activityForBounds(now()->startOfMonth()->startOfDay(), now()->endOfDay(), 'Ce mois'),
     ];
   }
 
@@ -98,14 +98,42 @@ class DashboardAnalyticsService
    *
    * @param CarbonInterface $start Début
    * @param CarbonInterface $end Fin
-   * @return array{revenue: float, orders: int, paidOrders: int, pending: int, clients: int, direct: int, shop: int}
+   * @param string|null $periodTitle Titre court (ex. Aujourd'hui)
+   * @return array{
+   *   revenue: float,
+   *   shop_revenue: float,
+   *   direct_revenue: float,
+   *   orders: int,
+   *   paidOrders: int,
+   *   pending: int,
+   *   clients: int,
+   *   direct: int,
+   *   shop: int,
+   *   period_label: string,
+   *   period_title: string
+   * }
    */
-  public function activityForBounds(CarbonInterface $start, CarbonInterface $end): array
-  {
+  public function activityForBounds(
+    CarbonInterface $start,
+    CarbonInterface $end,
+    ?string $periodTitle = null,
+  ): array {
     $paidOrders = $this->paidOrdersInPeriodQuery($start, $end)->count();
+    $shopQuery = $this->paidOrdersInPeriodQuery($start, $end)
+      ->where('source', OrderSource::Shop->value);
+    $directQuery = $this->paidOrdersInPeriodQuery($start, $end)
+      ->where('source', OrderSource::DirectPayment->value);
+
+    $shop = (clone $shopQuery)->count();
+    $direct = (clone $directQuery)->count();
+    $shopRevenue = (float) ((clone $shopQuery)->sum('total') ?? 0);
+    $directRevenue = (float) ((clone $directQuery)->sum('total') ?? 0);
+    $title = $periodTitle ?? 'Période';
 
     return [
-      'revenue' => $this->revenueInPeriod($start, $end),
+      'revenue' => $shopRevenue + $directRevenue,
+      'shop_revenue' => $shopRevenue,
+      'direct_revenue' => $directRevenue,
       'orders' => $this->ordersInPeriod($start, $end),
       'paidOrders' => $paidOrders,
       'pending' => Order::query()
@@ -113,13 +141,36 @@ class DashboardAnalyticsService
         ->whereBetween('created_at', [$start, $end])
         ->count(),
       'clients' => $this->newClientsInPeriod($start, $end),
-      'direct' => $this->paidOrdersInPeriodQuery($start, $end)
-        ->where('source', OrderSource::DirectPayment->value)
-        ->count(),
-      'shop' => $this->paidOrdersInPeriodQuery($start, $end)
-        ->where('source', OrderSource::Shop->value)
-        ->count(),
+      'direct' => $direct,
+      'shop' => $shop,
+      'period_title' => $title,
+      'period_label' => $this->formatPeriodLabel($title, $start, $end),
     ];
+  }
+
+  /**
+   * Libellé de période pour les cartes d'encaissement.
+   *
+   * @param string $title Titre court
+   * @param CarbonInterface $start Début
+   * @param CarbonInterface $end Fin
+   * @return string Libellé affiché
+   */
+  public function formatPeriodLabel(
+    string $title,
+    CarbonInterface $start,
+    CarbonInterface $end,
+  ): string {
+    $timezone = (string) config('app.timezone', 'Africa/Kinshasa');
+    $city = str_replace('_', ' ', \Illuminate\Support\Str::afterLast($timezone, '/'));
+
+    return sprintf(
+      '%s · %s → %s (%s, date de paiement)',
+      $title,
+      $start->copy()->timezone($timezone)->format('d/m/Y H:i'),
+      $end->copy()->timezone($timezone)->format('d/m/Y H:i'),
+      $city,
+    );
   }
 
   /**
@@ -327,10 +378,12 @@ class DashboardAnalyticsService
    */
   private function paidOrdersInPeriodQuery(CarbonInterface $start, CarbonInterface $end)
   {
+    // Encaissement = date de paiement (paid_at), pas date de création commande.
     return Order::query()
       ->where('currency', $this->shopCurrencyCode())
+      ->whereNotNull('paid_at')
       ->whereIn('status', array_map(fn (OrderStatus $status): string => $status->value, $this->paidOrderStatuses()))
-      ->whereBetween('created_at', [$start, $end]);
+      ->whereBetween('paid_at', [$start, $end]);
   }
 
   /**
