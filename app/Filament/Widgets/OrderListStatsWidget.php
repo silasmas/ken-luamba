@@ -2,19 +2,24 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Resources\Orders\Pages\ListOrders;
+use App\Enums\OrderSource;
+use App\Enums\OrderStatus;
+use App\Models\Order;
 use App\Services\Orders\OrderListStatsService;
-use Filament\Widgets\Concerns\InteractsWithPageTable;
+use App\Support\OrderBooksReceivedQuery;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
+use Illuminate\Database\Eloquent\Builder;
+use Livewire\Attributes\Reactive;
 
 /**
- * Stats dynamiques selon l'onglet et les filtres de la liste commandes.
+ * Stats dynamiques selon l'onglet actif de la liste commandes.
+ *
+ * N'utilise pas InteractsWithPageTable : Livewire peut envoyer null sur
+ * tableColumnSearches au changement d'onglet (TypeError PHP 8.3).
  */
 class OrderListStatsWidget extends StatsOverviewWidget
 {
-  use InteractsWithPageTable;
-
   protected static bool $isDiscovered = false;
 
   protected static ?int $sort = 1;
@@ -23,27 +28,23 @@ class OrderListStatsWidget extends StatsOverviewWidget
 
   protected ?string $heading = 'Stats de la vue actuelle';
 
-  protected ?string $description = 'Totaux selon l\'onglet, les filtres et la recherche actifs';
+  protected ?string $description = 'Totaux selon l\'onglet actif';
 
   /**
-   * Page liste commandes liée (onglets + filtres).
-   *
-   * @return class-string
+   * Onglet Filament courant (réactif depuis ListOrders).
    */
-  protected function getTablePage(): string
-  {
-    return ListOrders::class;
-  }
+  #[Reactive]
+  public ?string $activeTab = null;
 
   /**
-   * Cartes statistiques pour la vue filtrée.
+   * Cartes statistiques pour l'onglet actif.
    *
    * @return array<int, Stat>
    */
   protected function getStats(): array
   {
     $service = app(OrderListStatsService::class);
-    $stats = $service->summarize($this->getPageTableQuery());
+    $stats = $service->summarize($this->queryForActiveTab());
     $currency = $stats['currency'];
     $tabLabel = $this->activeTabLabel();
 
@@ -77,6 +78,42 @@ class OrderListStatsWidget extends StatsOverviewWidget
         ->descriptionIcon('heroicon-m-queue-list')
         ->color('gray'),
     ];
+  }
+
+  /**
+   * Construit la requête Eloquent correspondant à l'onglet actif.
+   *
+   * @return Builder Requête commandes
+   */
+  private function queryForActiveTab(): Builder
+  {
+    $query = Order::query();
+
+    return match ($this->activeTab) {
+      'shop' => $query->where('source', OrderSource::Shop->value),
+      'direct_payment' => $query->where('source', OrderSource::DirectPayment->value),
+      'direct_to_collect' => OrderBooksReceivedQuery::notReceived(
+        $query
+          ->where('source', OrderSource::DirectPayment->value)
+          ->whereNotNull('paid_at'),
+      ),
+      'direct_collected' => OrderBooksReceivedQuery::received(
+        $query
+          ->where('source', OrderSource::DirectPayment->value)
+          ->whereNotNull('paid_at'),
+      ),
+      'pending_payment' => $query->where('status', OrderStatus::PendingPayment->value),
+      'paid' => $query->whereNotNull('paid_at'),
+      'awaiting_handover' => $query
+        ->whereNotNull('paid_at')
+        ->whereIn('status', [
+          OrderStatus::Paid->value,
+          OrderStatus::Processing->value,
+          OrderStatus::OutForDelivery->value,
+          OrderStatus::DeliveredByCourier->value,
+        ]),
+      default => $query,
+    };
   }
 
   /**
